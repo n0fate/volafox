@@ -291,7 +291,7 @@ class volafox():
         return(octet.rstrip('.'))
 	
     # 2011.08.08
-    # Real network information (inpcbinfo.hashbase)
+    # network information (inpcbinfo.hashbase, test code)
     # it can dump network information. if rootkit has hiding technique.
     #################################################
     def net_info(self, sym_addr, pml4):
@@ -376,9 +376,7 @@ class volafox():
             
         return network_list
 
-    # 2011.08.30
-    # Real network information (inpcbinfo.hashbase)
-    # it can dump network information. if rootkit has hiding technique.
+    # 2011.08.30 test code(plist chain)
     #################################################
     def net_info_test(self, sym_addr, pml4):
         network_list = []
@@ -396,64 +394,31 @@ class volafox():
         if not(net_pae.is_valid_address(inpcbinfo[5])):
             return
 
-        while 1:
-            temp_ptr = inpcbinfo[5] # base address
-            inpcb_t = net_pae.read(inpcbinfo[0]+(offset_hashbase*4), 4)
-            inpcb = struct.unpack('=I', inpcb_t)
-            loop_addr = inpcb[0]
+        #print 'Real Address (inpcbinfo): %x'%net_pae.vtop(inpcbinfo[5])
 
-            if loop_addr == 0:
-                continue
-            
-            if not(net_pae.is_valid_address(loop_addr)):
-                break
+        temp_ptr = inpcbinfo[5] # base address
+        #list_t = net_pae.read(inpcbinfo[5], 4)
+        #temp_ptr = struct.unpack('=I', list_t)
+
+        print 'Real Address (inpcbinfo): %x'%net_pae.vtop(temp_ptr)
+        
+        while net_pae.is_valid_address(temp_ptr):
             
 	    #print 'Real Address (inpcb): %x'%net_pae.vtop(inpcb[0])
-            inpcb = net_pae.read(loop_addr+16, 112)
-            in_network = struct.unpack('>HH48xI36xI12xI', inpcb) # fport, lport, flag, fhost, lhost
-  #123 struct inpcb {
-  #124         LIST_ENTRY(inpcb) inp_hash;     /* hash list */
-  #125         int             inp_wantcnt;            /* pcb wanted count. protected by pcb list lock */
-  #126         int             inp_state;              /* state of this pcb, in use, recycled, ready for recycling... */
-  #127         u_short inp_fport;              /* foreign port */
-  #128         u_short inp_lport;              /* local port */
-  #129         LIST_ENTRY(inpcb) inp_list;     /* list for all PCBs of this proto */
-  #130         caddr_t inp_ppcb;               /* pointer to per-protocol pcb */
-  #131         struct  inpcbinfo *inp_pcbinfo; /* PCB list info */
-  #132         struct  socket *inp_socket;     /* back pointer to socket */
-  #133         u_char  nat_owner;              /* Used to NAT TCP/UDP traffic */
-  #134         u_int32_t nat_cookie;           /* Cookie stored and returned to NAT */
-  #135         LIST_ENTRY(inpcb) inp_portlist; /* list for this PCB's local port */
-  #136         struct  inpcbport *inp_phd;     /* head of this list */
-  #137         inp_gen_t inp_gencnt;           /* generation count of this instance */
-  #138         int     inp_flags;              /* generic IP/datagram flags */
-  #139         u_int32_t inp_flow;
-  #140 
-  #141         u_char  inp_vflag;      /* INP_IPV4 or INP_IPV6 */
-  #142 
-  #143         u_char inp_ip_ttl;              /* time to live proto */
-  #144         u_char inp_ip_p;                /* protocol proto */
-  #145         /* protocol dependent part */
-  #146         union {
-  #147                 /* foreign host table entry */
-  #148                 struct  in_addr_4in6 inp46_foreign;
-  #149                 struct  in6_addr inp6_foreign;
-  #150         } inp_dependfaddr;
-  #151         union {
-  #152                 /* local host table entry */
-  #153                 struct  in_addr_4in6 inp46_local;
-  #154                 struct  in6_addr inp6_local;
-  #155         } inp_dependladdr;
-  
+            inpcb = net_pae.read(temp_ptr+16, 112)
+            in_network = struct.unpack('>HHI44xI36xI12xI', inpcb) # fport, lport, flag, fhost, lhost
+            
             network = []
-	    network.append(in_network[2])
-            network.append(self.IntToDottedIP(in_network[3]))
+	    network.append(in_network[3])
             network.append(self.IntToDottedIP(in_network[4]))
+            network.append(self.IntToDottedIP(in_network[5]))
             network.append(in_network[1])
             network.append(in_network[0])
         
             #print 'Local Address: %s:%d, Foreign Address: %s:%d, flag:%x'%(self.IntToDottedIP(in_network[3]), in_network[1], self.IntToDottedIP(in_network[4]), in_network[0], in_network[2])
             network_list.append(network)
+
+            temp_ptr = in_network[2]
             
         return network_list
 
@@ -476,7 +441,8 @@ def usage():
     print 'kext_info\t KEXT(Kernel Extensions) information'
     print 'proc_info\t Process list'
     print 'syscall_info\t Kernel systemcall information'
-    print 'net_info\t network information'
+    print 'net_info\t network information(hash) - test'
+    print 'net_info_test\t network information(plist) - test'
 
 def main():
     file_image = ''
@@ -680,7 +646,6 @@ def main():
 
     elif oflag == 'net_info':
         print '\n-= NETWORK INFORMATION (hashbase) =-'
-        #sys.stdout.write('source ip\tsource port\tdestination ip\tdestination port\tpid\n')
         network_list = m_volafox.net_info(symbol_list['_tcbinfo'], symbol_list['_IdlePML4'])
         for network in network_list:
             print '[TCP] Local Address: %s:%d, Foreign Address: %s:%d, flag: %x'%(network[1], network[3], network[2], network[4], network[0])
@@ -688,6 +653,18 @@ def main():
 	network_list = m_volafox.net_info(symbol_list['_udbinfo'], symbol_list['_IdlePML4'])
         for network in network_list:
             print '[UDP] Local Address: %s:%d, Foreign Address: %s:%d, flag: %x'%(network[1], network[3], network[2], network[4], network[0])
+        sys.exit()
+
+    elif oflag == 'net_info_test':
+        print '\n-= NETWORK INFORMATION (plist) =-'
+        network_list = m_volafox.net_info_test(symbol_list['_tcbinfo'], symbol_list['_IdlePML4'])
+        for network in network_list:
+            print '[TCP] Local Address: %s:%d, Foreign Address: %s:%d, flag: %x'%(network[1], network[3], network[2], network[4], network[0])
+	    
+	network_list = m_volafox.net_info_test(symbol_list['_udbinfo'], symbol_list['_IdlePML4'])
+        for network in network_list:
+            print '[UDP] Local Address: %s:%d, Foreign Address: %s:%d, flag: %x'%(network[1], network[3], network[2], network[4], network[0])
+        sys.exit()
 
     else:
         print '\n-o argument error: %s\n'%oflag
