@@ -32,7 +32,7 @@ import os
 
 from x86 import *
 from addrspace import FileAddressSpace
-
+from macho import MachoAddressSpace, isMachoVolafoxCompatible
 
 ###############################################################################
 #
@@ -53,7 +53,10 @@ class volafox():
         if self.mempath == '' or self.idlepdpt == 0:
             return 1
 
-        self.x86_mem_pae = IA32PagedMemoryPae(FileAddressSpace(self.mempath), self.idlepdpt)
+        if isMachoVolafoxCompatible(self.mempath):
+            self.x86_mem_pae = IA32PagedMemoryPae(MachoAddressSpace(self.mempath), self.idlepdpt)
+        else:
+            self.x86_mem_pae = IA32PagedMemoryPae(FileAddressSpace(self.mempath), self.idlepdpt)
         return 0
 
     def os_info(self, sym_addr):
@@ -254,7 +257,10 @@ class volafox():
                 #else: # 64bit process Page Table module(ia32_pml4.py)
                 #    proc_pae = IA32PML4MemoryPae(FileAddressSpace(self.mempath), pm_cr3)
                 
-                proc_pae = IA32PML4MemoryPae(FileAddressSpace(self.mempath), pm_cr3)
+                if isMachoVolafoxCompatible(self.mempath):
+                    proc_pae = IA32PML4MemoryPae(MachoAddressSpace(self.mempath), pm_cr3)
+                else:
+                    proc_pae = IA32PML4MemoryPae(FileAddressSpace(self.mempath), pm_cr3)
                 
                 print '[+] Process Dump Start'
                 for vme_info in  vm_list:
@@ -296,7 +302,10 @@ class volafox():
     #################################################
     def net_info(self, sym_addr, pml4):
         network_list = []
-	net_pae = IA32PML4MemoryPae(FileAddressSpace(self.mempath), pml4)
+        if machoVolafoxCompatible(self.mempath):
+            net_pae = IA32PML4MemoryPae(MachoAddressSpace(self.mempath), pml4) 
+        else:
+            net_pae = IA32PML4MemoryPae(FileAddressSpace(self.mempath), pml4)
         
         if sym_addr == 0:
             return
@@ -380,7 +389,10 @@ class volafox():
     #################################################
     def net_info_test(self, sym_addr, pml4):
         network_list = []
-	net_pae = IA32PML4MemoryPae(FileAddressSpace(self.mempath), pml4)
+        if isMachoVolafoxCompatible(self.mempath):
+            net_pae = IA32PML4MemoryPae(MachoAddressSpace(self.mempath), pml4)
+        else:
+            net_pae = IA32PML4MemoryPae(FileAddressSpace(self.mempath), pml4)
         
         if sym_addr == 0:
             return
