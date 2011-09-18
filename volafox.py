@@ -25,8 +25,11 @@ import sys
 import math
 
 import binascii
-import macho_an # user-define class -> n0fate
-from ia32_pml4 import * # user-define class -> n0fate
+import macho_an # user-defined class -> n0fate
+from ia32_pml4 import * # user-defined class -> n0fate
+
+from imageinfo import * # user defined class > CL
+import pickle # added by CL
 
 import os
 
@@ -58,9 +61,31 @@ class volafox():
         else:
             self.x86_mem_pae = IA32PagedMemoryPae(FileAddressSpace(self.mempath), self.idlepdpt)
         return 0
+    
+    def sleep_time(self, sym_addr):
+    	sleep_time = self.x86_mem_pae.read(sym_addr, 4);
+    	data = struct.unpack('i', sleep_time)
+    	return data
+
+    def wake_time(self, sym_addr):
+    	wake_time = self.x86_mem_pae.read(sym_addr, 4);
+    	data = struct.unpack('i', wake_time)
+    	return data   
+
+    ## Chris Leat(chris.leat@gmail.com)'s Idea(Thanks to giving new idea :D)
+    ## Source: osfmk/i386/lowmem_vectors.s
+    #def get_mem_info(self, sym_addr):
+    #    mem_info = self.x86_mem_pae.read(sym_addr, 0x248)
+    #    ## 'Catfish', ptr to kernel version str, ptr to kmod, ptr to osversion str
+    #    data = struct.unpack('8s20xI4xI16xI', mem_info)
+    #    if data[0] is not 'Catfish ':
+    #       print'Can not get memory information'
+    #       return data
+    #    else:
+    #       self.x86_mem_pae.read(sym_addr, 10)
 
     def os_info(self, sym_addr):
-        os_version = self.x86_mem_pae.read(sym_addr, 10); # __DATA.__common _osversion
+        os_version = self.x86_mem_pae.read(sym_addr, 10) # __DATA.__common _osversion
         data = struct.unpack('10s', os_version)
         return data
 
@@ -75,6 +100,7 @@ class volafox():
         return data
 
     def kext_info(self, sym_addr):
+        print 'symboladdr: %x'%sym_addr
         kext_list = []
 
         Kext = self.x86_mem_pae.read(sym_addr, 4); # .data _kmod
@@ -123,6 +149,7 @@ class volafox():
         proc_list = []
         kernproc = self.x86_mem_pae.read(sym_addr, 4); # __DATA.__common _kernproc
         data = struct.unpack('I', kernproc)
+	print 'kernproc: %x'%data[0]
 
         while 1:
             #break
@@ -508,10 +535,16 @@ def main():
         usage()
         sys.exit()
 
-    macho = macho_an.macho_an(file_image)
-    arch_count = macho.load()
-    header = macho.get_header(arch_count, macho.ARCH_I386) # only support Intel x86
-    symbol_list = macho.macho_getsymbol_x86(header[2], header[3])
+    #macho = macho_an.macho_an(file_image)
+    #arch_count = macho.load()
+    #header = macho.get_header(arch_count, macho.ARCH_I386) # only support Intel x86
+    #symbol_list = macho.macho_getsymbol_x86(header[2], header[3])
+    
+    #Added by CL
+    f = open(file_image, 'rb')
+    symbol_list = pickle.load(f)
+    #
+    f.close()
 
     m_volafox = volafox(symbol_list['_IdlePDPT'], mempath)
     nRet = m_volafox.init_vatopa_x86_pae()

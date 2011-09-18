@@ -31,14 +31,20 @@
 
 import os
 import struct
+from imageinfo import * # user generated class - CL
 
 class FileAddressSpace:
     def __init__(self, fname, mode='rb', fast=False):
         self.fname = fname
 	self.name = fname
+	#Added by CL
+	self.diffB = imageInfo(fname)
+	self.diff, self.Build = self.diffB.catfishSearch(fname)
+	#
 	self.fhandle = open(fname, mode)
         self.fsize = os.path.getsize(fname)
 
+	
 	if fast == True:
             self.fast_fhandle = open(fname, mode)
 
@@ -46,7 +52,8 @@ class FileAddressSpace:
         return self.fast_fhandle.read(len)
 
     def read(self, addr, len):
-        self.fhandle.seek(addr)        
+        addr2 = addr - self.diff # This has been changed by CL
+        self.fhandle.seek(addr2) # This has been changed by CL
         return self.fhandle.read(len)    
 
     def zread(self, addr, len):

@@ -12,7 +12,7 @@ def getuint(map, offset):
     try:
         ret = struct.unpack("@I", map[offset:offset+4])
         return ret[0]
-    except struct.error as error:
+    except struct.error:
         if offset+4 > len(map):
            print "Error:  mach-o header is incomplete."
         else: 
