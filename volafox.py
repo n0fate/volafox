@@ -461,11 +461,11 @@ class volafox():
         return network_list
 
 def usage():
-    print 'volafox(Memory analyzer for OS X) 0.6 Beta1 fixed - n0fate'
+    print 'volafox(Memory analyzer for OS X) 0.7 alpha1'
     print 'Contact: rapfer@gmail.com or n0fate@live.com'
     print 'usage: python %s -i MEMORY_IMAGE -s OVERLAY -[o INFORMATION][-m KEXT ID][-x PID]\n'%sys.argv[0]
     print '-= CAUTION =-'
-    print 'this program needs to physical memory image(linear format), overay information(symbol list in kernel image)'
+    print 'this program needs to physical memory image(linear format), overlay information(symbol list in kernel image)'
     print 'and it supports to Intel x86 Architecture only :(\n'
     print 'Option:'
     print '-o\t: Gathering information using symbol'
