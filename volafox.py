@@ -149,7 +149,6 @@ class volafox():
         proc_list = []
         kernproc = self.x86_mem_pae.read(sym_addr, 4); # __DATA.__common _kernproc
         data = struct.unpack('I', kernproc)
-	print 'kernproc: %x'%data[0]
 
         while 1:
             #break
@@ -329,7 +328,7 @@ class volafox():
     #################################################
     def net_info(self, sym_addr, pml4):
         network_list = []
-        if machoVolafoxCompatible(self.mempath):
+        if isMachoVolafoxCompatible(self.mempath):
             net_pae = IA32PML4MemoryPae(MachoAddressSpace(self.mempath), pml4) 
         else:
             net_pae = IA32PML4MemoryPae(FileAddressSpace(self.mempath), pml4)
@@ -464,9 +463,9 @@ class volafox():
 def usage():
     print 'volafox(Memory analyzer for OS X) 0.6 Beta1 fixed - n0fate'
     print 'Contact: rapfer@gmail.com or n0fate@live.com'
-    print 'usage: python %s -i MEMORY_IMAGE -s KERNEL_IMAGE -[o INFORMATION][-m KEXT ID][-x PID]\n'%sys.argv[0]
+    print 'usage: python %s -i MEMORY_IMAGE -s OVERLAY -[o INFORMATION][-m KEXT ID][-x PID]\n'%sys.argv[0]
     print '-= CAUTION =-'
-    print 'this program needs to physical memory image(linear format), kernel image(mach_kernel)'
+    print 'this program needs to physical memory image(linear format), overay information(symbol list in kernel image)'
     print 'and it supports to Intel x86 Architecture only :(\n'
     print 'Option:'
     print '-o\t: Gathering information using symbol'
