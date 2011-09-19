@@ -649,7 +649,7 @@ def main():
             sys.stdout.write('%.8x\t'%data[0]) # int
             sys.stdout.write('%d\t'%data[1]) # int
             sys.stdout.write('%d\t'%data[4]) # int
-            sys.stdout.write('%s\t'%data[6].strip('\x00'))
+            sys.stdout.write('%s\t'%data[6].split('\x00', 1)[0]) # Changed by CL to read null formatted strings
             sys.stdout.write('%s\t'%data[8].strip('\x00'))
             sys.stdout.write('\n')
 
