@@ -47,8 +47,9 @@ from macho import MachoAddressSpace, isMachoVolafoxCompatible
 #
 ###############################################################################
 class volafox():
-    def __init__(self, pdpt, mempath):
+    def __init__(self, pdpt, pml4, mempath):
         self.idlepdpt = pdpt
+        self.idlepml4 = pml4 ### 11.09.28 n0fate
         self.mempath = mempath
         self.data_list = []
 
@@ -72,17 +73,13 @@ class volafox():
     	data = struct.unpack('i', wake_time)
     	return data   
 
-    ## Chris Leat(chris.leat@gmail.com)'s Idea(Thanks to giving new idea :D)
-    ## Source: osfmk/i386/lowmem_vectors.s
-    #def get_mem_info(self, sym_addr):
-    #    mem_info = self.x86_mem_pae.read(sym_addr, 0x248)
-    #    ## 'Catfish', ptr to kernel version str, ptr to kmod, ptr to osversion str
-    #    data = struct.unpack('8s20xI4xI16xI', mem_info)
-    #    if data[0] is not 'Catfish ':
-    #       print'Can not get memory information'
-    #       return data
-    #    else:
-    #       self.x86_mem_pae.read(sym_addr, 10)
+### 11.09.28 test start n0fate
+    def test(self):
+        self.pml_mem_pae = IA32PML4MemoryPae(FileAddressSpace(self.mempath), self.idlepml4)
+        print '32bit: %x\n'%self.pml_mem_pae.vtop(0xffffff8000100000)
+        print '64bit: %x\n'%self.x86_mem_pae.vtop(0x4a8ec20)
+        return
+### 11.09.28 test end n0fate
 
     def os_info(self, sym_addr):
         os_version = self.x86_mem_pae.read(sym_addr, 10) # __DATA.__common _osversion
@@ -92,6 +89,7 @@ class volafox():
     def machine_info(self, sym_addr):
         machine_info = self.x86_mem_pae.read(sym_addr, 40); # __DATA.__common _machine_info
         data = struct.unpack('IIIIQIIII', machine_info)
+        self.os_version = data[0] # 11.09.28
         return data
 
     def kernel_kext_info(self, sym_addr):
@@ -100,7 +98,7 @@ class volafox():
         return data
 
     def kext_info(self, sym_addr):
-        print 'symboladdr: %x'%sym_addr
+        #print 'symboladdr: %x'%sym_addr
         kext_list = []
 
         Kext = self.x86_mem_pae.read(sym_addr, 4); # .data _kmod
@@ -157,10 +155,21 @@ class volafox():
             if not(self.x86_mem_pae.is_valid_address(data[0])):
                 break
             try:
-                proclist = self.x86_mem_pae.read(data[0], 476);
-                data = struct.unpack('4xIIIII392xI52sI', proclist) # 24 bytes + 392 bytes padding(49 double value) + 33 bytes process name + pgrp
+                
+### 11.09.28 start n0fate
+                
+                if self.os_version >= 11: # Lion
+                    proclist = self.x86_mem_pae.read(data[0], 476+24);
+                    data = struct.unpack('4xIIIII392x24xI52sI', proclist) # 24 bytes + 392 bytes padding(49 double value) + 33 bytes process name + pgrp
+                else: # Leopard or Snow Leopard
+                    proclist = self.x86_mem_pae.read(data[0], 476);
+                    data = struct.unpack('4xIIIII392xI52sI', proclist) # 24 bytes + 392 bytes padding(49 double value) + 33 bytes process name + pgrp
+
+### 11.09.28 end n0fate
+                    
                 pgrp_t = self.x86_mem_pae.read(data[7], 16); # pgrp structure
                 m_pgrp = struct.unpack('IIII', pgrp_t)
+                print '%s'%data[6]
 
                 session_t = self.x86_mem_pae.read(m_pgrp[3], 283); # session structure
                 m_session = struct.unpack('IIIIIII255s', session_t)
@@ -192,8 +201,12 @@ class volafox():
         data = struct.unpack('I', kernproc)
 
         print 'list_entry_next\tpid\tppid\tprocess name\t\tusername'
-        proclist = self.x86_mem_pae.read(data[0], 476);
-        data = struct.unpack('=4xIIIII392xI52sI', proclist) # 24 bytes + 396 bytes padding(49 double value) + 33 bytes process name
+        if self.os_version >= 11: # Lion
+            proclist = self.x86_mem_pae.read(data[0], 476+24);
+            data = struct.unpack('=4xIIIII392x24xI52sI', proclist)
+        else:
+            proclist = self.x86_mem_pae.read(data[0], 476);
+            data = struct.unpack('=4xIIIII392xI52sI', proclist) # 24 bytes + 396 bytes padding(49 double value) + 33 bytes process name
         while 1:
             if data[1] == pid:
                 #print 'list_entry(next): %x'%data[0] # int
@@ -215,9 +228,12 @@ class volafox():
                 print '[+] Gathering Process Information'
                 #print 'task_ptr: %x'%self.x86_mem_pae.vtop(data[2])
                 #print '====== task.h --> osfmk\\kern\\task.h'
-                task_info = self.x86_mem_pae.read(data[2], 36)
-                task_struct = struct.unpack('=12xIIIIII', task_info)
-                #print 'lock: %x'%task_struct[0]
+                if self.os_version >= 11:
+                    task_info = self.x86_mem_pae.read(data[2], 32)
+                    task_struct = struct.unpack('=8xIIIIII', task_info)
+                else:
+                    task_info = self.x86_mem_pae.read(data[2], 36)
+                    task_struct = struct.unpack('=12xIIIIII', task_info)
                 #print 'task_t'
                 #print 'ref_count: %x'%task_struct[0]
                 #print 'active: %x'%task_struct[1]
@@ -226,11 +242,31 @@ class volafox():
                 #print 'vm_map_t: %x'%self.x86_mem_pae.vtop(task_struct[3])
                 #print 'tasks: %x'%task_struct[4]
                 #print 'userdata: %x'%task_struct[5]
-   
-   
-                vm_info = self.x86_mem_pae.read(task_struct[3], 162)
-                vm_struct = struct.unpack('=12xIIQQIiIQ16xIII42xIIIIIIIII', vm_info)
-                #print 'lock: %x'%vm_struct[0]
+
+#### 11.09.28 start n0fate.
+
+# Mac OS X Snow Leopard
+# struct vm_map_header {
+#	struct vm_map_links	links;		/* first, last, min, max */
+#	int			nentries;	/* Number of entries */
+#	boolean_t		entries_pageable;
+#						/* are map entries pageable? */
+#};
+
+# Mac OS X Lion
+# struct vm_map_header {
+#    struct vm_map_links	links;		/* first, last, min, max */
+#    int			nentries;	/* Number of entries */
+#    boolean_t		entries_pageable; /* are map entries pageable? */
+#    vm_map_offset_t		highest_entry_end_addr;	/* The ending address of the highest allocated vm_entry_t */
+                if self.os_version >= 11: # Lion
+                    vm_info = self.x86_mem_pae.read(task_struct[3], 162+12)
+                    vm_struct = struct.unpack('=12xIIQQII8x4xIQ16xIII42xIIIIIIIII', vm_info)
+                else:
+                    vm_info = self.x86_mem_pae.read(task_struct[3], 162)
+                    vm_struct = struct.unpack('=12xIIQQIIIQ16xIII42xIIIIIIIII', vm_info)
+
+### 11.09.28 end n0fate
                 #print '======= vm_map_t --> osfmk\\vm\\vm_map.h ========'
                 #print 'prev: %x'%vm_struct[0]
                 #print 'next: %x'%self.x86_mem_pae.vtop(vm_struct[1])
@@ -239,6 +275,7 @@ class volafox():
                 #print 'neutries: %x'%vm_struct[4] # number of entries
                 #print 'entries_pageable: %x'%vm_struct[5]
                 #print 'pmap_t: %x'%self.x86_mem_pae.vtop(vm_struct[6])
+                #print 'Virtual size: %x\n'%vm_struct[7]
 
                 vm_list = []
 
@@ -260,22 +297,43 @@ class volafox():
    
                 if not(self.x86_mem_pae.is_valid_address(vm_struct[6])):
                     exit(1)
-   
-                pmap_info = self.x86_mem_pae.read(vm_struct[6], 100)
-                pmap_struct = struct.unpack('=IQIIII56xQII', pmap_info)
-                #print 'pmap_t'
-                #print 'page directory pointer: %x'%pmap_struct[0] # int(pointer)
-                #print 'phys.address of dirbase: %x'%pmap_struct[1] # uint64_t
-                #print 'object to pde: %x'%pmap_struct[2]
-                #print 'ref count: %x'%pmap_struct[3]
-                #print 'nx_enabled: %x'%pmap_struct[4]
-                #print 'task_map: %x'%pmap_struct[5]
-   
-                #print 'pm_cr3: %x'%pmap_struct[6]
-                #print 'pm_pdpt: %x'%pmap_struct[7]
-                #print 'pm_pml4: %x'%pmap_struct[8]
 
-                pm_cr3 = pmap_struct[6]
+### 11.09.28 start n0fate
+
+# Mac OS X Lion
+# struct pmap {
+#	decl_simple_lock_data(,lock)	/* lock on map */
+#	pmap_paddr_t    pm_cr3;         /* physical addr */
+#	boolean_t       pm_shared;
+#        pd_entry_t      *dirbase;        /* page directory pointer */
+# #ifdef __i386__
+#	pmap_paddr_t    pdirbase;        /* phys. address of dirbase */
+#	vm_offset_t     pm_hold;        /* true pdpt zalloc addr */
+
+                if self.os_version >= 11:   # Lion xnu-1699
+                    pmap_info = self.x86_mem_pae.read(vm_struct[6], 12)
+                    pmap_struct = struct.unpack('=4xQ', pmap_info)
+                    pm_cr3 = pmap_struct[0]
+                else: # Leopard or Snow Leopard xnu-1456
+                    pmap_info = self.x86_mem_pae.read(vm_struct[6], 100)
+                    pmap_struct = struct.unpack('=IQIIII56xQII', pmap_info)
+                    pm_cr3 = pmap_struct[6]
+
+### 11.09.28 end n0fate
+                    
+                    #print 'pmap_t'
+                    #print 'page directory pointer: %x'%pmap_struct[0] # int(pointer)
+                    #print 'phys.address of dirbase: %x'%pmap_struct[1] # uint64_t
+                    #print 'object to pde: %x'%pmap_struct[2]
+                    #print 'ref count: %x'%pmap_struct[3]
+                    #print 'nx_enabled: %x'%pmap_struct[4]
+                    #print 'task_map: %x'%pmap_struct[5]
+       
+                    #print 'pm_cr3: %x'%pmap_struct[6]
+                    #print 'pm_pdpt: %x'%pmap_struct[7]
+                    #print 'pm_pml4: %x'%pmap_struct[8]
+
+                
                 proc_pae = 0
                 print ' [-] Resetting the Page Mapping Table: 0x%x'%pm_cr3
                 #if pmap_struct[5] == 0: # 32bit process
@@ -310,8 +368,12 @@ class volafox():
                 print '[+] Process Dump End'
                 return
             else:
-                proclist = self.x86_mem_pae.read(data[0], 476);
-                data = struct.unpack('=4xIIIII392xI52sI', proclist) # 24 bytes + 396 bytes padding(49 double value) + 33 bytes process name
+                if self.os_version >= 11: # Lion
+                    proclist = self.x86_mem_pae.read(data[0], 476+24);
+                    data = struct.unpack('=4xIIIII392x24xI52sI', proclist)
+                else:
+                    proclist = self.x86_mem_pae.read(data[0], 476);
+                    data = struct.unpack('=4xIIIII392xI52sI', proclist) # 24 bytes + 396 bytes padding(49 double value) + 33 bytes process name
         return 1
 
     # http://snipplr.com/view.php?codeview&id=14807
@@ -324,7 +386,7 @@ class volafox():
 	
     # 2011.08.08
     # network information (inpcbinfo.hashbase, test code)
-    # it can dump network information. if rootkit has hiding technique.
+    # it can dump real network information. if rootkit has hiding technique.
     #################################################
     def net_info(self, sym_addr, pml4):
         network_list = []
@@ -467,6 +529,7 @@ def usage():
     print '-= CAUTION =-'
     print 'this program needs to physical memory image(linear format), overlay information(symbol list in kernel image)'
     print 'and it supports to Intel x86 Architecture only :(\n'
+    print 'Currently tested OS: Snow Leopard(10.6.x), Lion(10.7.x)\n'
     print 'Option:'
     print '-o\t: Gathering information using symbol'
     print '-m\t: Dump module using module id'
@@ -545,12 +608,18 @@ def main():
     #
     f.close()
 
-    m_volafox = volafox(symbol_list['_IdlePDPT'], mempath)
+    m_volafox = volafox(symbol_list['_IdlePDPT'], symbol_list['_IdlePML4'], mempath)
     nRet = m_volafox.init_vatopa_x86_pae()
 
     if nRet == 1:
         print 'Memory Image Load Failed'
         sys.exit()
+
+### 11.09.28 start n0fate
+    ## Pre-loading Machine Information for storing Major Kernel Version
+    ## It is used to code branch according to major kernel version
+    m_volafox.machine_info(symbol_list['_machine_info'])
+### 11.09.28 end n0fate    
 
     if mflag == 1:
         data_list = m_volafox.kext_info(symbol_list['_kmod'])
