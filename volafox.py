@@ -169,7 +169,6 @@ class volafox():
                     
                 pgrp_t = self.x86_mem_pae.read(data[7], 16); # pgrp structure
                 m_pgrp = struct.unpack('IIII', pgrp_t)
-                print '%s'%data[6]
 
                 session_t = self.x86_mem_pae.read(m_pgrp[3], 283); # session structure
                 m_session = struct.unpack('IIIIIII255s', session_t)
