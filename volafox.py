@@ -20,6 +20,9 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 #
 
+import pdb # For the debugger
+
+
 import getopt
 import sys
 import math
@@ -35,7 +38,7 @@ import os
 
 from x86 import *
 from addrspace import FileAddressSpace
-from macho import MachoAddressSpace, isMachoVolafoxCompatible
+from macho import MachoAddressSpace, isMachoVolafoxCompatible, is_universal_binary
 
 ###############################################################################
 #
@@ -600,12 +603,19 @@ def main():
     #arch_count = macho.load()
     #header = macho.get_header(arch_count, macho.ARCH_I386) # only support Intel x86
     #symbol_list = macho.macho_getsymbol_x86(header[2], header[3])
-    
-    #Added by CL
-    f = open(file_image, 'rb')
-    symbol_list = pickle.load(f)
-    #
-    f.close()
+
+    # Auto switching code for using overlays or original mach-o files.  We should autopickle
+    # using the original file.
+    if is_universal_binary(file_image):
+        macho_file = macho_an.macho_an(file_image)
+        arch_count = macho_file.load()
+        header = macho_file.get_header(arch_count, macho_file.ARCH_I386) # only support Intel x86
+        symbol_list = macho_file.macho_getsymbol_x86(header[2], header[3])
+    else:
+        #Added by CL
+        f = open(file_image, 'rb')
+        symbol_list = pickle.load(f)
+        f.close()
 
     m_volafox = volafox(symbol_list['_IdlePDPT'], symbol_list['_IdlePML4'], mempath)
     nRet = m_volafox.init_vatopa_x86_pae()
@@ -634,7 +644,7 @@ def main():
 
     if oflag == 'os_version':
         data = m_volafox.os_info(symbol_list['_osversion'])
-        sys.stdout.write('Detail dawin kernel version: %s'%data[0].strip('\x00'))
+        sys.stdout.write('Detail Darwin kernel version: %s'%data[0].strip('\x00'))
         sys.stdout.write('\n')
         sys.exit()
 

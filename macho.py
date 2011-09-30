@@ -1,4 +1,5 @@
 #!/usr/bin/python
+import pdb
 import os
 import sys
 import mmap
@@ -328,12 +329,34 @@ class MachoAddressSpace:
 # Tests
 # -----------------------------------------------------------------------------
 
-def ismacho(map):
-    magic   = getmagic(map)
-    if magic == 0xfeedface or magic == 0xfeedfacf:
+def is_universal_binary(filename):
+    fin = open(filename, 'r')
+    buffer = fin.read(4)
+    ret = struct.unpack("@I", buffer)
+    if ret[0] == 0xbebafeca or ret[0] == 0xcafebabe:
         return True
     else:
         return False
+
+def ismacho(map):
+    if isinstance(map, str):
+        map = open(map, 'r')
+
+    if isinstance(map, file):
+        map.seek(0)
+        buffer = map.read(4)
+        ret = struct.unpack("@I", buffer)
+        #print "magic value is: %x" % ret[0]
+        if ret[0] == 0xfeedface or ret[0] == 0xfeedfacf:
+            return True
+        else:
+            return False
+    else:
+        magic   = getmagic(map)
+        if magic == 0xfeedface or magic == 0xfeedfacf:
+            return True
+        else:
+            return False
 
 def is32(map):
     magic = getmagic(map)
@@ -344,7 +367,7 @@ def is32(map):
     
 def is64(map):
     magic = getmagic(map)
-    print magic == 0xfeedfacf
+    #print magic == 0xfeedfacf
     if magic == 0xfeedfacf:
         return True
     else:
@@ -712,6 +735,7 @@ class MachoAddressSpace:
 # Tests
 # -----------------------------------------------------------------------------
 
+"""
 def is32(map):
     magic = getmagic(map)
     if magic == 0xfeedface:
@@ -721,12 +745,12 @@ def is32(map):
     
 def is64(map):
     magic = getmagic(map)
-    print magic == 0xfeedfacf
+    #print magic == 0xfeedfacf
     if magic == 0xfeedfacf:
         return True
     else:
         return False
-
+"""
 """
 if len(sys.argv) == 1:
     f   = open('osx-10_5_8.image', 'r+b') 
