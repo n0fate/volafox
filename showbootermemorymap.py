@@ -25,8 +25,12 @@ import sys
 import mmap
 import macho
 
-fin     = open(sys.argv[1], 'r+b')
-map     = mmap.mmap(fin.fileno(), 4096*16)
+if len(sys.argv) != 2:
+    print "Usage: showbootermemorymap <mach-o image>."
+    exit(0)
+
+fin     = open(sys.argv[1], 'rb')
+map     = mmap.mmap(fin.fileno(), 4096*16, prot=mmap.PROT_READ)
 ncmds   = macho.getncmds(map)
 lcmds   = macho.loadcommand(map, ncmds)
 
