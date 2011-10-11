@@ -75,7 +75,7 @@ def main():
 		print 'Suggested profile 10.6.0'
 	elif build == '10D573' or build == '10D578':
 		print 'Suggested profile 10.6.3'
-	elif build == '10F659' or build == '10F616':
+	elif build == '10F659' or build == '10F616' or build == '10D572':
 		print 'Suggested profile 10.6.4'
 	elif build == '10H574' or build == '10H575':
 		print 'Suggested profile 10.6.5'
@@ -86,7 +86,9 @@ def main():
 	elif build == '10K540' or build ==  '10K549':
 		print 'Suggested profile 10.6.8'
 	elif build == '11A511':
-                print 'Suggeted profile 10.7.0'
+                print 'Suggested profile 10.7.0'
+        elif build == '11B26':
+                print 'Suggested profile 10.7.1'
 	elif build == 'Darwin ':
 		print 'Wrong Catfish symbol. Memory capture incomplete?'
 	else:

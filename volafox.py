@@ -352,15 +352,29 @@ class volafox():
                 for vme_info in  vm_list:
                     #print vme_info[0]
                     #print vme_info[1]
+                    
+                    nop_code = 0x90 # 11.10.11 n0fate test
+                    pk_nop_code = struct.pack('=B', nop_code) # 11.10.11 n0fate test
+                    nop = pk_nop_code*0x1000
+                    
                     file = open('%s-%x-%x'%(process_name, vme_info[0], vme_info[1]), mode="wba")
+                    
+                    nop_flag = 0 # 11.10.11 n0fate test
                     for i in range(vme_info[0], vme_info[1], 0x1000):
                         raw_data = 0x00
                         if not(proc_pae.is_valid_address(i)):
+                            if nop_flag == 1:
+                                raw_data = nop
+                                file.write(raw_data)
                             continue
                         raw_data = proc_pae.read(i, 0x1000)
                         if raw_data is None:
+                            if nop_flag == 1:
+                                raw_data = nop
+                                file.write(raw_data)
                             continue
                         file.write(raw_data)
+                        nop_flag = 1
                     file.close()
                     size = os.path.getsize('%s-%x-%x'%(process_name, vme_info[0], vme_info[1]))
                     if size == 0:
