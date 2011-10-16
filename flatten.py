@@ -30,8 +30,8 @@ import sys
 import mmap
 import macho
 
-if len(sys.argv) != 2:
-    print "Usage: flatten <mach-o image>."
+if len(sys.argv) != 3:
+    print "Usage: flatten <mach-o image> <flat image>."
     exit(0)
 
 fin     = open(sys.argv[1], 'rb')

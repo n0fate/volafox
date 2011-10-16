@@ -73,9 +73,9 @@ def main():
 	print build
 	if build == '10A432':
 		print 'Suggested profile 10.6.0'
-	elif build == '10D573' or build == '10D578':
+	elif build == '10D573' or build == '10D578' or build == '10D572':
 		print 'Suggested profile 10.6.3'
-	elif build == '10F659' or build == '10F616' or build == '10D572':
+	elif build == '10F659' or build == '10F616':
 		print 'Suggested profile 10.6.4'
 	elif build == '10H574' or build == '10H575':
 		print 'Suggested profile 10.6.5'
