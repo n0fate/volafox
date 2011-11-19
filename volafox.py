@@ -123,7 +123,7 @@ class volafox():
             print 'Invalid Offset'
             return
         print 'dump file name: %s-%x-%x'%(kext_name, offset, offset+size)
-	file = open('%s-%x-%x'%(kext_name, offset, offset+size), 'wba')
+	file = open('%s-%x-%x'%(kext_name, offset, offset+size), 'wb')
 	data = self.x86_mem_pae.read(offset, size);
 	file.write(data)
 	file.close()
@@ -357,7 +357,7 @@ class volafox():
                     pk_nop_code = struct.pack('=B', nop_code) # 11.10.11 n0fate test
                     nop = pk_nop_code*0x1000
                     
-                    file = open('%s-%x-%x'%(process_name, vme_info[0], vme_info[1]), mode="wba")
+                    file = open('%s-%x-%x'%(process_name, vme_info[0], vme_info[1]), mode="wb")
                     
                     nop_flag = 0 # 11.10.11 n0fate test
                     for i in range(vme_info[0], vme_info[1], 0x1000):
