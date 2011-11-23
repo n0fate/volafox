@@ -46,31 +46,54 @@ class imageInfo:
 				break
 			self.OffsetedK = self.OffsetedK + self.chunk_size
 
-		locationOfOSBuildNumber = CatfishLocation + 1172 # 1172 because the OSVersionString pointer is 0x494 from the Catfish eyecatcher
-		filename.seek(locationOfOSBuildNumber)
-		dataOfOSBuildString = filename.read(4)
-		pointerOfOSVersionString = struct.unpack("i", dataOfOSBuildString)[0]
-
-		# Sanity Check 
-
+		
 		pointerLocationOfDarwinString = CatfishLocation + 28 # 28 as 0x201C Pointer to kernel version string
 		filename.seek(pointerLocationOfDarwinString)
 		dataOfDarwinStringPointer = filename.read(4)
 		pointerOfDarwinString = struct.unpack("i", dataOfDarwinStringPointer)[0]
+		
+		####### x86_64 read
+		if pointerOfDarwinString == 0:
+			pointerLocationOfDarwinString = CatfishLocation + 48 # 48 as +0x030 Pointer to kernel version string
+			filename.seek(pointerLocationOfDarwinString)
+			dataOfDarwinStringPointer = filename.read(8)
+			pointerOfDarwinStringOrig = struct.unpack("Q", dataOfDarwinStringPointer)[0]
+			pointerOfDarwinString = pointerOfDarwinStringOrig % 0xFFFFFF80
+			
+			locationOfOSBuildNumber = CatfishLocation + 2336 # 2336 because the OSVersionString pointer is +0x920 from the Catfish eyecatcher
+			filename.seek(locationOfOSBuildNumber)
+			dataOfOSBuildString = filename.read(8)
+			pointerOfOSVersionStringOrig = struct.unpack("Q", dataOfOSBuildString)[0]
+			pointerOfOSVersionString = pointerOfOSVersionStringOrig % 0xFFFFFF80
+			sixtyfourbit = True
+			
+		######## x86 read
+		else:
+			locationOfOSBuildNumber = CatfishLocation + 1172 # 1172 because the OSVersionString pointer is 0x494 from the Catfish eyecatcher
+			filename.seek(locationOfOSBuildNumber)
+			dataOfOSBuildString = filename.read(4)
+			pointerOfOSVersionString = struct.unpack("i", dataOfOSBuildString)[0]
+			sixtyfourbit = False
+
+
 		#return the pointer for the Darwin Kernel version
 		difference = (pointerOfDarwinString - locationOfDarwinString)
 		
 		filename.seek(pointerOfOSVersionString - difference, 0)
 		getOSBuildNumberRead = filename.read(7) # null terminiated string so we can read 7 bytes.
-		#print getOSBuildNumberRead
-		return difference, getOSBuildNumberRead.replace('\x00', '')
+		return difference, getOSBuildNumberRead.replace('\x00', ''), sixtyfourbit
 
 def main():
 	f = sys.argv[1]
 	returnResult = imageInfo(f)
-	difference, build = returnResult.catfishSearch(f)
+	difference, build, sixtyfourbit = returnResult.catfishSearch(f)
 	print "Difference:", difference
 	print build
+	if bool(sixtyfourbit):
+		print "64-bit image"
+	else:
+                print "32-bit image"
+	
 	if build == '10A432':
 		print 'Suggested profile 10.6.0'
 	elif build == '10D573' or build == '10D578' or build == '10D572':

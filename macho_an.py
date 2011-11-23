@@ -27,12 +27,15 @@ import struct
 # define
 MH_CIGAM = 'cafebabe'
 MH_MAGIC_X86 = 'cefaedfe'
+MH_MAGIC_X64 = 'cffaedfe'
 FAT_HEADER_SIZE = 8
 FAT_ARCH_SIZE = 20
 MACH_HEADER_SIZE = 28
+MACH_HEADER_SIZE_64 = 32 # 32bit header + 4byte reserved value
 LOAD_CMD_SIZE = 8
 SYMTAB_CMD_SIZE = 24
 NLIST_SIZE = 12
+NLIST_SIZE_64 = 16
 
 # cpu_type
 ARCH_PPC = 18
@@ -56,6 +59,9 @@ class macho_an():
         self.ARCH_PPC = 18
         self.ARCH_I386 = 7
         self.ARCH_X86_64 = 16777223
+
+    def close(self):
+        self.fp.close()
         
     def load(self):
         self.fp = open(self.filename, 'rb')
@@ -65,7 +71,18 @@ class macho_an():
             return -1
         arch_count = int(binascii.b2a_hex(self.buf[4:8]), 16)
         return arch_count
-    
+
+#struct mach_header_64
+#{
+#   uint32_t magic;
+#   cpu_type_t cputype;
+#   cpu_subtype_t cpusubtype;
+#   uint32_t filetype;
+#   uint32_t ncmds;
+#   uint32_t sizeofcmds;
+#   uint32_t flags;
+#   uint32_t reserved;
+#};
     def get_header(self, arch_count, architecture):
         header_list = []
         header_area = self.buf[FAT_HEADER_SIZE:(FAT_ARCH_SIZE*arch_count)+FAT_HEADER_SIZE]
@@ -79,7 +96,7 @@ class macho_an():
         self.macho_file = self.buf[offset:offset+size]
         #print binascii.b2a_hex(self.macho_file[0:4])
         if MH_MAGIC_X86 != binascii.b2a_hex(self.macho_file[0:4]):
-            print 'mach error'
+            print 'Invalid mach header'
             return -1
         self.mach_header = struct.unpack('IIIIII', self.macho_file[4:MACH_HEADER_SIZE])
         ncmds = self.mach_header[3]
@@ -150,13 +167,88 @@ class macho_an():
 
         return self.symbol_diclist
 
+    def macho_getsymbol_x64(self, offset, size):
+        self.macho_file = self.buf[offset:offset+size]
+        #print binascii.b2a_hex(self.macho_file[0:4])
+        if MH_MAGIC_X64 != binascii.b2a_hex(self.macho_file[0:4]):
+            print 'Invalid mach header'
+            return -1
+        self.mach_header = struct.unpack('IIIIIII', self.macho_file[4:MACH_HEADER_SIZE_64])
+        ncmds = self.mach_header[3]
+        sizeofcmds = self.mach_header[4]
+        #print 'ncmds: %x'%ncmds
+        #print 'sizeofcmds: %x'%sizeofcmds
+        
+        self.load_cmds = self.macho_file[MACH_HEADER_SIZE_64:MACH_HEADER_SIZE_64+sizeofcmds]
+        
+        i=0
+        while 1:
+            cmd = struct.unpack('II', self.load_cmds[i:i+LOAD_CMD_SIZE])
+            #print 'cmd: %d, ncmd: %d'%(cmd[0], cmd[1])
+            if cmd[0] == 0x02: # DY_SYM == 0x02
+                #print 'find!'
+                #print 'Symbol command size:', cmd[1]
+                
+                # Defines the attributes of the LC_SYMTAB load command.
+                # Describes the size and location of the symbol table
+                # data structures. Declared in /usr/include/mach-o/loader.h.
+
+                #print 'offset: %x'%i                
+                self.symtab_cmds = self.load_cmds[i:i+SYMTAB_CMD_SIZE]
+                symtab = struct.unpack('IIIIII', self.symtab_cmds)
+                symoff = symtab[2] # symbol table offset
+                nsyms = symtab[3] # number of entries in symbol table
+                stroff = symtab[4] # string table offset
+                strsize = symtab[5] # string size
+                
+                #print 'symbol table offset: %x'%symoff
+                self.sym_table = self.macho_file[symoff:symoff + (nsyms*NLIST_SIZE_64)] # symbol table
+                self.symbol_str = self.macho_file[stroff:stroff+strsize] # symbol str
+
+#struct nlist_64
+#{
+#    union {
+#        uint32_t n_strx;
+#    } n_un;
+#    uint8_t n_type;
+#    uint8_t n_sect;
+#    uint16_t n_desc;
+#    uint64_t n_value;
+#};
+                sym_table_count = 0
+                for sym_table_count in range(0, nsyms):
+                    nlist = struct.unpack('=IBBHQ', self.sym_table[sym_table_count*NLIST_SIZE_64:(sym_table_count*NLIST_SIZE_64)+NLIST_SIZE_64])
+                    n_un = nlist[0]
+                    n_type = nlist[1]
+                    n_sect = nlist[2]
+                    n_desc = nlist[3]
+                    n_value = nlist[4]
+
+                    if n_type == 15: # 'SECT'
+                        symbol_name = self.symbol_str[n_un:n_un+self.symbol_str[n_un:].index('\x00')]
+                        self.symbol_diclist[symbol_name] = n_value
+                        #print 'symbol_name: %s, address: %x'%(symbol_name, n_value)
+                break
+                
+            i += cmd[1] # index + load_command.cmd_size
+            if i >= sizeofcmds:
+                break
+
+        return self.symbol_diclist
+
 def main():
     macho = macho_an(sys.argv[1])
     arch_count = macho.load()
     #print arch_count
-    header = macho.get_header(arch_count, ARCH_I386) # only support Intel x86
-    symbol_list = macho.macho_getsymbol_x86(header[2], header[3])
+    #header = macho.get_header(arch_count, ARCH_I386) # only support Intel x86
+    #symbol_list = macho.macho_getsymbol_x86(header[2], header[3])
+    #print '%x'%symbol_list['_IdlePDPT']
+
+    header = macho.get_header(arch_count, ARCH_X86_64) # 64bit symbol
+    #print 'offset: %x, size: %x'%(header[2], header[3])
+    symbol_list = macho.macho_getsymbol_x64(header[2], header[3])
     print '%x'%symbol_list['_IdlePDPT']
+    macho.close()
 
 if __name__ == "__main__":
     main()

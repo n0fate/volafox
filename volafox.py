@@ -54,16 +54,29 @@ class volafox():
         self.idlepdpt = pdpt
         self.idlepml4 = pml4 ### 11.09.28 n0fate
         self.mempath = mempath
+        self.arch = 32 # architecture default is 32bit
         self.data_list = []
 
-    def init_vatopa_x86_pae(self):
+    def set_architecture(self, arch_num):
+        if (arch_num is not 32) and (arch_num is not 64):
+            return 1
+        else:
+            self.arch = arch_num
+            return 0
+    
+    def init_vatopa_x86_pae(self): # 11.11.23 64bit suppport
         if self.mempath == '' or self.idlepdpt == 0:
             return 1
-
-        if isMachoVolafoxCompatible(self.mempath):
-            self.x86_mem_pae = IA32PagedMemoryPae(MachoAddressSpace(self.mempath), self.idlepdpt)
-        else:
-            self.x86_mem_pae = IA32PagedMemoryPae(FileAddressSpace(self.mempath), self.idlepdpt)
+        if self.arch is 32:
+            if isMachoVolafoxCompatible(self.mempath):
+                self.x86_mem_pae = IA32PagedMemoryPae(MachoAddressSpace(self.mempath), self.idlepdpt)
+            else:
+                self.x86_mem_pae = IA32PagedMemoryPae(FileAddressSpace(self.mempath), self.idlepdpt)
+        else: # 64
+            if isMachoVolafoxCompatible(self.mempath):
+                self.x86_mem_pae = IA32PML4MemoryPae(MachoAddressSpace(self.mempath), self.idlepml4)
+            else:
+                self.x86_mem_pae = IA32PML4MemoryPae(FileAddressSpace(self.mempath), self.idlepml4)
         return 0
     
     def sleep_time(self, sym_addr):
@@ -84,37 +97,53 @@ class volafox():
         return
 ### 11.09.28 test end n0fate
 
-    def os_info(self, sym_addr):
+    def os_info(self, sym_addr): # 11.11.23 64bit suppport
         os_version = self.x86_mem_pae.read(sym_addr, 10) # __DATA.__common _osversion
         data = struct.unpack('10s', os_version)
         return data
 
-    def machine_info(self, sym_addr):
+    def machine_info(self, sym_addr): # 11.11.23 64bit suppport
         machine_info = self.x86_mem_pae.read(sym_addr, 40); # __DATA.__common _machine_info
         data = struct.unpack('IIIIQIIII', machine_info)
         self.os_version = data[0] # 11.09.28
         return data
 
-    def kernel_kext_info(self, sym_addr):
-        Kext = self.x86_mem_pae.read(sym_addr, 168); # .data _g_kernel_kmod_info
-        data = struct.unpack('III64s64sIIIIIII', Kext)
+    def kernel_kext_info(self, sym_addr): # 11.11.23 64bit suppport
+        if self.arch == 32:
+            Kext = self.x86_mem_pae.read(sym_addr, 168); # .data _g_kernel_kmod_info
+            data = struct.unpack('III64s64sIIIIIII', Kext)
+        else: # self.arch == 64
+            Kext = self.x86_mem_pae.read(sym_addr, 196); # .data _g_kernel_kmod_info
+            data = struct.unpack('=QII64s64sIQQQQQQ', Kext)
         return data
 
-    def kext_info(self, sym_addr):
+    def kext_info(self, sym_addr): # 11.11.23 64bit suppport
         #print 'symboladdr: %x'%sym_addr
         kext_list = []
 
-        Kext = self.x86_mem_pae.read(sym_addr, 4); # .data _kmod
-        data = struct.unpack('I', Kext)
-
-        while(1):
-            if data[0] == 0:
-                break
-            if not(self.x86_mem_pae.is_valid_address(data[0])):
-                break
-            Kext = self.x86_mem_pae.read(data[0], 168); # .data _kmod
-            data = struct.unpack('III64s64sIIIIIII', Kext)
-            kext_list.append(data)
+        if self.arch == 32:
+            Kext = self.x86_mem_pae.read(sym_addr, 4); # .data _kmod
+            data = struct.unpack('I', Kext)
+	    while(1):
+		if data[0] == 0:
+		    break
+		if not(self.x86_mem_pae.is_valid_address(data[0])):
+		    break
+                Kext = self.x86_mem_pae.read(data[0], 168); # .data _kmod
+                data = struct.unpack('III64s64sIIIIIII', Kext)
+		kext_list.append(data)
+		
+        else: # 64
+            Kext = self.x86_mem_pae.read(sym_addr, 8);
+            data = struct.unpack('Q', Kext)
+	    while(1):
+		if data[0] == 0:
+		    break
+		if not(self.x86_mem_pae.is_valid_address(data[0])):
+		    break
+		Kext = self.x86_mem_pae.read(data[0], 196); # .data _g_kernel_kmod_info
+		data = struct.unpack('=QII64s64sIQQQQQQ', Kext)
+		kext_list.append(data)
 
         return kext_list
 
@@ -124,272 +153,511 @@ class volafox():
             return
         print 'dump file name: %s-%x-%x'%(kext_name, offset, offset+size)
 	file = open('%s-%x-%x'%(kext_name, offset, offset+size), 'wb')
-	data = self.x86_mem_pae.read(offset, size);
-	file.write(data)
+        data = self.x86_mem_pae.read(offset, size);
+        file.write(data)
 	file.close()
 	print 'module dump complete'
 	return
     
-    def mount_info(self, sym_addr):
+    def mount_info(self, sym_addr): # 11.11.23 64bit suppport(Lion)
         mount_list = []
-        mount_t = self.x86_mem_pae.read(sym_addr, 4); # .data _g_kernel_kmod_info
-        data = struct.unpack('I', mount_t)
-
-        while 1:
-            if data[0] == 0:
-                break
-            if not(self.x86_mem_pae.is_valid_address(data[0])):
-                break
-            mount_info = self.x86_mem_pae.read(data[0], 2212);
-            data = struct.unpack('=I144x16s1024s1024s', mount_info)
-            mount_list.append(data)
+	if self.arch == 32:
+	    mount_t = self.x86_mem_pae.read(sym_addr, 4); # .data _g_kernel_kmod_info
+	    data = struct.unpack('I', mount_t)
+    
+	    while 1:
+		if data[0] == 0:
+		    break
+		if not(self.x86_mem_pae.is_valid_address(data[0])):
+		    break
+		mount_info = self.x86_mem_pae.read(data[0], 2212);
+		data = struct.unpack('=I144x16s1024s1024s', mount_info)
+		mount_list.append(data)
+	else: #64bit
+	    mount_t = self.x86_mem_pae.read(sym_addr, 8); # .data _g_kernel_kmod_info
+	    data = struct.unpack('Q', mount_t)
+    
+	    while 1:
+		if data[0] == 0:
+		    break
+		if not(self.x86_mem_pae.is_valid_address(data[0])):
+		    break
+		mount_info = self.x86_mem_pae.read(data[0], 2276);
+		data = struct.unpack('=Q204x16s1024s1024s', mount_info)
+		mount_list.append(data)
 
         return mount_list
 
-    def process_info(self, sym_addr):
+    def process_info(self, sym_addr): # 11.11.23 64bit suppport
         proc_list = []
-        kernproc = self.x86_mem_pae.read(sym_addr, 4); # __DATA.__common _kernproc
-        data = struct.unpack('I', kernproc)
-
-        while 1:
-            #break
-            if data[0] == 0:
-                break
-            if not(self.x86_mem_pae.is_valid_address(data[0])):
-                break
-            try:
-                
-### 11.09.28 start n0fate
-                
-                if self.os_version >= 11: # Lion
-                    proclist = self.x86_mem_pae.read(data[0], 476+24);
-                    data = struct.unpack('4xIIIII392x24xI52sI', proclist) # 24 bytes + 392 bytes padding(49 double value) + 33 bytes process name + pgrp
-                else: # Leopard or Snow Leopard
-                    proclist = self.x86_mem_pae.read(data[0], 476);
-                    data = struct.unpack('4xIIIII392xI52sI', proclist) # 24 bytes + 392 bytes padding(49 double value) + 33 bytes process name + pgrp
-
-### 11.09.28 end n0fate
-                    
-                pgrp_t = self.x86_mem_pae.read(data[7], 16); # pgrp structure
-                m_pgrp = struct.unpack('IIII', pgrp_t)
-
-                session_t = self.x86_mem_pae.read(m_pgrp[3], 283); # session structure
-                m_session = struct.unpack('IIIIIII255s', session_t)
-                data += (str(m_session[7]).strip('\x00'), )
-                proc_list.append(data)
-            except struct.error:
-                break
+	if self.arch == 32:
+	    kernproc = self.x86_mem_pae.read(sym_addr, 4); # __DATA.__common _kernproc
+	    data = struct.unpack('I', kernproc)
+    
+	    while 1:
+		#break
+		if data[0] == 0:
+		    break
+		if not(self.x86_mem_pae.is_valid_address(data[0])):
+		    break
+		try:
+		    if self.os_version >= 11: # Lion
+			proclist = self.x86_mem_pae.read(data[0], 476+24);
+			data = struct.unpack('4xIIIII392x24xI52sI', proclist) # 24 bytes + 392 bytes padding(49 double value) + 33 bytes process name + pgrp
+		    else: # Leopard or Snow Leopard
+			proclist = self.x86_mem_pae.read(data[0], 476);
+			data = struct.unpack('4xIIIII392xI52sI', proclist) # 24 bytes + 392 bytes padding(49 double value) + 33 bytes process name + pgrp
+			
+		    pgrp_t = self.x86_mem_pae.read(data[7], 16); # pgrp structure
+		    m_pgrp = struct.unpack('IIII', pgrp_t)
+    
+		    session_t = self.x86_mem_pae.read(m_pgrp[3], 283); # session structure
+		    m_session = struct.unpack('IIIIIII255s', session_t)
+		    data += (str(m_session[7]).strip('\x00'), )
+		    proc_list.append(data)
+		except struct.error:
+		    break
+	else: # 64
+	    kernproc = self.x86_mem_pae.read(sym_addr, 8); # __DATA.__common _kernproc
+	    data = struct.unpack('Q', kernproc)
+	    while 1:
+		#break
+		if data[0] == 0:
+		    break
+		if not(self.x86_mem_pae.is_valid_address(data[0])):
+		    break
+		try:
+		    if self.os_version >= 11: # Lion >
+			proclist = self.x86_mem_pae.read(data[0], 752+24);
+			data = struct.unpack('=8xQQQQI668xI52sQ', proclist)
+			print data[6]
+		    else: # Leopard or Snow Leopard # 11.11.23 Test
+			proclist = self.x86_mem_pae.read(data[0], 760);
+			data = struct.unpack('8xQQQQI652xI52sQ', proclist)
+		    pgrp_t = self.x86_mem_pae.read(data[7], 32); # pgrp structure
+		    m_pgrp = struct.unpack('=QQQQ', pgrp_t)
+    
+		    session_t = self.x86_mem_pae.read(m_pgrp[3], 303); # session structure
+		    m_session = struct.unpack('=IQQIQQQ255s', session_t)
+		    data += (str(m_session[7]).strip('\x00'), )
+		    proc_list.append(data)
+		except struct.error:
+		    break
         return proc_list
 
-    def syscall_info(self, sym_addr):
+    def syscall_info(self, sym_addr): # 11.11.23 64bit suppport
         syscall_list = []
-
-        nsysent = self.x86_mem_pae.read(sym_addr, 4) # .data _nsysent
-        data = struct.unpack('I', nsysent) # uint32
-
-        sysentaddr = sym_addr - (data[0] * 24) # sysent structure size + 2bytes
-
-        for count in range(0, data[0]):
-            sysent = self.x86_mem_pae.read(sysentaddr + (count*24), 24); # .data _nsysent
-            data = struct.unpack('hbbIIIII', sysent) # uint32
-
-            syscall_list.append(data)
+	if self.arch == 32:
+	    nsysent = self.x86_mem_pae.read(sym_addr, 4) # .data _nsysent
+	    data = struct.unpack('I', nsysent) # uint32
+    
+	    sysentaddr = sym_addr - (data[0] * 24) # sysent structure size + 2bytes
+    
+	    for count in range(0, data[0]):
+		sysent = self.x86_mem_pae.read(sysentaddr + (count*24), 24); # .data _nsysent
+		data = struct.unpack('hbbIIIII', sysent) # uint32
+    
+		syscall_list.append(data)
+	else:
+	    nsysent = self.x86_mem_pae.read(sym_addr, 8) # .data _nsysent
+	    data = struct.unpack('Q', nsysent) # uint32
+    
+	    sysentaddr = sym_addr - (data[0] * 40) # sysent structure size + 2bytes
+    
+	    for count in range(0, data[0]):
+		sysent = self.x86_mem_pae.read(sysentaddr + (count*40), 40); # .data _nsysent
+		data = struct.unpack('hbbQQQII', sysent) # uint32
+    
+		syscall_list.append(data)
 
         return syscall_list
 
     def vaddump(self, sym_addr, pid):
         print '\n-= process: %d=-'%pid
-        kernproc = self.x86_mem_pae.read(sym_addr, 4); # __DATA.__common _kernproc
-        data = struct.unpack('I', kernproc)
-
         print 'list_entry_next\tpid\tppid\tprocess name\t\tusername'
-        if self.os_version >= 11: # Lion
-            proclist = self.x86_mem_pae.read(data[0], 476+24);
-            data = struct.unpack('=4xIIIII392x24xI52sI', proclist)
-        else:
-            proclist = self.x86_mem_pae.read(data[0], 476);
-            data = struct.unpack('=4xIIIII392xI52sI', proclist) # 24 bytes + 396 bytes padding(49 double value) + 33 bytes process name
-        while 1:
-            if data[1] == pid:
-                #print 'list_entry(next): %x'%data[0] # int
-                sys.stdout.write('%.8x\t'%data[0]) # int
-                sys.stdout.write('%d\t'%data[1]) # int
-                sys.stdout.write('%d\t'%data[4]) # int
-                sys.stdout.write('%s\t'%data[6].replace('\x00',''))
-               
-                process_name = data[6].replace('\x00','')
-               
-                pgrp_t = self.x86_mem_pae.read(data[7], 16); # pgrp structure
-                m_pgrp = struct.unpack('IIII', pgrp_t)
-   
-                session_t = self.x86_mem_pae.read(m_pgrp[3], 283); # session structure
-                m_session = struct.unpack('IIIIIII255s', session_t)
-                sys.stdout.write('%s'%m_session[7].replace('\x00',''))
-                sys.stdout.write('\n')
-
-                print '[+] Gathering Process Information'
-                #print 'task_ptr: %x'%self.x86_mem_pae.vtop(data[2])
-                #print '====== task.h --> osfmk\\kern\\task.h'
-                if self.os_version >= 11:
-                    task_info = self.x86_mem_pae.read(data[2], 32)
-                    task_struct = struct.unpack('=8xIIIIII', task_info)
-                else:
-                    task_info = self.x86_mem_pae.read(data[2], 36)
-                    task_struct = struct.unpack('=12xIIIIII', task_info)
-                #print 'task_t'
-                #print 'ref_count: %x'%task_struct[0]
-                #print 'active: %x'%task_struct[1]
-                #print 'halting: %x'%task_struct[2]
-                #print 'uni and smp lock: %d'%task_struct[4]
-                #print 'vm_map_t: %x'%self.x86_mem_pae.vtop(task_struct[3])
-                #print 'tasks: %x'%task_struct[4]
-                #print 'userdata: %x'%task_struct[5]
-
-#### 11.09.28 start n0fate.
-
-# Mac OS X Snow Leopard
-# struct vm_map_header {
-#	struct vm_map_links	links;		/* first, last, min, max */
-#	int			nentries;	/* Number of entries */
-#	boolean_t		entries_pageable;
-#						/* are map entries pageable? */
-#};
-
-# Mac OS X Lion
-# struct vm_map_header {
-#    struct vm_map_links	links;		/* first, last, min, max */
-#    int			nentries;	/* Number of entries */
-#    boolean_t		entries_pageable; /* are map entries pageable? */
-#    vm_map_offset_t		highest_entry_end_addr;	/* The ending address of the highest allocated vm_entry_t */
-                if self.os_version >= 11: # Lion
-                    vm_info = self.x86_mem_pae.read(task_struct[3], 162+12)
-                    vm_struct = struct.unpack('=12xIIQQII8x4xIQ16xIII42xIIIIIIIII', vm_info)
-                else:
-                    vm_info = self.x86_mem_pae.read(task_struct[3], 162)
-                    vm_struct = struct.unpack('=12xIIQQIIIQ16xIII42xIIIIIIIII', vm_info)
-
-### 11.09.28 end n0fate
-                #print '======= vm_map_t --> osfmk\\vm\\vm_map.h ========'
-                #print 'prev: %x'%vm_struct[0]
-                #print 'next: %x'%self.x86_mem_pae.vtop(vm_struct[1])
-                print ' [-] Virtual Address Start Point: 0x%x'%vm_struct[2]
-                print ' [-] Virtual Address End Point: 0x%x'%vm_struct[3]
-                #print 'neutries: %x'%vm_struct[4] # number of entries
-                #print 'entries_pageable: %x'%vm_struct[5]
-                #print 'pmap_t: %x'%self.x86_mem_pae.vtop(vm_struct[6])
-                #print 'Virtual size: %x\n'%vm_struct[7]
-
-                vm_list = []
-
-                entry_next_ptr = vm_struct[1]
-                for data in range(0, vm_struct[4]): # number of entries
-                    vm_list_ptr = self.x86_mem_pae.read(entry_next_ptr, 24)
-                    vme_list = struct.unpack('=IIQQ', vm_list_ptr)
-                    # *prev, *next, start, end
-                    vm_temp_list = []
-                    vm_temp_list.append(vme_list[2]) # start
-                    vm_temp_list.append(vme_list[3]) # end
-                   
-                    vm_list.append(vm_temp_list)
-                    #print 'prev: %x, next: %x, start:%x, end:%x'%(vme_list[0], vme_list[1], vme_list[2], vme_list[3])
-                    entry_next_ptr = vme_list[1]
-   
-                if vm_struct[6] == 0: # pmap_t
-                    exit(1)
-   
-                if not(self.x86_mem_pae.is_valid_address(vm_struct[6])):
-                    exit(1)
-
-### 11.09.28 start n0fate
-
-# Mac OS X Lion
-# struct pmap {
-#	decl_simple_lock_data(,lock)	/* lock on map */
-#	pmap_paddr_t    pm_cr3;         /* physical addr */
-#	boolean_t       pm_shared;
-#        pd_entry_t      *dirbase;        /* page directory pointer */
-# #ifdef __i386__
-#	pmap_paddr_t    pdirbase;        /* phys. address of dirbase */
-#	vm_offset_t     pm_hold;        /* true pdpt zalloc addr */
-
-                if self.os_version >= 11:   # Lion xnu-1699
-                    pmap_info = self.x86_mem_pae.read(vm_struct[6], 12)
-                    pmap_struct = struct.unpack('=4xQ', pmap_info)
-                    pm_cr3 = pmap_struct[0]
-                else: # Leopard or Snow Leopard xnu-1456
-                    pmap_info = self.x86_mem_pae.read(vm_struct[6], 100)
-                    pmap_struct = struct.unpack('=IQIIII56xQII', pmap_info)
-                    pm_cr3 = pmap_struct[6]
-
-### 11.09.28 end n0fate
-                    
-                    #print 'pmap_t'
-                    #print 'page directory pointer: %x'%pmap_struct[0] # int(pointer)
-                    #print 'phys.address of dirbase: %x'%pmap_struct[1] # uint64_t
-                    #print 'object to pde: %x'%pmap_struct[2]
-                    #print 'ref count: %x'%pmap_struct[3]
-                    #print 'nx_enabled: %x'%pmap_struct[4]
-                    #print 'task_map: %x'%pmap_struct[5]
+	
+	if self.arch == 32:
+	    kernproc = self.x86_mem_pae.read(sym_addr, 4); # __DATA.__common _kernproc
+	    data = struct.unpack('I', kernproc)
+	    if self.os_version >= 11: # Lion
+		proclist = self.x86_mem_pae.read(data[0], 476+24);
+		data = struct.unpack('=4xIIIII392x24xI52sI', proclist)
+	    else:
+		proclist = self.x86_mem_pae.read(data[0], 476);
+		data = struct.unpack('=4xIIIII392xI52sI', proclist) # 24 bytes + 396 bytes padding(49 double value) + 33 bytes process name
+	    while 1:
+		if data[1] == pid:
+		    #print 'list_entry(next): %x'%data[0] # int
+		    sys.stdout.write('%.8x\t'%data[0]) # int
+		    sys.stdout.write('%d\t'%data[1]) # int
+		    sys.stdout.write('%d\t'%data[4]) # int
+		    sys.stdout.write('%s\t'%data[6].replace('\x00',''))
+		   
+		    process_name = data[6].replace('\x00','')
+		   
+		    pgrp_t = self.x86_mem_pae.read(data[7], 16); # pgrp structure
+		    m_pgrp = struct.unpack('IIII', pgrp_t)
        
-                    #print 'pm_cr3: %x'%pmap_struct[6]
-                    #print 'pm_pdpt: %x'%pmap_struct[7]
-                    #print 'pm_pml4: %x'%pmap_struct[8]
+		    session_t = self.x86_mem_pae.read(m_pgrp[3], 283); # session structure
+		    m_session = struct.unpack('IIIIIII255s', session_t)
+		    sys.stdout.write('%s'%m_session[7].replace('\x00',''))
+		    sys.stdout.write('\n')
+    
+		    print '[+] Gathering Process Information'
+		    #print 'task_ptr: %x'%self.x86_mem_pae.vtop(data[2])
+		    #print '====== task.h --> osfmk\\kern\\task.h'
+		    if self.os_version >= 11:
+			task_info = self.x86_mem_pae.read(data[2], 32)
+			task_struct = struct.unpack('=8xIIIIII', task_info)
+		    else:
+			task_info = self.x86_mem_pae.read(data[2], 36)
+			task_struct = struct.unpack('=12xIIIIII', task_info)
+		    #print 'task_t'
+		    #print 'ref_count: %x'%task_struct[0]
+		    #print 'active: %x'%task_struct[1]
+		    #print 'halting: %x'%task_struct[2]
+		    #print 'uni and smp lock: %d'%task_struct[4]
+		    #print 'vm_map_t: %x'%self.x86_mem_pae.vtop(task_struct[3])
+		    #print 'tasks: %x'%task_struct[4]
+		    #print 'userdata: %x'%task_struct[5]
+    
+    #### 11.09.28 start n0fate.
+    
+    # Mac OS X Snow Leopard
+    # struct vm_map_header {
+    #	struct vm_map_links	links;		/* first, last, min, max */
+    #	int			nentries;	/* Number of entries */
+    #	boolean_t		entries_pageable;
+    #						/* are map entries pageable? */
+    #};
+    
+    # Mac OS X Lion
+    # struct vm_map_header {
+    #    struct vm_map_links	links;		/* first, last, min, max */
+    #    int			nentries;	/* Number of entries */
+    #    boolean_t		entries_pageable; /* are map entries pageable? */
+    #    vm_map_offset_t		highest_entry_end_addr;	/* The ending address of the highest allocated vm_entry_t */
+		    if self.os_version >= 11: # Lion
+			vm_info = self.x86_mem_pae.read(task_struct[3], 162+12)
+			vm_struct = struct.unpack('=12xIIQQII8x4xIQ16xIII42xIIIIIIIII', vm_info)
+		    else:
+			vm_info = self.x86_mem_pae.read(task_struct[3], 162)
+			vm_struct = struct.unpack('=12xIIQQIIIQ16xIII42xIIIIIIIII', vm_info)
+    
+    ### 11.09.28 end n0fate
+		    #print '======= vm_map_t --> osfmk\\vm\\vm_map.h ========'
+		    #print 'prev: %x'%vm_struct[0]
+		    #print 'next: %x'%self.x86_mem_pae.vtop(vm_struct[1])
+		    print ' [-] Virtual Address Start Point: 0x%x'%vm_struct[2]
+		    print ' [-] Virtual Address End Point: 0x%x'%vm_struct[3]
+		    #print 'neutries: %x'%vm_struct[4] # number of entries
+		    #print 'entries_pageable: %x'%vm_struct[5]
+		    #print 'pmap_t: %x'%self.x86_mem_pae.vtop(vm_struct[6])
+		    #print 'Virtual size: %x\n'%vm_struct[7]
+    
+		    vm_list = []
+    
+		    entry_next_ptr = vm_struct[1]
+		    for data in range(0, vm_struct[4]): # number of entries
+			vm_list_ptr = self.x86_mem_pae.read(entry_next_ptr, 24)
+			vme_list = struct.unpack('=IIQQ', vm_list_ptr)
+			# *prev, *next, start, end
+			vm_temp_list = []
+			vm_temp_list.append(vme_list[2]) # start
+			vm_temp_list.append(vme_list[3]) # end
+		       
+			vm_list.append(vm_temp_list)
+			#print 'prev: %x, next: %x, start:%x, end:%x'%(vme_list[0], vme_list[1], vme_list[2], vme_list[3])
+			entry_next_ptr = vme_list[1]
+       
+		    if vm_struct[6] == 0: # pmap_t
+			exit(1)
+       
+		    if not(self.x86_mem_pae.is_valid_address(vm_struct[6])):
+			exit(1)
+    
+    ### 11.09.28 start n0fate
+    
+    # Mac OS X Lion
+    # struct pmap {
+    #	decl_simple_lock_data(,lock)	/* lock on map */
+    #	pmap_paddr_t    pm_cr3;         /* physical addr */
+    #	boolean_t       pm_shared;
+    #        pd_entry_t      *dirbase;        /* page directory pointer */
+    # #ifdef __i386__
+    #	pmap_paddr_t    pdirbase;        /* phys. address of dirbase */
+    #	vm_offset_t     pm_hold;        /* true pdpt zalloc addr */
+    
+		    if self.os_version >= 11:   # Lion xnu-1699
+			pmap_info = self.x86_mem_pae.read(vm_struct[6], 12)
+			pmap_struct = struct.unpack('=4xQ', pmap_info)
+			pm_cr3 = pmap_struct[0]
+		    else: # Leopard or Snow Leopard xnu-1456
+			pmap_info = self.x86_mem_pae.read(vm_struct[6], 100)
+			pmap_struct = struct.unpack('=IQIIII56xQII', pmap_info)
+			pm_cr3 = pmap_struct[6]
+    
+    ### 11.09.28 end n0fate
+			
+			#print 'pmap_t'
+			#print 'page directory pointer: %x'%pmap_struct[0] # int(pointer)
+			#print 'phys.address of dirbase: %x'%pmap_struct[1] # uint64_t
+			#print 'object to pde: %x'%pmap_struct[2]
+			#print 'ref count: %x'%pmap_struct[3]
+			#print 'nx_enabled: %x'%pmap_struct[4]
+			#print 'task_map: %x'%pmap_struct[5]
+	   
+			#print 'pm_cr3: %x'%pmap_struct[6]
+			#print 'pm_pdpt: %x'%pmap_struct[7]
+			#print 'pm_pml4: %x'%pmap_struct[8]
+    
+		    
+		    proc_pae = 0
+		    print ' [-] Resetting the Page Mapping Table: 0x%x'%pm_cr3
+		    #if pmap_struct[5] == 0: # 32bit process
+		    #    proc_pae = IA32PagedMemoryPae(FileAddressSpace(self.mempath), pm_cr3)
+		    #else: # 64bit process Page Table module(ia32_pml4.py)
+		    #    proc_pae = IA32PML4MemoryPae(FileAddressSpace(self.mempath), pm_cr3)
+		    
+		    if isMachoVolafoxCompatible(self.mempath):
+			proc_pae = IA32PML4MemoryPae(MachoAddressSpace(self.mempath), pm_cr3)
+		    else:
+			proc_pae = IA32PML4MemoryPae(FileAddressSpace(self.mempath), pm_cr3)
+		    
+		    print '[+] Process Dump Start'
+		    for vme_info in  vm_list:
+			#print vme_info[0]
+			#print vme_info[1]
+			
+			nop_code = 0x90 # 11.10.11 n0fate test
+			pk_nop_code = struct.pack('=B', nop_code) # 11.10.11 n0fate test
+			nop = pk_nop_code*0x1000
+			
+			file = open('%s-%x-%x'%(process_name, vme_info[0], vme_info[1]), mode="wb")
+			
+			nop_flag = 0 # 11.10.11 n0fate test
+			for i in range(vme_info[0], vme_info[1], 0x1000):
+			    raw_data = 0x00
+			    if not(proc_pae.is_valid_address(i)):
+				if nop_flag == 1:
+				    raw_data = nop
+				    file.write(raw_data)
+				continue
+			    raw_data = proc_pae.read(i, 0x1000)
+			    if raw_data is None:
+				if nop_flag == 1:
+				    raw_data = nop
+				    file.write(raw_data)
+				continue
+			    file.write(raw_data)
+			    nop_flag = 1
+			file.close()
+			size = os.path.getsize('%s-%x-%x'%(process_name, vme_info[0], vme_info[1]))
+			if size == 0:
+			   os.remove('%s-%x-%x'%(process_name, vme_info[0], vme_info[1]))
+			else:
+			    print ' [-] [DUMP] Image Name: %s-%x-%x'%(process_name, vme_info[0], vme_info[1])
+		    print '[+] Process Dump End'
+		    return
+		else:
+		    if self.os_version >= 11: # Lion
+			proclist = self.x86_mem_pae.read(data[0], 476+24);
+			data = struct.unpack('=4xIIIII392x24xI52sI', proclist)
+		    else:
+			proclist = self.x86_mem_pae.read(data[0], 476);
+			data = struct.unpack('=4xIIIII392xI52sI', proclist) # 24 bytes + 396 bytes padding(49 double value) + 33 bytes process name
 
-                
-                proc_pae = 0
-                print ' [-] Resetting the Page Mapping Table: 0x%x'%pm_cr3
-                #if pmap_struct[5] == 0: # 32bit process
-                #    proc_pae = IA32PagedMemoryPae(FileAddressSpace(self.mempath), pm_cr3)
-                #else: # 64bit process Page Table module(ia32_pml4.py)
-                #    proc_pae = IA32PML4MemoryPae(FileAddressSpace(self.mempath), pm_cr3)
-                
-                if isMachoVolafoxCompatible(self.mempath):
-                    proc_pae = IA32PML4MemoryPae(MachoAddressSpace(self.mempath), pm_cr3)
-                else:
-                    proc_pae = IA32PML4MemoryPae(FileAddressSpace(self.mempath), pm_cr3)
-                
-                print '[+] Process Dump Start'
-                for vme_info in  vm_list:
-                    #print vme_info[0]
-                    #print vme_info[1]
-                    
-                    nop_code = 0x90 # 11.10.11 n0fate test
-                    pk_nop_code = struct.pack('=B', nop_code) # 11.10.11 n0fate test
-                    nop = pk_nop_code*0x1000
-                    
-                    file = open('%s-%x-%x'%(process_name, vme_info[0], vme_info[1]), mode="wb")
-                    
-                    nop_flag = 0 # 11.10.11 n0fate test
-                    for i in range(vme_info[0], vme_info[1], 0x1000):
-                        raw_data = 0x00
-                        if not(proc_pae.is_valid_address(i)):
-                            if nop_flag == 1:
-                                raw_data = nop
-                                file.write(raw_data)
-                            continue
-                        raw_data = proc_pae.read(i, 0x1000)
-                        if raw_data is None:
-                            if nop_flag == 1:
-                                raw_data = nop
-                                file.write(raw_data)
-                            continue
-                        file.write(raw_data)
-                        nop_flag = 1
-                    file.close()
-                    size = os.path.getsize('%s-%x-%x'%(process_name, vme_info[0], vme_info[1]))
-                    if size == 0:
-                       os.remove('%s-%x-%x'%(process_name, vme_info[0], vme_info[1]))
-                    else:
-                        print ' [-] [DUMP] Image Name: %s-%x-%x'%(process_name, vme_info[0], vme_info[1])
-                print '[+] Process Dump End'
-                return
-            else:
-                if self.os_version >= 11: # Lion
-                    proclist = self.x86_mem_pae.read(data[0], 476+24);
-                    data = struct.unpack('=4xIIIII392x24xI52sI', proclist)
-                else:
-                    proclist = self.x86_mem_pae.read(data[0], 476);
-                    data = struct.unpack('=4xIIIII392xI52sI', proclist) # 24 bytes + 396 bytes padding(49 double value) + 33 bytes process name
+################################# 64bit ################################################################ 11.11.23
+	else: 
+	    kernproc = self.x86_mem_pae.read(sym_addr, 8); # __DATA.__common _kernproc
+	    data = struct.unpack('Q', kernproc)
+	    if self.os_version >= 11: # Lion
+		proclist = self.x86_mem_pae.read(data[0], 752+24);
+		data = struct.unpack('=8xQQQQI668xI52sQ', proclist)
+	    else: # Snow Leopard
+		proclist = self.x86_mem_pae.read(data[0], 760);
+		data = struct.unpack('=8xQQQQI652xI52sQ', proclist) # 24 bytes + 396 bytes padding(49 double value) + 33 bytes process name
+	    while 1:
+		if data[1] == pid:
+		    #print 'list_entry(next): %x'%data[0] # int
+		    sys.stdout.write('%.8x\t'%data[0]) # int
+		    sys.stdout.write('%d\t'%data[1]) # int
+		    sys.stdout.write('%d\t'%data[4]) # int
+		    sys.stdout.write('%s\t'%data[6].replace('\x00',''))
+		   
+		    process_name = data[6].replace('\x00','')
+		   
+		    pgrp_t = self.x86_mem_pae.read(data[7], 32); # pgrp structure
+		    m_pgrp = struct.unpack('=QQQQ', pgrp_t)
+       
+		    session_t = self.x86_mem_pae.read(m_pgrp[3], 303); # session structure
+		    m_session = struct.unpack('=IQQIQQQ255s', session_t)
+		    sys.stdout.write('%s'%m_session[7].replace('\x00',''))
+		    sys.stdout.write('\n')
+    
+		    print '[+] Gathering Process Information'
+		    #print 'task_ptr: %x'%self.x86_mem_pae.vtop(data[2])
+		    #print '====== task.h --> osfmk\\kern\\task.h'
+		    if self.os_version >= 11: # Lion
+			task_info = self.x86_mem_pae.read(data[2], 56)
+			task_struct = struct.unpack('=16xIII4xQQQ', task_info)
+		    else: # Snow Leopard
+			task_info = self.x86_mem_pae.read(data[2], 64)
+			task_struct = struct.unpack('=24xIII4xQQQ', task_info)
+		    #print 'task_t'
+		    #print 'ref_count: %x'%task_struct[0]
+		    #print 'active: %x'%task_struct[1]
+		    #print 'halting: %x'%task_struct[2]
+		    #print 'uni and smp lock: %d'%task_struct[4]
+		    #print 'vm_map_t: %x'%self.x86_mem_pae.vtop(task_struct[3])
+		    #print 'tasks: %x'%task_struct[4]
+		    #print 'userdata: %x'%task_struct[5]
+    
+    #### 11.09.28 start n0fate.
+    
+    # Mac OS X Snow Leopard
+    # struct vm_map_header {
+    #	struct vm_map_links	links;		/* first, last, min, max */
+    #	int			nentries;	/* Number of entries */
+    #	boolean_t		entries_pageable;
+    #						/* are map entries pageable? */
+    #};
+    
+    # Mac OS X Lion
+    # struct vm_map_header {
+    #    struct vm_map_links	links;		/* first, last, min, max */
+    #    int			nentries;	/* Number of entries */
+    #    boolean_t		entries_pageable; /* are map entries pageable? */
+    #    vm_map_offset_t		highest_entry_end_addr;	/* The ending address of the highest allocated vm_entry_t */
+		    if self.os_version >= 11: # Lion
+			vm_info = self.x86_mem_pae.read(task_struct[3], 182+12)
+			vm_struct = struct.unpack('=16xQQQQII16xQQ16xIII42xIIIIIIIII', vm_info)
+		    else:
+			vm_info = self.x86_mem_pae.read(task_struct[3], 178)
+			vm_struct = struct.unpack('=16xQQQQIIQQ16xIII42xIIIIIIIII', vm_info)
+    
+    ### 11.09.28 end n0fate
+		    #print '======= vm_map_t --> osfmk\\vm\\vm_map.h ========'
+		    #print 'prev: %x'%vm_struct[0]
+		    #print 'next: %x'%self.x86_mem_pae.vtop(vm_struct[1])
+		    print ' [-] Virtual Address Start Point: 0x%x'%vm_struct[2]
+		    print ' [-] Virtual Address End Point: 0x%x'%vm_struct[3]
+		    #print 'neutries: %x'%vm_struct[4] # number of entries
+		    #print 'entries_pageable: %x'%vm_struct[5]
+		    #print 'pmap_t: %x'%self.x86_mem_pae.vtop(vm_struct[6])
+		    #print 'Virtual size: %x\n'%vm_struct[7]
+    
+		    vm_list = []
+    
+		    entry_next_ptr = vm_struct[1]
+		    for data in range(0, vm_struct[4]): # number of entries
+			vm_list_ptr = self.x86_mem_pae.read(entry_next_ptr, 32)
+			vme_list = struct.unpack('=QQQQ', vm_list_ptr)
+			# *prev, *next, start, end
+			vm_temp_list = []
+			vm_temp_list.append(vme_list[2]) # start
+			vm_temp_list.append(vme_list[3]) # end
+		       
+			vm_list.append(vm_temp_list)
+			#print 'prev: %x, next: %x, start:%x, end:%x'%(vme_list[0], vme_list[1], vme_list[2], vme_list[3])
+			entry_next_ptr = vme_list[1]
+       
+		    if vm_struct[6] == 0: # pmap_t
+			exit(1)
+       
+		    if not(self.x86_mem_pae.is_valid_address(vm_struct[6])):
+			exit(1)
+    
+    ### 11.09.28 start n0fate
+    
+    # Mac OS X Lion
+    # struct pmap {
+    #	decl_simple_lock_data(,lock)	/* lock on map */
+    #	pmap_paddr_t    pm_cr3;         /* physical addr */
+    #	boolean_t       pm_shared;
+    #        pd_entry_t      *dirbase;        /* page directory pointer */
+    # #ifdef __i386__
+    #	pmap_paddr_t    pdirbase;        /* phys. address of dirbase */
+    #	vm_offset_t     pm_hold;        /* true pdpt zalloc addr */
+    
+		    if self.os_version >= 11:   # Lion xnu-1699
+			pmap_info = self.x86_mem_pae.read(vm_struct[6], 16)
+			pmap_struct = struct.unpack('=8xQ', pmap_info)
+			pm_cr3 = pmap_struct[0]
+		    else: # Leopard or Snow Leopard xnu-1456
+			pmap_info = self.x86_mem_pae.read(vm_struct[6], 152)
+			pmap_struct = struct.unpack('=QQ112xQQQ', pmap_info)
+			pm_cr3 = pmap_struct[2]
+    
+    ### 11.09.28 end n0fate
+			
+			#print 'pmap_t'
+			#print 'page directory pointer: %x'%pmap_struct[0] # int(pointer)
+			#print 'phys.address of dirbase: %x'%pmap_struct[1] # uint64_t
+			#print 'object to pde: %x'%pmap_struct[2]
+			#print 'ref count: %x'%pmap_struct[3]
+			#print 'nx_enabled: %x'%pmap_struct[4]
+			#print 'task_map: %x'%pmap_struct[5]
+	   
+			#print 'pm_cr3: %x'%pmap_struct[6]
+			#print 'pm_pdpt: %x'%pmap_struct[7]
+			#print 'pm_pml4: %x'%pmap_struct[8]
+    
+		    
+		    proc_pae = 0
+		    print ' [-] Resetting the Page Mapping Table: 0x%x'%pm_cr3
+		    #if pmap_struct[5] == 0: # 32bit process
+		    #    proc_pae = IA32PagedMemoryPae(FileAddressSpace(self.mempath), pm_cr3)
+		    #else: # 64bit process Page Table module(ia32_pml4.py)
+		    #    proc_pae = IA32PML4MemoryPae(FileAddressSpace(self.mempath), pm_cr3)
+		    
+		    if isMachoVolafoxCompatible(self.mempath):
+			proc_pae = IA32PML4MemoryPae(MachoAddressSpace(self.mempath), pm_cr3)
+		    else:
+			proc_pae = IA32PML4MemoryPae(FileAddressSpace(self.mempath), pm_cr3)
+		    
+		    print '[+] Process Dump Start'
+		    for vme_info in  vm_list:
+			#print vme_info[0]
+			#print vme_info[1]
+			
+			nop_code = 0x00 # 11.10.11 n0fate test
+			pk_nop_code = struct.pack('=B', nop_code) # 11.10.11 n0fate test
+			nop = pk_nop_code*0x1000
+			
+			file = open('%s-%x-%x'%(process_name, vme_info[0], vme_info[1]), mode="wb")
+			
+			nop_flag = 0 # 11.10.11 n0fate test
+			for i in range(vme_info[0], vme_info[1], 0x1000):
+			    raw_data = 0x00
+			    if not(proc_pae.is_valid_address(i)):
+				if nop_flag == 1:
+				    raw_data = nop
+				    file.write(raw_data)
+				continue
+			    raw_data = proc_pae.read(i, 0x1000)
+			    if raw_data is None:
+				if nop_flag == 1:
+				    raw_data = nop
+				    file.write(raw_data)
+				continue
+			    file.write(raw_data)
+			    nop_flag = 1
+			file.close()
+			size = os.path.getsize('%s-%x-%x'%(process_name, vme_info[0], vme_info[1]))
+			if size == 0:
+			   os.remove('%s-%x-%x'%(process_name, vme_info[0], vme_info[1]))
+			else:
+			    print ' [-] [DUMP] Image Name: %s-%x-%x'%(process_name, vme_info[0], vme_info[1])
+		    print '[+] Process Dump End'
+		    return
+		else:
+		    if self.os_version >= 11: # Lion
+			proclist = self.x86_mem_pae.read(data[0], 752+24);
+			data = struct.unpack('=8xQQQQI668xI52sQ', proclist)
+		    else:
+			proclist = self.x86_mem_pae.read(data[0], 760);
+			data = struct.unpack('=8xQQQQI652xI52sQ', proclist) # 24 bytes + 396 bytes padding(49 double value) + 33 bytes process name
         return 1
 
     # http://snipplr.com/view.php?codeview&id=14807
@@ -416,77 +684,150 @@ class volafox():
         if not(net_pae.is_valid_address(sym_addr)):
             return
 
-        #print 'Real Address (inpcbinfo): %x'%net_pae.vtop(sym_addr)
-        inpcbinfo_t = net_pae.read(sym_addr, 40)
-        inpcbinfo = struct.unpack('=IIIIII12xI', inpcbinfo_t)
+	if self.arch == 32:
+	    #print 'Real Address (inpcbinfo): %x'%net_pae.vtop(sym_addr)
+	    inpcbinfo_t = net_pae.read(sym_addr, 40)
+	    inpcbinfo = struct.unpack('=IIIIII12xI', inpcbinfo_t)
+    
+	    if not(net_pae.is_valid_address(inpcbinfo[0])):
+		return
+    
+	    print 'ipi_count: %d'%inpcbinfo[6]
+	    #print 'Real Address (inpcbinfo[0]): %x'%net_pae.vtop(inpcbinfo[0])
+	    loop_count = inpcbinfo[2]
+    
+	    #print 'hashsize:%d'%loop_count
+    
+	    for offset_hashbase in range(0, loop_count):
+		inpcb_t = net_pae.read(inpcbinfo[0]+(offset_hashbase*4), 4)
+		inpcb = struct.unpack('=I', inpcb_t)
+		loop_addr = inpcb[0]
+    
+		if loop_addr == 0:
+		    continue
+		
+		if not(net_pae.is_valid_address(loop_addr)):
+		    break
+		
+		#print 'Real Address (inpcb): %x'%net_pae.vtop(inpcb[0])
+		inpcb = net_pae.read(loop_addr+16, 112)
+		in_network = struct.unpack('>HH48xI36xI12xI', inpcb) # fport, lport, flag, fhost, lhost
+      #123 struct inpcb {
+      #124         LIST_ENTRY(inpcb) inp_hash;     /* hash list */
+      #125         int             inp_wantcnt;            /* pcb wanted count. protected by pcb list lock */
+      #126         int             inp_state;              /* state of this pcb, in use, recycled, ready for recycling... */
+      #127         u_short inp_fport;              /* foreign port */
+      #128         u_short inp_lport;              /* local port */
+      #129         LIST_ENTRY(inpcb) inp_list;     /* list for all PCBs of this proto */
+      #130         caddr_t inp_ppcb;               /* pointer to per-protocol pcb */
+      #131         struct  inpcbinfo *inp_pcbinfo; /* PCB list info */
+      #132         struct  socket *inp_socket;     /* back pointer to socket */
+      #133         u_char  nat_owner;              /* Used to NAT TCP/UDP traffic */
+      #134         u_int32_t nat_cookie;           /* Cookie stored and returned to NAT */
+      #135         LIST_ENTRY(inpcb) inp_portlist; /* list for this PCB's local port */
+      #136         struct  inpcbport *inp_phd;     /* head of this list */
+      #137         inp_gen_t inp_gencnt;           /* generation count of this instance */
+      #138         int     inp_flags;              /* generic IP/datagram flags */
+      #139         u_int32_t inp_flow;
+      #140 
+      #141         u_char  inp_vflag;      /* INP_IPV4 or INP_IPV6 */
+      #142 
+      #143         u_char inp_ip_ttl;              /* time to live proto */
+      #144         u_char inp_ip_p;                /* protocol proto */
+      #145         /* protocol dependent part */
+      #146         union {
+      #147                 /* foreign host table entry */
+      #148                 struct  in_addr_4in6 inp46_foreign;
+      #149                 struct  in6_addr inp6_foreign;
+      #150         } inp_dependfaddr;
+      #151         union {
+      #152                 /* local host table entry */
+      #153                 struct  in_addr_4in6 inp46_local;
+      #154                 struct  in6_addr inp6_local;
+      #155         } inp_dependladdr;
+      
+		network = []
+		network.append(in_network[2])
+		network.append(self.IntToDottedIP(in_network[3]))
+		network.append(self.IntToDottedIP(in_network[4]))
+		network.append(in_network[1])
+		network.append(in_network[0])
+	    
+		#print 'Local Address: %s:%d, Foreign Address: %s:%d, flag:%x'%(self.IntToDottedIP(in_network[3]), in_network[1], self.IntToDottedIP(in_network[4]), in_network[0], in_network[2])
+		network_list.append(network)
 
-        if not(net_pae.is_valid_address(inpcbinfo[0])):
-            return
-
-	print 'ipi_count: %d'%inpcbinfo[6]
-	#print 'Real Address (inpcbinfo[0]): %x'%net_pae.vtop(inpcbinfo[0])
-        loop_count = inpcbinfo[2]
-
-	#print 'hashsize:%d'%loop_count
-
-        for offset_hashbase in range(0, loop_count):
-            inpcb_t = net_pae.read(inpcbinfo[0]+(offset_hashbase*4), 4)
-            inpcb = struct.unpack('=I', inpcb_t)
-            loop_addr = inpcb[0]
-
-            if loop_addr == 0:
-                continue
-            
-            if not(net_pae.is_valid_address(loop_addr)):
-                break
-            
-	    #print 'Real Address (inpcb): %x'%net_pae.vtop(inpcb[0])
-            inpcb = net_pae.read(loop_addr+16, 112)
-            in_network = struct.unpack('>HH48xI36xI12xI', inpcb) # fport, lport, flag, fhost, lhost
-  #123 struct inpcb {
-  #124         LIST_ENTRY(inpcb) inp_hash;     /* hash list */
-  #125         int             inp_wantcnt;            /* pcb wanted count. protected by pcb list lock */
-  #126         int             inp_state;              /* state of this pcb, in use, recycled, ready for recycling... */
-  #127         u_short inp_fport;              /* foreign port */
-  #128         u_short inp_lport;              /* local port */
-  #129         LIST_ENTRY(inpcb) inp_list;     /* list for all PCBs of this proto */
-  #130         caddr_t inp_ppcb;               /* pointer to per-protocol pcb */
-  #131         struct  inpcbinfo *inp_pcbinfo; /* PCB list info */
-  #132         struct  socket *inp_socket;     /* back pointer to socket */
-  #133         u_char  nat_owner;              /* Used to NAT TCP/UDP traffic */
-  #134         u_int32_t nat_cookie;           /* Cookie stored and returned to NAT */
-  #135         LIST_ENTRY(inpcb) inp_portlist; /* list for this PCB's local port */
-  #136         struct  inpcbport *inp_phd;     /* head of this list */
-  #137         inp_gen_t inp_gencnt;           /* generation count of this instance */
-  #138         int     inp_flags;              /* generic IP/datagram flags */
-  #139         u_int32_t inp_flow;
-  #140 
-  #141         u_char  inp_vflag;      /* INP_IPV4 or INP_IPV6 */
-  #142 
-  #143         u_char inp_ip_ttl;              /* time to live proto */
-  #144         u_char inp_ip_p;                /* protocol proto */
-  #145         /* protocol dependent part */
-  #146         union {
-  #147                 /* foreign host table entry */
-  #148                 struct  in_addr_4in6 inp46_foreign;
-  #149                 struct  in6_addr inp6_foreign;
-  #150         } inp_dependfaddr;
-  #151         union {
-  #152                 /* local host table entry */
-  #153                 struct  in_addr_4in6 inp46_local;
-  #154                 struct  in6_addr inp6_local;
-  #155         } inp_dependladdr;
-  
-            network = []
-	    network.append(in_network[2])
-            network.append(self.IntToDottedIP(in_network[3]))
-            network.append(self.IntToDottedIP(in_network[4]))
-            network.append(in_network[1])
-            network.append(in_network[0])
-        
-            #print 'Local Address: %s:%d, Foreign Address: %s:%d, flag:%x'%(self.IntToDottedIP(in_network[3]), in_network[1], self.IntToDottedIP(in_network[4]), in_network[0], in_network[2])
-            network_list.append(network)
-            
+################# 64 bit ################
+        else:
+	    #print 'Real Address (inpcbinfo): %x'%net_pae.vtop(sym_addr)
+	    inpcbinfo_t = net_pae.read(sym_addr, 72)
+	    inpcbinfo = struct.unpack('=QQQQQQ16xQ', inpcbinfo_t)
+    
+	    if not(net_pae.is_valid_address(inpcbinfo[0])):
+		return
+    
+	    print 'ipi_count: %d'%inpcbinfo[6]
+	    #print 'Real Address (inpcbinfo[0]): %x'%net_pae.vtop(inpcbinfo[0])
+	    loop_count = inpcbinfo[2]
+    
+	    #print 'hashsize:%d'%loop_count
+    
+	    for offset_hashbase in range(0, loop_count):
+		inpcb_t = net_pae.read(inpcbinfo[0]+(offset_hashbase*8), 8)
+		inpcb = struct.unpack('=Q', inpcb_t)
+		loop_addr = inpcb[0]
+    
+		if loop_addr == 0:
+		    continue
+		
+		if not(net_pae.is_valid_address(loop_addr)):
+		    break
+		
+		#print 'Real Address (inpcb): %x'%net_pae.vtop(inpcb[0])
+		inpcb = net_pae.read(loop_addr+24, 156)
+		in_network = struct.unpack('>HH80xQ36xI20xI', inpcb) # fport, lport, flag, fhost, lhost
+      #123 struct inpcb {
+      #124         LIST_ENTRY(inpcb) inp_hash;     /* hash list */
+      #125         int             inp_wantcnt;            /* pcb wanted count. protected by pcb list lock */
+      #126         int             inp_state;              /* state of this pcb, in use, recycled, ready for recycling... */
+      #127         u_short inp_fport;              /* foreign port */
+      #128         u_short inp_lport;              /* local port */
+      #129         LIST_ENTRY(inpcb) inp_list;     /* list for all PCBs of this proto */
+      #130         caddr_t inp_ppcb;               /* pointer to per-protocol pcb */
+      #131         struct  inpcbinfo *inp_pcbinfo; /* PCB list info */
+      #132         struct  socket *inp_socket;     /* back pointer to socket */
+      #133         u_char  nat_owner;              /* Used to NAT TCP/UDP traffic */
+      #134         u_int32_t nat_cookie;           /* Cookie stored and returned to NAT */
+      #135         LIST_ENTRY(inpcb) inp_portlist; /* list for this PCB's local port */
+      #136         struct  inpcbport *inp_phd;     /* head of this list */
+      #137         inp_gen_t inp_gencnt;           /* generation count of this instance */
+      #138         int     inp_flags;              /* generic IP/datagram flags */
+      #139         u_int32_t inp_flow;
+      #140 
+      #141         u_char  inp_vflag;      /* INP_IPV4 or INP_IPV6 */
+      #142 
+      #143         u_char inp_ip_ttl;              /* time to live proto */
+      #144         u_char inp_ip_p;                /* protocol proto */
+      #145         /* protocol dependent part */
+      #146         union {
+      #147                 /* foreign host table entry */
+      #148                 struct  in_addr_4in6 inp46_foreign;
+      #149                 struct  in6_addr inp6_foreign;
+      #150         } inp_dependfaddr;
+      #151         union {
+      #152                 /* local host table entry */
+      #153                 struct  in_addr_4in6 inp46_local;
+      #154                 struct  in6_addr inp6_local;
+      #155         } inp_dependladdr;
+      
+		network = []
+		network.append(in_network[2])
+		network.append(self.IntToDottedIP(in_network[3]))
+		network.append(self.IntToDottedIP(in_network[4]))
+		network.append(in_network[1])
+		network.append(in_network[0])
+	    
+		#print 'Local Address: %s:%d, Foreign Address: %s:%d, flag:%x'%(self.IntToDottedIP(in_network[3]), in_network[1], self.IntToDottedIP(in_network[4]), in_network[0], in_network[2])
+		network_list.append(network)
         return network_list
 
     # 2011.08.30 test code(plist chain)
@@ -503,49 +844,83 @@ class volafox():
         if not(net_pae.is_valid_address(sym_addr)):
             return
 
-        #print 'Real Address (inpcbinfo): %x'%net_pae.vtop(sym_addr)
-        inpcbinfo_t = net_pae.read(sym_addr, 40)
-        inpcbinfo = struct.unpack('=IIIIII12xI', inpcbinfo_t)
-
-        if not(net_pae.is_valid_address(inpcbinfo[5])):
-            return
-
-        #print 'Real Address (inpcbinfo): %x'%net_pae.vtop(inpcbinfo[5])
-
-        temp_ptr = inpcbinfo[5] # base address
-        #list_t = net_pae.read(inpcbinfo[5], 4)
-        #temp_ptr = struct.unpack('=I', list_t)
-
-        print 'Real Address (inpcbinfo): %x'%net_pae.vtop(temp_ptr)
-        
-        while net_pae.is_valid_address(temp_ptr):
-            
-	    #print 'Real Address (inpcb): %x'%net_pae.vtop(inpcb[0])
-            inpcb = net_pae.read(temp_ptr+16, 112)
-            in_network = struct.unpack('>HHI44xI36xI12xI', inpcb) # fport, lport, flag, fhost, lhost
-            
-            network = []
-	    network.append(in_network[3])
-            network.append(self.IntToDottedIP(in_network[4]))
-            network.append(self.IntToDottedIP(in_network[5]))
-            network.append(in_network[1])
-            network.append(in_network[0])
-        
-            #print 'Local Address: %s:%d, Foreign Address: %s:%d, flag:%x'%(self.IntToDottedIP(in_network[3]), in_network[1], self.IntToDottedIP(in_network[4]), in_network[0], in_network[2])
-            network_list.append(network)
-
-            temp_ptr = in_network[2]
+	if self.arch == 32:
+	    #print 'Real Address (inpcbinfo): %x'%net_pae.vtop(sym_addr)
+	    inpcbinfo_t = net_pae.read(sym_addr, 40)
+	    inpcbinfo = struct.unpack('=IIIIII12xI', inpcbinfo_t)
+    
+	    if not(net_pae.is_valid_address(inpcbinfo[5])):
+		return
+    
+	    #print 'Real Address (inpcbinfo): %x'%net_pae.vtop(inpcbinfo[5])
+    
+	    temp_ptr = inpcbinfo[5] # base address
+	    #list_t = net_pae.read(inpcbinfo[5], 4)
+	    #temp_ptr = struct.unpack('=I', list_t)
+    
+	    #print 'Real Address (inpcbinfo): %x'%net_pae.vtop(temp_ptr)
+	    
+	    while net_pae.is_valid_address(temp_ptr):
+		
+		#print 'Real Address (inpcb): %x'%net_pae.vtop(inpcb[0])
+		inpcb = net_pae.read(temp_ptr+16, 112)
+		in_network = struct.unpack('>HHI44xI36xI12xI', inpcb) # fport, lport, flag, fhost, lhost
+		
+		network = []
+		network.append(in_network[3])
+		network.append(self.IntToDottedIP(in_network[4]))
+		network.append(self.IntToDottedIP(in_network[5]))
+		network.append(in_network[1])
+		network.append(in_network[0])
+	    
+		#print 'Local Address: %s:%d, Foreign Address: %s:%d, flag:%x'%(self.IntToDottedIP(in_network[3]), in_network[1], self.IntToDottedIP(in_network[4]), in_network[0], in_network[2])
+		network_list.append(network)
+    
+		temp_ptr = in_network[2]
+	else:
+	    #print 'Real Address (inpcbinfo): %x'%net_pae.vtop(sym_addr)
+	    inpcbinfo_t = net_pae.read(sym_addr, 72)
+	    inpcbinfo = struct.unpack('=QQQQQQ16xQ', inpcbinfo_t)
+    
+	    if not(net_pae.is_valid_address(inpcbinfo[5])):
+		return
+    
+	    #print 'Real Address (inpcbinfo): %x'%net_pae.vtop(inpcbinfo[5])
+    
+	    temp_ptr = inpcbinfo[5] # base address
+	    #list_t = net_pae.read(inpcbinfo[5], 4)
+	    #temp_ptr = struct.unpack('=I', list_t)
+    
+	    #print 'Real Address (inpcbinfo): %x'%net_pae.vtop(temp_ptr)
+	    
+	    while net_pae.is_valid_address(temp_ptr):
+		
+		#print 'Real Address (inpcb): %x'%net_pae.vtop(inpcb[0])
+		inpcb = net_pae.read(temp_ptr+24, 160)
+		in_network = struct.unpack('>HHI80xQ36xI20xI', inpcb) # fport, lport, flag, fhost, lhost
+		
+		network = []
+		network.append(in_network[3])
+		network.append(self.IntToDottedIP(in_network[4]))
+		network.append(self.IntToDottedIP(in_network[5]))
+		network.append(in_network[1])
+		network.append(in_network[0])
+	    
+		#print 'Local Address: %s:%d, Foreign Address: %s:%d, flag:%x'%(self.IntToDottedIP(in_network[3]), in_network[1], self.IntToDottedIP(in_network[4]), in_network[0], in_network[2])
+		network_list.append(network)
+    
+		temp_ptr = in_network[2]
             
         return network_list
 
 def usage():
-    print 'volafox(Memory analyzer for OS X) 0.7 alpha1'
+    print 'volafox(Memory analyzer for OS X) 0.7 beta1'
     print 'Contact: rapfer@gmail.com or n0fate@live.com'
-    print 'usage: python %s -i MEMORY_IMAGE -s OVERLAY -[o INFORMATION][-m KEXT ID][-x PID]\n'%sys.argv[0]
+    print 'usage: python %s -i MEMORY_IMAGE -s OVERLAY  -t ARCHITECTURE(32/64) -[o INFORMATION][-m KEXT ID][-x PID]\n'%sys.argv[0]
     print '-= CAUTION =-'
     print 'this program needs to physical memory image(linear format), overlay information(symbol list in kernel image)'
-    print 'and it supports to Intel x86 Architecture only :(\n'
-    print 'Currently tested OS: Snow Leopard(10.6.x), Lion(10.7.x)\n'
+    print 'Supported OS: Snow Leopard(10.6.x), Lion(10.7.x)\n'
+    print 'Supported Architecture: Intel 32bit & 64bit\n'
     print 'Option:'
     print '-o\t: Gathering information using symbol'
     print '-m\t: Dump module using module id'
@@ -558,8 +933,8 @@ def usage():
     print 'kext_info\t KEXT(Kernel Extensions) information'
     print 'proc_info\t Process list'
     print 'syscall_info\t Kernel systemcall information'
-    print 'net_info\t network information(hash) - test'
-    print 'net_info_test\t network information(plist) - test'
+    print 'net_info\t network information(hash)'
+    print 'net_info_test\t network information(plist), (experiment)'
 
 def main():
     file_image = ''
@@ -568,9 +943,11 @@ def main():
     vflag = 0
     dflag = 0
     mflag = 0
+    tflag = 0 # architecture
+    arch_num = 0
 
     try:
-        option, args = getopt.getopt(sys.argv[1:], 'o:i:s:x:v:m:')
+        option, args = getopt.getopt(sys.argv[1:], 'o:i:s:x:v:m:t:')
 
     except getopt.GetoptError, err:
         print str(err)
@@ -603,28 +980,39 @@ def main():
             print 'Dump KEXT: %s'%p
             kext_num = int(p, 10)
             mflag = 1
+
+        elif op =='-t':
+            print 'Target Architecture: %s bits'%p
+            arch_num = int(p, 10)
+            tflag = 1
            
         else:
             print 'Command error:', op
             usage()
             sys.exit()
 
-    if file_image == "" and mempath == "" and ( oflag == 0 or dflag == 0 or mflag == 0):
+    if file_image == "" and mempath == "" and ( oflag == 0 or dflag == 0 or mflag == 0 or tflag == 0):
         usage()
         sys.exit()
-
-    #macho = macho_an.macho_an(file_image)
-    #arch_count = macho.load()
-    #header = macho.get_header(arch_count, macho.ARCH_I386) # only support Intel x86
-    #symbol_list = macho.macho_getsymbol_x86(header[2], header[3])
 
     # Auto switching code for using overlays or original mach-o files.  We should autopickle
     # using the original file.
     if is_universal_binary(file_image):
         macho_file = macho_an.macho_an(file_image)
         arch_count = macho_file.load()
-        header = macho_file.get_header(arch_count, macho_file.ARCH_I386) # only support Intel x86
-        symbol_list = macho_file.macho_getsymbol_x86(header[2], header[3])
+
+        ## 11.11.22 n0fate
+        if arch_num is not 32 and arch_num is not 64:
+            macho_file.close()
+            sys.exit()
+        elif arch_num is 32:
+            header = macho_file.get_header(arch_count, macho_file.ARCH_I386)
+            symbol_list = macho_file.macho_getsymbol_x86(header[2], header[3])
+            macho_file.close()
+        elif arch_num is 64:
+            header = macho_file.get_header(arch_count, macho_file.ARCH_X86_64)
+            symbol_list = macho_file.macho_getsymbol_x64(header[2], header[3])
+            macho_file.close()
     else:
         #Added by CL
         f = open(file_image, 'rb')
@@ -632,8 +1020,12 @@ def main():
         f.close()
 
     m_volafox = volafox(symbol_list['_IdlePDPT'], symbol_list['_IdlePML4'], mempath)
+    archRet = m_volafox.set_architecture(arch_num)
+    if archRet == 1:
+        print 'Invalied Architecture Information'
+        sys.exit()
+        
     nRet = m_volafox.init_vatopa_x86_pae()
-
     if nRet == 1:
         print 'Memory Image Load Failed'
         sys.exit()
@@ -696,7 +1088,6 @@ def main():
         sys.stdout.write('%.8x'%data[11])
         sys.exit()
 
-    # 0x0083e5c8 kernel extensions
     elif oflag == 'kext_info':
         data_list = m_volafox.kext_info(symbol_list['_kmod'])
         print '\n-= Kernel Extentions(Kext) =-'
@@ -726,7 +1117,7 @@ def main():
         sys.stdout.write('\n')
         for data in data_list:
             sys.stdout.write('%.8x\t'%data[0])
-            sys.stdout.write('%s\t'%data[1]) # char[16]
+            sys.stdout.write('%s\t'%data[1].strip('\x00')) # char[16]
             sys.stdout.write('%s\t'%data[2].strip('\x00')) # char[1024]
             sys.stdout.write('%s'%data[3].strip('\x00')) # char[1024]
             sys.stdout.write('\n')
