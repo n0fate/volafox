@@ -230,7 +230,7 @@ class volafox():
 		    if self.os_version >= 11: # Lion >
 			proclist = self.x86_mem_pae.read(data[0], 752+24);
 			data = struct.unpack('=8xQQQQI668xI52sQ', proclist)
-			print data[6]
+			#print data[6]
 		    else: # Leopard or Snow Leopard # 11.11.23 Test
 			proclist = self.x86_mem_pae.read(data[0], 760);
 			data = struct.unpack('8xQQQQI652xI52sQ', proclist)
@@ -291,9 +291,9 @@ class volafox():
 		    sys.stdout.write('%.8x\t'%data[0]) # int
 		    sys.stdout.write('%d\t'%data[1]) # int
 		    sys.stdout.write('%d\t'%data[4]) # int
-		    sys.stdout.write('%s\t'%data[6].replace('\x00',''))
+		    sys.stdout.write('%s\t'%data[6].split('\x00', 1)[0])
 		   
-		    process_name = data[6].replace('\x00','')
+		    process_name = data[6].split('\x00', 1)[0]
 		   
 		    pgrp_t = self.x86_mem_pae.read(data[7], 16); # pgrp structure
 		    m_pgrp = struct.unpack('IIII', pgrp_t)
@@ -350,26 +350,57 @@ class volafox():
 		    #print 'next: %x'%self.x86_mem_pae.vtop(vm_struct[1])
 		    print ' [-] Virtual Address Start Point: 0x%x'%vm_struct[2]
 		    print ' [-] Virtual Address End Point: 0x%x'%vm_struct[3]
-		    #print 'neutries: %x'%vm_struct[4] # number of entries
+		    print ' [-] Number of Entries: %d'%vm_struct[4] # number of entries
 		    #print 'entries_pageable: %x'%vm_struct[5]
 		    #print 'pmap_t: %x'%self.x86_mem_pae.vtop(vm_struct[6])
 		    #print 'Virtual size: %x\n'%vm_struct[7]
     
 		    vm_list = []
-    
+                    print '[+] Generating Process Virtual Memory Maps'
 		    entry_next_ptr = vm_struct[1]
 		    for data in range(0, vm_struct[4]): # number of entries
-			vm_list_ptr = self.x86_mem_pae.read(entry_next_ptr, 24)
-			vme_list = struct.unpack('=IIQQ', vm_list_ptr)
+			vm_list_ptr = self.x86_mem_pae.read(entry_next_ptr, 40)
+			vme_list = struct.unpack('=IIQQ12xI', vm_list_ptr)
 			# *prev, *next, start, end
 			vm_temp_list = []
 			vm_temp_list.append(vme_list[2]) # start
 			vm_temp_list.append(vme_list[3]) # end
-		       
+
+			# get permission at virtual memory ('rwx')
+			permission = ''
+			perm = lambda n: n>0 and [n&1]+perm(n>>1) or [0]
+			permission_i = perm(((vme_list[4]) >> 7 )& 0x003f)
+			if (permission_i[0] == 1 ):
+                            permission += 'r' # Protection
+                        else:
+                            permission += '-'
+			if (permission_i[1] == 1 ):
+                            permission += 'w' # Protection
+                        else:
+                            permission += '-'
+			if (permission_i[2] == 1 ):
+                            permission += 'x' # Protection
+                        else:
+                            permission += '-'
+##			if (permission_i[3] == 1 ):
+##                            permission += 'R' # Max Protection
+##                        else:
+##                            permission += '-'
+##			if (permission_i[4] == 1 ):
+##                            permission += 'W' # Max Protection
+##                        else:
+##                            permission += '-'
+##			if (permission_i[5] == 1 ):
+##                            permission += 'X' # Max Protection
+##                        else:
+##                            permission += '-'
+			##########################################
+			
 			vm_list.append(vm_temp_list)
-			#print 'prev: %x, next: %x, start:%x, end:%x'%(vme_list[0], vme_list[1], vme_list[2], vme_list[3])
+			print ' [-] VM_ADDR:%x-%x, PERMISSION: %s'%(vme_list[2], vme_list[3], permission)
+			#print 'next[data]: %x'%self.x86_mem_pae.vtop(vme_list[1])
 			entry_next_ptr = vme_list[1]
-       
+                        
 		    if vm_struct[6] == 0: # pmap_t
 			exit(1)
        
@@ -413,7 +444,7 @@ class volafox():
     
 		    
 		    proc_pae = 0
-		    print ' [-] Resetting the Page Mapping Table: 0x%x'%pm_cr3
+		    print '[+] Resetting the Page Mapping Table: 0x%x'%pm_cr3
 		    #if pmap_struct[5] == 0: # 32bit process
 		    #    proc_pae = IA32PagedMemoryPae(FileAddressSpace(self.mempath), pm_cr3)
 		    #else: # 64bit process Page Table module(ia32_pml4.py)
@@ -429,7 +460,7 @@ class volafox():
 			#print vme_info[0]
 			#print vme_info[1]
 			
-			nop_code = 0x90 # 11.10.11 n0fate test
+			nop_code = 0x00 # 11.10.11 n0fate test
 			pk_nop_code = struct.pack('=B', nop_code) # 11.10.11 n0fate test
 			nop = pk_nop_code*0x1000
 			
@@ -483,9 +514,9 @@ class volafox():
 		    sys.stdout.write('%.8x\t'%data[0]) # int
 		    sys.stdout.write('%d\t'%data[1]) # int
 		    sys.stdout.write('%d\t'%data[4]) # int
-		    sys.stdout.write('%s\t'%data[6].replace('\x00',''))
+		    sys.stdout.write('%s\t'%data[6].split('\x00', 1)[0])
 		   
-		    process_name = data[6].replace('\x00','')
+		    process_name = data[6].split('\x00', 1)[0]
 		   
 		    pgrp_t = self.x86_mem_pae.read(data[7], 32); # pgrp structure
 		    m_pgrp = struct.unpack('=QQQQ', pgrp_t)
@@ -542,7 +573,7 @@ class volafox():
 		    #print 'next: %x'%self.x86_mem_pae.vtop(vm_struct[1])
 		    print ' [-] Virtual Address Start Point: 0x%x'%vm_struct[2]
 		    print ' [-] Virtual Address End Point: 0x%x'%vm_struct[3]
-		    #print 'neutries: %x'%vm_struct[4] # number of entries
+		    print ' [-] Number of Entries: %x'%vm_struct[4] # number of entries
 		    #print 'entries_pageable: %x'%vm_struct[5]
 		    #print 'pmap_t: %x'%self.x86_mem_pae.vtop(vm_struct[6])
 		    #print 'Virtual size: %x\n'%vm_struct[7]
@@ -551,14 +582,52 @@ class volafox():
     
 		    entry_next_ptr = vm_struct[1]
 		    for data in range(0, vm_struct[4]): # number of entries
-			vm_list_ptr = self.x86_mem_pae.read(entry_next_ptr, 32)
-			vme_list = struct.unpack('=QQQQ', vm_list_ptr)
+			vm_list_ptr = self.x86_mem_pae.read(entry_next_ptr, 80)
+			vme_list = struct.unpack('=QQQQ40xQ', vm_list_ptr)
 			# *prev, *next, start, end
 			vm_temp_list = []
 			vm_temp_list.append(vme_list[2]) # start
 			vm_temp_list.append(vme_list[3]) # end
-		       
+
 			vm_list.append(vm_temp_list)
+			# get permission at virtual memory ('rwx')
+			permission = ''
+			perm_list = []
+			perm = ((vme_list[4]) >> 7 )& 0x003f
+			count = 6
+			while count >= 0:
+                            perm_list.append(perm&1)
+                            perm = perm >> 1
+                            count = count - 1
+                            
+			if (perm_list[0] == 1 ):
+                            permission += 'r' # Protection
+                        else:
+                            permission += '-'
+			if (perm_list[1] == 1 ):
+                            permission += 'w' # Protection
+                        else:
+                            permission += '-'
+			if (perm_list[2] == 1 ):
+                            permission += 'x' # Protection
+                        else:
+                            permission += '-'
+##			if (perm_list[3] == 1 ):
+##                            permission += 'R' # Max Protection
+##                        else:
+##                            permission += '-'
+##			if (perm_list[4] == 1 ):
+##                            permission += 'W' # Max Protection
+##                        else:
+##                            permission += '-'
+##			if (perm_list[5] == 1 ):
+##                            permission += 'X' # Max Protection
+##                        else:
+##                            permission += '-'
+			##########################################
+			
+			vm_list.append(vm_temp_list)
+			print ' [-] VM_ADDR:%x-%x, PERMISSION: %s'%(vme_list[2], vme_list[3], permission)
 			#print 'prev: %x, next: %x, start:%x, end:%x'%(vme_list[0], vme_list[1], vme_list[2], vme_list[3])
 			entry_next_ptr = vme_list[1]
        
@@ -605,7 +674,7 @@ class volafox():
     
 		    
 		    proc_pae = 0
-		    print ' [-] Resetting the Page Mapping Table: 0x%x'%pm_cr3
+		    print '[+] Resetting the Page Mapping Table: 0x%x'%pm_cr3
 		    #if pmap_struct[5] == 0: # 32bit process
 		    #    proc_pae = IA32PagedMemoryPae(FileAddressSpace(self.mempath), pm_cr3)
 		    #else: # 64bit process Page Table module(ia32_pml4.py)
