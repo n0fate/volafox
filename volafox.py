@@ -1047,11 +1047,11 @@ class volafox():
         return network_list
 
 def usage():
-    print 'volafox(Memory analyzer for OS X) 0.7 beta1'
-    print 'Contact: rapfer@gmail.com or n0fate@live.com'
-    print 'usage: python %s -i MEMORY_IMAGE -[o INFORMATION][-m KEXT ID][-x PID]\n'%sys.argv[0]
+    print 'volafox(Memory analyzer for OS X) 0.7 alpha1'
+    print 'Contact: rapfer@gmail.com / n0fate@live.com'
+    print 'usage: python %s -i MEMORY_IMAGE [-o INFORMATION][-m KEXT ID][-x PID]\n'%sys.argv[0]
     print '-= CAUTION =-'
-    print 'this program needs to physical memory image(linear format), overlay information(symbol list in kernel image)'
+    print 'Requrements: Physical memory image(linear format), overlay data(symbol list)'
     print 'Supported OS: Snow Leopard(10.6.x), Lion(10.7.x)\n'
     print 'Supported Architecture: Intel 32bit & 64bit\n'
     print 'Option:'
