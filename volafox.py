@@ -50,12 +50,72 @@ from macho import MachoAddressSpace, isMachoVolafoxCompatible, is_universal_bina
 #
 ###############################################################################
 class volafox():
-    def __init__(self, pdpt, pml4, mempath):
-        self.idlepdpt = pdpt
-        self.idlepml4 = pml4 ### 11.09.28 n0fate
+    def __init__(self, mempath):
+##        self.idlepdpt = pdpt
+##        self.idlepml4 = pml4 ### 11.09.28 n0fate
         self.mempath = mempath
         self.arch = 32 # architecture default is 32bit
         self.data_list = []
+
+        self.kern_version = ''
+
+        self.valid_format = 0 # invalid
+
+    def get_kernel_version(self): # return (valid format(bool), architecture(int), Kernel Version(str))
+        f = self.mempath
+	returnResult = imageInfo(f)
+	difference, build, sixtyfourbit = returnResult.catfishSearch(f)
+	print '[+] Get Memory Image Information'
+	print " [-] Difference(Catfish Signature):", difference # Catfish offset
+        if bool(difference):
+            print ' [-] Maybe Mac Memory Reader Format'
+            self.valid_format = 0
+        else:
+            print ' [-] Valid Mac Linear File Format'
+            self.valid_format = 1
+	
+	if bool(sixtyfourbit):
+		print " [-] 64-bit memory image"
+		self.arch = 64
+	else:
+                print " [-] 32-bit memory image"
+                self.arch = 32
+	
+	if build == '10A432':
+		print ' [-] XNU Kernel Version: 10.6.0'
+		self.kern_version = '10.6.0'
+	elif build == '10D573' or build == '10D578' or build == '10D572':
+		print ' [-] XNU Kernel Version: 10.6.3'
+		self.kern_version = '10.6.3'
+	elif build == '10F659' or build == '10F616':
+		print ' [-] XNU Kernel Version: 10.6.4'
+		self.kern_version = '10.6.4'
+	elif build == '10H574' or build == '10H575':
+		print ' [-] XNU Kernel Version: 10.6.5'
+		self.kern_version = '10.6.5'
+	elif build == '10J567':
+		print ' [-] XNU Kernel Version: 10.6.6'
+		self.kern_version = '10.6.6'
+	elif build == '10J869' or build == '10J3250':
+		print ' [-] XNU Kernel Version: 10.6.7'
+		self.kern_version = '10.6.7'
+	elif build == '10K540' or build ==  '10K549':
+		print ' [-] XNU Kernel Version: 10.6.8'
+		self.kern_version = '10.6.8'
+	elif build == '11A511':
+                print ' [-] XNU Kernel Version: 10.7.0'
+                self.kern_version = '10.7.0'
+        elif build == '11B26':
+                print ' [-] XNU Kernel Version: 10.7.1'
+                self.kern_version = '10.7.1'
+	elif build == 'Darwin ':
+		print ' [-] Wrong Catfish symbol. Memory capture incomplete?'
+		self.kern_version = 'Darwin'
+	else:
+		print ' [-] Suggested profile not found'
+		self.kern_version = 'NotFound'
+
+	return self.valid_format, self.arch, self.kern_version
 
     def set_architecture(self, arch_num):
         if (arch_num is not 32) and (arch_num is not 64):
@@ -64,9 +124,13 @@ class volafox():
             self.arch = arch_num
             return 0
     
-    def init_vatopa_x86_pae(self): # 11.11.23 64bit suppport
-        if self.mempath == '' or self.idlepdpt == 0:
+    def init_vatopa_x86_pae(self, pdpt, pml4): # 11.11.23 64bit suppport
+        if self.mempath == '':
             return 1
+
+        self.idlepdpt = pdpt
+        self.idlepml4 = pml4
+        
         if self.arch is 32:
             if isMachoVolafoxCompatible(self.mempath):
                 self.x86_mem_pae = IA32PagedMemoryPae(MachoAddressSpace(self.mempath), self.idlepdpt)
@@ -88,14 +152,6 @@ class volafox():
     	wake_time = self.x86_mem_pae.read(sym_addr, 4);
     	data = struct.unpack('i', wake_time)
     	return data   
-
-### 11.09.28 test start n0fate
-    def test(self):
-        self.pml_mem_pae = IA32PML4MemoryPae(FileAddressSpace(self.mempath), self.idlepml4)
-        print '32bit: %x\n'%self.pml_mem_pae.vtop(0xffffff8000100000)
-        print '64bit: %x\n'%self.x86_mem_pae.vtop(0x4a8ec20)
-        return
-### 11.09.28 test end n0fate
 
     def os_info(self, sym_addr): # 11.11.23 64bit suppport
         os_version = self.x86_mem_pae.read(sym_addr, 10) # __DATA.__common _osversion
@@ -151,12 +207,25 @@ class volafox():
         if not(self.x86_mem_pae.is_valid_address(offset)):
             print 'Invalid Offset'
             return
-        print 'dump file name: %s-%x-%x'%(kext_name, offset, offset+size)
+        print '[DUMP] FILENAME: %s-%x-%x'%(kext_name, offset, offset+size)
+
+	padding_code = 0x00
+	pk_padding = struct.pack('=B', padding_code)
+	padding = pk_padding*0x1000
+
+
 	file = open('%s-%x-%x'%(kext_name, offset, offset+size), 'wb')
-        data = self.x86_mem_pae.read(offset, size);
-        file.write(data)
+	for kext_offset in range(offset, offset+size, 0x1000):
+            if not(self.x86_mem_pae.is_valid_address(kext_offset)):
+                file.write(padding)
+                continue
+            data = self.x86_mem_pae.read(kext_offset, 0x1000)
+            if data is None:
+                file.write(padding)
+                continue
+            file.write(data)
 	file.close()
-	print 'module dump complete'
+	print '[DUMP] Complete.'
 	return
     
     def mount_info(self, sym_addr): # 11.11.23 64bit suppport(Lion)
@@ -365,39 +434,46 @@ class volafox():
 			vm_temp_list = []
 			vm_temp_list.append(vme_list[2]) # start
 			vm_temp_list.append(vme_list[3]) # end
-
+			vm_list.append(vm_temp_list)
 			# get permission at virtual memory ('rwx')
 			permission = ''
-			perm = lambda n: n>0 and [n&1]+perm(n>>1) or [0]
-			permission_i = perm(((vme_list[4]) >> 7 )& 0x003f)
-			if (permission_i[0] == 1 ):
+			max_permission = ''
+			
+			perm_list = []
+			perm = ((vme_list[4]) >> 7 )& 0x003f
+			count = 6
+			while count >= 0:
+                            perm_list.append(perm&1)
+                            perm = perm >> 1
+                            count = count - 1
+                            
+			if (perm_list[0] == 1 ):
                             permission += 'r' # Protection
                         else:
                             permission += '-'
-			if (permission_i[1] == 1 ):
+			if (perm_list[1] == 1 ):
                             permission += 'w' # Protection
                         else:
                             permission += '-'
-			if (permission_i[2] == 1 ):
+			if (perm_list[2] == 1 ):
                             permission += 'x' # Protection
                         else:
                             permission += '-'
-##			if (permission_i[3] == 1 ):
-##                            permission += 'R' # Max Protection
-##                        else:
-##                            permission += '-'
-##			if (permission_i[4] == 1 ):
-##                            permission += 'W' # Max Protection
-##                        else:
-##                            permission += '-'
-##			if (permission_i[5] == 1 ):
-##                            permission += 'X' # Max Protection
-##                        else:
-##                            permission += '-'
+			if (perm_list[3] == 1 ):
+                            max_permission += 'R' # Max Protection
+                        else:
+                            max_permission += '-'
+			if (perm_list[4] == 1 ):
+                            max_permission += 'W' # Max Protection
+                        else:
+                            max_permission += '-'
+			if (perm_list[5] == 1 ):
+                            max_permission += 'X' # Max Protection
+                        else:
+                            max_permission += '-'
 			##########################################
 			
-			vm_list.append(vm_temp_list)
-			print ' [-] VM_ADDR:%x-%x, PERMISSION: %s'%(vme_list[2], vme_list[3], permission)
+			print ' [-] VM_ADDR:%x-%x (%s;%s)'%(vme_list[2], vme_list[3], permission, max_permission)
 			#print 'next[data]: %x'%self.x86_mem_pae.vtop(vme_list[1])
 			entry_next_ptr = vme_list[1]
                         
@@ -592,6 +668,7 @@ class volafox():
 			vm_list.append(vm_temp_list)
 			# get permission at virtual memory ('rwx')
 			permission = ''
+			max_permission = ''
 			perm_list = []
 			perm = ((vme_list[4]) >> 7 )& 0x003f
 			count = 6
@@ -612,22 +689,21 @@ class volafox():
                             permission += 'x' # Protection
                         else:
                             permission += '-'
-##			if (perm_list[3] == 1 ):
-##                            permission += 'R' # Max Protection
-##                        else:
-##                            permission += '-'
-##			if (perm_list[4] == 1 ):
-##                            permission += 'W' # Max Protection
-##                        else:
-##                            permission += '-'
-##			if (perm_list[5] == 1 ):
-##                            permission += 'X' # Max Protection
-##                        else:
-##                            permission += '-'
+			if (perm_list[3] == 1 ):
+                            max_permission += 'R' # Max Protection
+                        else:
+                            max_permission += '-'
+			if (perm_list[4] == 1 ):
+                            max_permission += 'W' # Max Protection
+                        else:
+                            max_permission += '-'
+			if (perm_list[5] == 1 ):
+                            max_permission += 'X' # Max Protection
+                        else:
+                            max_permission += '-'
 			##########################################
 			
-			vm_list.append(vm_temp_list)
-			print ' [-] VM_ADDR:%x-%x, PERMISSION: %s'%(vme_list[2], vme_list[3], permission)
+			print ' [-] VM_ADDR:%x-%x (%s;%s)'%(vme_list[2], vme_list[3], permission, max_permission)
 			#print 'prev: %x, next: %x, start:%x, end:%x'%(vme_list[0], vme_list[1], vme_list[2], vme_list[3])
 			entry_next_ptr = vme_list[1]
        
@@ -687,31 +763,29 @@ class volafox():
 		    
 		    print '[+] Process Dump Start'
 		    for vme_info in  vm_list:
-			#print vme_info[0]
-			#print vme_info[1]
 			
-			nop_code = 0x00 # 11.10.11 n0fate test
-			pk_nop_code = struct.pack('=B', nop_code) # 11.10.11 n0fate test
-			nop = pk_nop_code*0x1000
+			zero_code = 0x00 # 11.10.11 n0fate test
+			pk_zero_code = struct.pack('=B', zero_code) # 11.10.11 n0fate test
+			zero = pk_zero_code*0x1000
 			
 			file = open('%s-%x-%x'%(process_name, vme_info[0], vme_info[1]), mode="wb")
 			
-			nop_flag = 0 # 11.10.11 n0fate test
+			zero_flag = 0 # 11.10.11 n0fate test
 			for i in range(vme_info[0], vme_info[1], 0x1000):
 			    raw_data = 0x00
 			    if not(proc_pae.is_valid_address(i)):
-				if nop_flag == 1:
-				    raw_data = nop
+				if zero_flag == 1:
+				    raw_data = zero
 				    file.write(raw_data)
 				continue
 			    raw_data = proc_pae.read(i, 0x1000)
 			    if raw_data is None:
-				if nop_flag == 1:
-				    raw_data = nop
+				if zero_flag == 1:
+				    raw_data = zero
 				    file.write(raw_data)
 				continue
 			    file.write(raw_data)
-			    nop_flag = 1
+			    zero_flag = 1
 			file.close()
 			size = os.path.getsize('%s-%x-%x'%(process_name, vme_info[0], vme_info[1]))
 			if size == 0:
@@ -985,7 +1059,7 @@ class volafox():
 def usage():
     print 'volafox(Memory analyzer for OS X) 0.7 beta1'
     print 'Contact: rapfer@gmail.com or n0fate@live.com'
-    print 'usage: python %s -i MEMORY_IMAGE -s OVERLAY  -t ARCHITECTURE(32/64) -[o INFORMATION][-m KEXT ID][-x PID]\n'%sys.argv[0]
+    print 'usage: python %s -i MEMORY_IMAGE -[o INFORMATION][-m KEXT ID][-x PID]\n'%sys.argv[0]
     print '-= CAUTION =-'
     print 'this program needs to physical memory image(linear format), overlay information(symbol list in kernel image)'
     print 'Supported OS: Snow Leopard(10.6.x), Lion(10.7.x)\n'
@@ -1006,17 +1080,15 @@ def usage():
     print 'net_info_test\t network information(plist), (experiment)'
 
 def main():
-    file_image = ''
     mempath = ''
     oflag = ''
     vflag = 0
     dflag = 0
     mflag = 0
-    tflag = 0 # architecture
     arch_num = 0
 
     try:
-        option, args = getopt.getopt(sys.argv[1:], 'o:i:s:x:v:m:t:')
+        option, args = getopt.getopt(sys.argv[1:], 'o:i:x:v:m:')
 
     except getopt.GetoptError, err:
         print str(err)
@@ -1025,78 +1097,100 @@ def main():
 
     for op, p, in option:
         if op in '-o':  # data type
-            print 'Information:', p
+            print '[+] Information:', p
             oflag = p
 
         elif op in '-i': # physical memory image file
-            print 'Memory Image:', p
+            print '[+] Memory Image:', p
             mempath = p
-
-        elif op == '-s': # physical memory image file
-            print 'Kernel Image:', p
-            file_image = p
 
         elif op == '-v': # verbose
             #print 'Verbose:', p
             vflag = 1 # true
        
         elif op =='-x':
-            print 'Dump PID: %s'%p
+            print '[+] Dump PID: %s'%p
             pid = int(p, 10)
             dflag = 1
         
         elif op =='-m':
-            print 'Dump KEXT: %s'%p
+            print '[+] Dump KEXT: %s'%p
             kext_num = int(p, 10)
             mflag = 1
-
-        elif op =='-t':
-            print 'Target Architecture: %s bits'%p
-            arch_num = int(p, 10)
-            tflag = 1
            
         else:
-            print 'Command error:', op
+            print '[+] Command error:', op
             usage()
             sys.exit()
 
-    if file_image == "" and mempath == "" and ( oflag == 0 or dflag == 0 or mflag == 0 or tflag == 0):
+    if mempath == "" and ( oflag == 0 or dflag == 0 or mflag == 0):
         usage()
         sys.exit()
 
     # Auto switching code for using overlays or original mach-o files.  We should autopickle
     # using the original file.
-    if is_universal_binary(file_image):
-        macho_file = macho_an.macho_an(file_image)
-        arch_count = macho_file.load()
+##    if is_universal_binary(file_image):
+##        macho_file = macho_an.macho_an(file_image)
+##        arch_count = macho_file.load()
+##
+##        ## 11.11.22 n0fate
+##        if arch_num is not 32 and arch_num is not 64:
+##            macho_file.close()
+##            sys.exit()
+##        elif arch_num is 32:
+##            header = macho_file.get_header(arch_count, macho_file.ARCH_I386)
+##            symbol_list = macho_file.macho_getsymbol_x86(header[2], header[3])
+##            macho_file.close()
+##        elif arch_num is 64:
+##            header = macho_file.get_header(arch_count, macho_file.ARCH_X86_64)
+##            symbol_list = macho_file.macho_getsymbol_x64(header[2], header[3])
+##            macho_file.close()
+##    else:
+##        #Added by CL
+##        f = open(file_image, 'rb')
+##        symbol_list = pickle.load(f)
+##        f.close()
+##
+    m_volafox = volafox(mempath)
 
-        ## 11.11.22 n0fate
-        if arch_num is not 32 and arch_num is not 64:
-            macho_file.close()
-            sys.exit()
-        elif arch_num is 32:
-            header = macho_file.get_header(arch_count, macho_file.ARCH_I386)
-            symbol_list = macho_file.macho_getsymbol_x86(header[2], header[3])
-            macho_file.close()
-        elif arch_num is 64:
-            header = macho_file.get_header(arch_count, macho_file.ARCH_X86_64)
-            symbol_list = macho_file.macho_getsymbol_x64(header[2], header[3])
-            macho_file.close()
-    else:
-        #Added by CL
-        f = open(file_image, 'rb')
-        symbol_list = pickle.load(f)
-        f.close()
+    ## get kernel version, architecture ##
+    init_data = m_volafox.get_kernel_version()
+    valid_format = init_data[0] # bool
+    architecture = init_data[1] # integer
+    kernel_version = init_data[2] # string
 
-    m_volafox = volafox(symbol_list['_IdlePDPT'], symbol_list['_IdlePML4'], mempath)
-    archRet = m_volafox.set_architecture(arch_num)
-    if archRet == 1:
-        print 'Invalied Architecture Information'
+    ## check to valid image format
+    if valid_format == 0:
+        print '[+] WARNING: Invalid Linear File Format'
+        print '[+] WARNING: If you have image using MMR, Converting memory image to linear file format'
         sys.exit()
-        
-    nRet = m_volafox.init_vatopa_x86_pae()
+
+    ## set architecture
+    archRet = m_volafox.set_architecture(architecture)
+    if archRet == 1:
+        print '[+] WARNING: Invalied Architecture Information'
+        sys.exit()
+
+    if kernel_version is 'Darwin' or kernel_version is 'NotFound':
+        print '[+] WARNING: Wrong Memory Image'
+        sys.exit()
+
+    ## open overlay file
+    filepath = 'overlays/%s_%d.overlay'%(kernel_version, architecture)
+
+    try:
+        overlay_file = open(filepath, 'rb')
+        symbol_list = pickle.load(overlay_file)
+        overlay_file.close()
+    except IOError:
+        print '[+] WARNING: volafox can\'t open \'%s\''%filepath
+        print '[+] WARNING: You can create overlay file running \'overlay_generator.py\''
+        sys.exit()
+
+    ## Setting Page Table Map
+    nRet = m_volafox.init_vatopa_x86_pae(symbol_list['_IdlePDPT'], symbol_list['_IdlePML4'])
     if nRet == 1:
-        print 'Memory Image Load Failed'
+        print '[+]  WARNING: Memory Image Load Failed'
         sys.exit()
 
 ### 11.09.28 start n0fate
@@ -1119,22 +1213,22 @@ def main():
 
     if oflag == 'os_version':
         data = m_volafox.os_info(symbol_list['_osversion'])
-        sys.stdout.write('Detail Darwin kernel version: %s'%data[0].strip('\x00'))
+        sys.stdout.write('[+] Detail Darwin kernel version: %s'%data[0].strip('\x00'))
         sys.stdout.write('\n')
         sys.exit()
 
     elif oflag == 'machine_info':
-        print '\n-= Mac OS X Basic Information =-'
+        print '\n[+] Mac OS X Basic Information'
         data = m_volafox.machine_info(symbol_list['_machine_info'])
-        print 'Major Version: %d'%data[0]
-        print 'Minor Version: %d'%data[1]
-        print 'Number of Physical CPUs: %d'%data[2]
-        print 'Size of memory in bytes: %d bytes'%data[3]
-        print 'Size of physical memory: %d bytes'%data[4]
-        print 'Number of physical CPUs now available: %d'%data[5]
-        print 'Max number of physical CPUs now possible: %d'%data[6]
-        print 'Number of logical CPUs now available: %d'%data[7]
-        print 'Max number of logical CPUs now possible: %d'%data[8]
+        print ' [-] Major Version: %d'%data[0]
+        print ' [-] Minor Version: %d'%data[1]
+        print ' [-] Number of Physical CPUs: %d'%data[2]
+        print ' [-] Size of memory in bytes: %d bytes'%data[3]
+        print ' [-] Size of physical memory: %d bytes'%data[4]
+        print ' [-] Number of physical CPUs now available: %d'%data[5]
+        print ' [-] Max number of physical CPUs now possible: %d'%data[6]
+        print ' [-] Number of logical CPUs now available: %d'%data[7]
+        print ' [-] Max number of logical CPUs now possible: %d'%data[8]
         sys.exit()
 
     elif oflag == 'kern_kext_info':
@@ -1182,7 +1276,7 @@ def main():
     elif oflag == 'mount_info':
         data_list = m_volafox.mount_info(symbol_list['_mountlist'])
         print '\n-= Mount List =-'
-        sys.stdout.write('list entry\tfstypename\tmount on name\tmount from name')
+        sys.stdout.write('list entry-next\tfstypename\tmount on name\tmount from name')
         sys.stdout.write('\n')
         for data in data_list:
             sys.stdout.write('%.8x\t'%data[0])
@@ -1263,8 +1357,7 @@ def main():
         sys.exit()
 
     else:
-        print '\n-o argument error: %s\n'%oflag
-        usage()
+        print '[+] WARNING: -o Argument Error\n'
         sys.exit()
 
 
