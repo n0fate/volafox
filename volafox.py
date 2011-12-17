@@ -82,39 +82,29 @@ class volafox():
                 self.arch = 32
 	
 	if build == '10A432':
-		print ' [-] XNU Kernel Version: 10.6.0'
 		self.kern_version = '10.6.0'
 	elif build == '10D573' or build == '10D578' or build == '10D572':
-		print ' [-] XNU Kernel Version: 10.6.3'
 		self.kern_version = '10.6.3'
 	elif build == '10F659' or build == '10F616':
-		print ' [-] XNU Kernel Version: 10.6.4'
 		self.kern_version = '10.6.4'
 	elif build == '10H574' or build == '10H575':
-		print ' [-] XNU Kernel Version: 10.6.5'
 		self.kern_version = '10.6.5'
 	elif build == '10J567':
-		print ' [-] XNU Kernel Version: 10.6.6'
 		self.kern_version = '10.6.6'
 	elif build == '10J869' or build == '10J3250':
-		print ' [-] XNU Kernel Version: 10.6.7'
 		self.kern_version = '10.6.7'
 	elif build == '10K540' or build ==  '10K549':
-		print ' [-] XNU Kernel Version: 10.6.8'
 		self.kern_version = '10.6.8'
 	elif build == '11A511':
-                print ' [-] XNU Kernel Version: 10.7.0'
                 self.kern_version = '10.7.0'
         elif build == '11B26':
-                print ' [-] XNU Kernel Version: 10.7.1'
                 self.kern_version = '10.7.1'
 	elif build == 'Darwin ':
-		print ' [-] Wrong Catfish symbol. Memory capture incomplete?'
+		#print ' [-] Wrong Catfish symbol. Memory capture incomplete?'
 		self.kern_version = 'Darwin'
 	else:
-		print ' [-] Suggested profile not found'
 		self.kern_version = 'NotFound'
-
+        print ' [-] Kernel Version: %s'%self.kern_version
 	return self.valid_format, self.arch, self.kern_version
 
     def set_architecture(self, arch_num):
@@ -1076,8 +1066,8 @@ def usage():
     print 'kext_info\t KEXT(Kernel Extensions) information'
     print 'proc_info\t Process list'
     print 'syscall_info\t Kernel systemcall information'
-    print 'net_info\t network information(hash)'
-    print 'net_info_test\t network information(plist), (experiment)'
+    print 'net_info\t network information(hash table)'
+#    print 'net_info_test\t network information(plist), (experiment)'
 
 def main():
     mempath = ''
