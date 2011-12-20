@@ -420,8 +420,17 @@ class volafox():
                     print '[+] Generating Process Virtual Memory Maps'
 		    entry_next_ptr = vm_struct[1]
 		    for data in range(0, vm_struct[4]): # number of entries
-			vm_list_ptr = self.x86_mem_pae.read(entry_next_ptr, 40)
-			vme_list = struct.unpack('=IIQQ12xI', vm_list_ptr)
+                        if self.os_version >= 11:
+##  212         struct vm_map_store     store;
+##  213         union vm_map_object     object;         /* object I point to */
+##  214         vm_object_offset_t      offset;         /* offset into object */
+                            vm_list_ptr = self.x86_mem_pae.read(entry_next_ptr, 52)
+                            vme_list = struct.unpack('=IIQQ24xI', vm_list_ptr)
+                        else:
+##  207         union vm_map_object     object;         /* object I point to */
+##  208         vm_object_offset_t      offset;         /* offset into object */
+                            vm_list_ptr = self.x86_mem_pae.read(entry_next_ptr, 40)
+                            vme_list = struct.unpack('=IIQQ12xI', vm_list_ptr)
 			# *prev, *next, start, end
 			vm_temp_list = []
 			vm_temp_list.append(vme_list[2]) # start
@@ -650,8 +659,12 @@ class volafox():
     
 		    entry_next_ptr = vm_struct[1]
 		    for data in range(0, vm_struct[4]): # number of entries
-			vm_list_ptr = self.x86_mem_pae.read(entry_next_ptr, 80)
-			vme_list = struct.unpack('=QQQQ40xQ', vm_list_ptr)
+                        if self.os_version >= 11:
+                            vm_list_ptr = self.x86_mem_pae.read(entry_next_ptr, 80)
+                            vme_list = struct.unpack('=QQQQ40xQ', vm_list_ptr)
+                        else:
+                            vm_list_ptr = self.x86_mem_pae.read(entry_next_ptr, 56)
+                            vme_list = struct.unpack('=QQQQ16xQ', vm_list_ptr)
 			# *prev, *next, start, end
 			vm_temp_list = []
 			vm_temp_list.append(vme_list[2]) # start
