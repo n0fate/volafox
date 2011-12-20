@@ -112,6 +112,8 @@ def main():
                 print 'Suggested profile 10.7.0'
         elif build == '11B26':
                 print 'Suggested profile 10.7.1'
+        elif build == '11C74':
+                print 'Suggested profile 10.7.2'
 	elif build == 'Darwin ':
 		print 'Wrong Catfish symbol. Memory capture incomplete?'
 	else:

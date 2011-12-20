@@ -99,6 +99,8 @@ class volafox():
                 self.kern_version = '10.7.0'
         elif build == '11B26':
                 self.kern_version = '10.7.1'
+        elif build == '11C74':
+                self.kern_version = '10.7.2'
 	elif build == 'Darwin ':
 		#print ' [-] Wrong Catfish symbol. Memory capture incomplete?'
 		self.kern_version = 'Darwin'
@@ -450,20 +452,20 @@ class volafox():
                         else:
                             permission += '-'
 			if (perm_list[3] == 1 ):
-                            max_permission += 'R' # Max Protection
+                            max_permission += 'r' # Max Protection
                         else:
                             max_permission += '-'
 			if (perm_list[4] == 1 ):
-                            max_permission += 'W' # Max Protection
+                            max_permission += 'w' # Max Protection
                         else:
                             max_permission += '-'
 			if (perm_list[5] == 1 ):
-                            max_permission += 'X' # Max Protection
+                            max_permission += 'x' # Max Protection
                         else:
                             max_permission += '-'
 			##########################################
 			
-			print ' [-] VM_ADDR:%x-%x (%s;%s)'%(vme_list[2], vme_list[3], permission, max_permission)
+			print ' [-] Region from 0x%x to 0x%x (%s, max %s;)'%(vme_list[2], vme_list[3], permission, max_permission)
 			#print 'next[data]: %x'%self.x86_mem_pae.vtop(vme_list[1])
 			entry_next_ptr = vme_list[1]
                         
@@ -680,20 +682,20 @@ class volafox():
                         else:
                             permission += '-'
 			if (perm_list[3] == 1 ):
-                            max_permission += 'R' # Max Protection
+                            max_permission += 'r' # Max Protection
                         else:
                             max_permission += '-'
 			if (perm_list[4] == 1 ):
-                            max_permission += 'W' # Max Protection
+                            max_permission += 'w' # Max Protection
                         else:
                             max_permission += '-'
 			if (perm_list[5] == 1 ):
-                            max_permission += 'X' # Max Protection
+                            max_permission += 'x' # Max Protection
                         else:
                             max_permission += '-'
 			##########################################
 			
-			print ' [-] VM_ADDR:%x-%x (%s;%s)'%(vme_list[2], vme_list[3], permission, max_permission)
+			print ' [-] Region from 0x%x to 0x%x (%s, max %s;))'%(vme_list[2], vme_list[3], permission, max_permission)
 			#print 'prev: %x, next: %x, start:%x, end:%x'%(vme_list[0], vme_list[1], vme_list[2], vme_list[3])
 			entry_next_ptr = vme_list[1]
        
