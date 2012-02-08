@@ -81,6 +81,7 @@ class volafox():
                 print " [-] 32-bit memory image"
                 self.arch = 32
 	
+	print " [-] Build Version in Memory : %s"%build
 	if build == '10A432':
 		self.kern_version = '10.6.0'
 	elif build == '10D573' or build == '10D578' or build == '10D572':
@@ -101,6 +102,8 @@ class volafox():
                 self.kern_version = '10.7.1'
         elif build == '11C74':
                 self.kern_version = '10.7.2'
+	elif build == '11D50b':
+		self.kern_version = '10.7.3'
 	elif build == 'Darwin ':
 		#print ' [-] Wrong Catfish symbol. Memory capture incomplete?'
 		self.kern_version = 'Darwin'
