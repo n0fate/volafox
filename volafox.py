@@ -1,7 +1,33 @@
+#!/usr/bin/env python						# LSOF: new path
 #!c:\python\python.exe
 # -*- coding: utf-8 -*-
 #  -*- mode: python; -*-
-#
+
+BUILD = "1.0"	# LSOF: global to track research builds
+
+'''
+ Original: https://code.google.com/p/volafox/source/browse/?r=52
+
+ Modified: student researcher, osxmem@gmail.com
+Last Edit: 22 Mar 2012
+  Changes: build submitted to volafox project for consideration
+
+_______________________SUPPORT_________________________
+      OSX: Lion (10.7.x), Snow Leopard (10.6.x)
+	 Arch: i386, x86_64
+	Image: *.vmem (VMware), *.mmr (flattened, x86 ONLY)
+  Release: r52
+
+Dependent: addrspace.py
+           ia32_pml4.py
+           imageinfo.py
+           lsof.py
+           macho_an.py
+           macho.py
+           x86.py
+           /overlays
+'''
+
 # volafox
 # Copyright by n0fate - rapfer@gmail.com, n0fate@live.com
 #
@@ -34,6 +60,9 @@ from ia32_pml4 import * # user-defined class -> n0fate
 from imageinfo import * # user defined class > CL
 import pickle # added by CL
 
+# LSOF: most research functionality consolidated here
+from lsof import getfilelist, printfilelist
+
 import os
 
 from x86 import *
@@ -61,27 +90,51 @@ class volafox():
 
         self.valid_format = 0 # invalid
 
-    def get_kernel_version(self): # return (valid format(bool), architecture(int), Kernel Version(str))
+    # LSOF: added argument for printing verbose debugging information
+    #def get_kernel_version(self): # return (valid format(bool), architecture(int), Kernel Version(str))
+    def get_kernel_version(self, vflag): # return (valid format(bool), architecture(int), Kernel Version(str))
         f = self.mempath
 	returnResult = imageInfo(f)
 	difference, build, sixtyfourbit = returnResult.catfishSearch(f)
-	print '[+] Get Memory Image Information'
-	print " [-] Difference(Catfish Signature):", difference # Catfish offset
+	
+	# LSOF: verbose support
+	if vflag:
+		print '[+] Get Memory Image Information'
+		print " [-] Difference(Catfish Signature):", difference # Catfish offset
+		
         if bool(difference):
-            print ' [-] Maybe Mac Memory Reader Format'
+        	
+            # LSOF: verbose support
+            if vflag:
+            	print ' [-] Maybe Mac Memory Reader Format'
             self.valid_format = 0
+            
         else:
-            print ' [-] Valid Mac Linear File Format'
+        
+            # LSOF: verbose support
+            if vflag:
+            	print ' [-] Valid Mac Linear File Format'
+            	
             self.valid_format = 1
 	
 	if bool(sixtyfourbit):
-		print " [-] 64-bit memory image"
-		self.arch = 64
+	    
+	    # LSOF: verbose support
+            if vflag:
+	    	print " [-] 64-bit memory image"
+	    self.arch = 64
+	    
 	else:
-                print " [-] 32-bit memory image"
-                self.arch = 32
+            
+            # LSOF: verbose support
+            if vflag:
+            	print " [-] 32-bit memory image"
+            self.arch = 32
 	
-	print " [-] Build Version in Memory : %s"%build
+	# LSOF: verbose support
+        if vflag:
+		print " [-] Build Version in Memory : %s"%build
+		
 	if build == '10A432':
 		self.kern_version = '10.6.0'
 	elif build == '10D573' or build == '10D578' or build == '10D572':
@@ -102,14 +155,25 @@ class volafox():
                 self.kern_version = '10.7.1'
         elif build == '11C74':
                 self.kern_version = '10.7.2'
-	elif build == '11D50b':
+                
+    # LSOF: fixed to work for all 10.7.3 builds (e.g. b, d)
+	elif build[:-1] == '11D50':
 		self.kern_version = '10.7.3'
+		
+	# LSOF: 10.6.0 Server support
+	elif build == '10A433':
+		self.kern_version = '10.6.0'
+	
 	elif build == 'Darwin ':
 		#print ' [-] Wrong Catfish symbol. Memory capture incomplete?'
 		self.kern_version = 'Darwin'
 	else:
 		self.kern_version = 'NotFound'
-        print ' [-] Kernel Version: %s'%self.kern_version
+		
+	# LSOF: verbose support
+        if vflag:
+        	print ' [-] Kernel Version: %s'%self.kern_version
+        	
 	return self.valid_format, self.arch, self.kern_version
 
     def set_architecture(self, arch_num):
@@ -308,6 +372,23 @@ class volafox():
 		except struct.error:
 		    break
         return proc_list
+
+    # LSOF: new lsof module (stub)
+    def lsof(self, sym_addr, pid, vflag):
+	
+		if self.arch == 32:
+		
+			# read 4 bytes from kernel executable or overlay starting at symbol _kernproc
+			kernproc = self.x86_mem_pae.read(sym_addr, 4);
+	
+			# unpack pointer to the process list, only need the first member returned
+			proc_head = struct.unpack('I', kernproc)[0]
+		
+		else: # 64-bit
+			kernproc = self.x86_mem_pae.read(sym_addr, 8);
+			proc_head = struct.unpack('Q', kernproc)[0]
+		
+		return getfilelist(self.x86_mem_pae, self.arch, self.os_version, proc_head, pid, vflag)
 
     def syscall_info(self, sym_addr): # 11.11.23 64bit suppport
         syscall_list = []
@@ -1065,71 +1146,127 @@ class volafox():
         return network_list
 
 def usage():
-    print 'volafox(Memory analyzer for OS X) 0.7 beta1'
-    print 'http://code.google.com/p/volafox\n'
-    print 'usage: python %s -i MEMORY_IMAGE [-o INFORMATION][-m KEXT ID][-x PID]\n'%sys.argv[0]
-    print '-= CAUTION =-'
-    print 'Requrements: Physical memory image(linear format), overlay data(symbol list)'
-    print 'Supported OS: Snow Leopard(10.6.x), Lion(10.7.x)\n'
-    print 'Supported Architecture: Intel 32bit & 64bit\n'
-    print 'Option:'
-    print '-o\t: Gathering information using symbol'
-    print '-m\t: Dump module using module id'
-    print '-x\t: Dump process using pid\n'
-    print 'INFORMATION:'
-    print 'os_version\t Dawin kernel detail version'
-    print 'machine_info\t Kernel version, cpu, memory information'
-    print 'mount_info\t Mount information'
-    print 'kern_kext_info\t Kernel KEXT(Kernel Extensions) information'
-    print 'kext_info\t KEXT(Kernel Extensions) information'
-    print 'proc_info\t Process list'
-    print 'syscall_info\t Kernel systemcall information'
-    print 'net_info\t network information(hash table)'
+    
+    # LSOF: this usage statement has been reworked and adds research options
+    
+    '''
+    TODO
+    1. Replace existing commands with their CLI equivalents (e.g. proc_info --> ps)
+    2. Use more conventional usage format
+    3. Make -m/x/p/v suboptions of their respective commands
+    4. Print all tables using new lsof print function
+    5. kern_kext_info appears to be broken...
+    '''
+    
+    print ''
+    print 'volafox: release r52; lsof research build %s' %BUILD		# LSOF: build specification
+    print 'project: http://code.google.com/p/volafox'
+    print '   lsof: osxmem@gmail.com'
+    print 'support: 10.6-7; 32/64-bit kernel'
+    print '  input: *.vmem (VMWare memory file), *.mmr (Mac Memory Reader, flattened x86)'
+    print '  usage: python %s -i IMAGE [-o COMMAND [-vp PID]][-m KEXT_ID][-x PID]\n' %sys.argv[0]
+    
+    print 'WARNING: this is an experimental development build adding support for listing'
+    print '         open files. The code here is NOT in sync with project trunk.\n'
+    
+    print 'Options:'
+    print '-o CMD : Print kernel information for CMD (below)'
+    print '-p PID : List open files for PID (where CMD is "lsof")'
+    print '-v     : Print all files, including unsupported types (where CMD is "lsof")'  
+    print '-m KID : Dump kernel extension address space for KID'
+    print '-x PID : Dump process address space for PID\n'
+    print 'COMMANDS:'
+    print 'os_version\tMac OS X build version (http://support.apple.com/kb/HT1159)'
+    print 'machine_info\tkernel version, CPU, and memory specifications'
+    print 'mount_info\tmounted filesystems'
+    print 'kern_kext_info\tkernel KEXT (Kernel Extensions) listing'
+    print 'kext_info\tKEXT (Kernel Extensions) listing'
+    print 'proc_info\tprocess list'
+    print 'syscall_info\tsyscall table'
+    print 'net_info\tnetwork socket listing (hash table)'
+    print 'lsof\t\topen files listing by process (research)'	# LSOF: new lsof command
 #    print 'net_info_test\t network information(plist), (experiment)'
 
 def main():
     mempath = ''
     oflag = ''
-    vflag = 0
+    pflag = 0			# LSOF: new pid flag
+    vflag = 0			# LSOF: show debugging output and experimental options for lsof
     dflag = 0
     mflag = 0
     arch_num = 0
+    pid = -1			# LSOF: relocated this definition
 
     try:
-        option, args = getopt.getopt(sys.argv[1:], 'o:i:x:v:m:')
+    	# LSOF: added -p flag for pid specification with lsof, -v no longer needs arg
+        #option, args = getopt.getopt(sys.argv[1:], 'o:i:x:v:m:')
+        option, args = getopt.getopt(sys.argv[1:], 'o:i:s:x:vm:p:')
 
     except getopt.GetoptError, err:
         print str(err)
         usage()
         sys.exit()
 
+    debug = ""	# LSOF: debug string, print only with -v flag
+    
     for op, p, in option:
         if op in '-o':  # data type
-            print '[+] Information:', p
+        
+            # LSOF: add to debug string, no newline so -p can be added
+            #print '[+] Information:', p
+            debug += "[+] Command: %s" %p
+            
             oflag = p
+            
+            # LSOF: new pid flag
+            for i,x in enumerate(option):
+            	if x[0] == '-p':
+            		pid = int(x[1], 10)
+            		pflag = 1;
+            		del option[i]
+            		debug += " -p %d" %pid
+            
+            debug += "\n"	# LSOF: replacing newline
 
         elif op in '-i': # physical memory image file
-            print '[+] Memory Image:', p
+        	
+            # LSOF: add to debug string
+            #print '[+] Memory Image:', p
+            debug += '[+] Memory Image: %s\n' %p
+            
             mempath = p
 
+        # LSOF: reworked this, it appears to have been unused (now shows debug string)
         elif op == '-v': # verbose
             #print 'Verbose:', p
-            vflag = 1 # true
+            vflag = 1
        
         elif op =='-x':
-            print '[+] Dump PID: %s'%p
+        
+            # LSOF: add to debug string
+            #print '[+] Dump PID: %s'%p
+            debug += '[+] Dump PID: %s\n' %p
+            
             pid = int(p, 10)
             dflag = 1
         
         elif op =='-m':
-            print '[+] Dump KEXT: %s'%p
+        	
+            # LSOF: add to debug string
+            #print '[+] Dump KEXT: %s'%p
+            debug += '[+] Dump KEXT: %s\n' %p
+            
             kext_num = int(p, 10)
             mflag = 1
            
         else:
-            print '[+] Command error:', op
+            #print '[+] Command error:', op	# LSOF: not printed, getopt catches this
             usage()
             sys.exit()
+            
+    # LSOF: all of this information now requires an explicit flag (or command error)
+    if vflag:
+    	print debug[:-1]
 
     if mempath == "" and ( oflag == 0 or dflag == 0 or mflag == 0):
         usage()
@@ -1162,7 +1299,10 @@ def main():
     m_volafox = volafox(mempath)
 
     ## get kernel version, architecture ##
-    init_data = m_volafox.get_kernel_version()
+    
+    # LSOF: pass the verbose flag so debugging information can be optionally printed
+    init_data = m_volafox.get_kernel_version(vflag)
+    
     valid_format = init_data[0] # bool
     architecture = init_data[1] # integer
     kernel_version = init_data[2] # string
@@ -1226,7 +1366,10 @@ def main():
         sys.exit()
 
     elif oflag == 'machine_info':
-        print '\n[+] Mac OS X Basic Information'
+    	# LSOF: looks better without newline
+        #print '\n[+] Mac OS X Basic Information'
+        print '[+] Mac OS X Basic Information'
+        
         data = m_volafox.machine_info(symbol_list['_machine_info'])
         print ' [-] Major Version: %d'%data[0]
         print ' [-] Minor Version: %d'%data[1]
@@ -1308,6 +1451,14 @@ def main():
             sys.stdout.write('\n')
 
         sys.exit()
+        
+    # LSOF: lsof command branch
+    elif oflag == 'lsof':
+    	filelist = m_volafox.lsof(symbol_list['_kernproc'], pid, vflag)
+    	if vflag:
+    		print ""	# separate output from command specification
+    	printfilelist(filelist)
+    	sys.exit()
 
     elif oflag == 'syscall_info':
         data_list = m_volafox.syscall_info(symbol_list['_nsysent'])
@@ -1367,7 +1518,6 @@ def main():
     else:
         print '[+] WARNING: -o Argument Error\n'
         sys.exit()
-
 
 if __name__ == "__main__":
     main()
