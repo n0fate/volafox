@@ -71,20 +71,19 @@ from macho import MachoAddressSpace, isMachoVolafoxCompatible, is_universal_bina
 
 ###############################################################################
 #
-# Class: volafox() - 2010-09-30
-# Description: This analysis module can support Intel X86 Architecture
-#              We need to have more research time ;)
+# Class: volafox() - 2010-09-30 ~ now
+# Description: This analysis module can support Intel Architecture
 #
 # Dependency: x86.py in Volatility Framework for VA to PA
 #
 ###############################################################################
 class volafox():
     def __init__(self, mempath):
-##        self.idlepdpt = pdpt
-##        self.idlepml4 = pml4 ### 11.09.28 n0fate
         self.mempath = mempath
-        self.arch = 32 # architecture default is 32bit
+        self.arch = 32 # default value is 32bit
         self.data_list = []
+        self.os_version = 0
+        self.build = ''# vaddump -> cr3
 
         self.kern_version = ''
 
@@ -194,6 +193,8 @@ class volafox():
 	# LSOF: verbose support
         if vflag:
         	print ' [-] Kernel Version: %s'%self.kern_version
+
+        self.build = build # vaddump
         	
 	return self.valid_format, self.arch, self.kern_version, build
 
@@ -599,10 +600,14 @@ class volafox():
     # #ifdef __i386__
     #	pmap_paddr_t    pdirbase;        /* phys. address of dirbase */
     #	vm_offset_t     pm_hold;        /* true pdpt zalloc addr */
-    
-		    if self.os_version >= 11:   # Lion xnu-1699
-			pmap_info = self.x86_mem_pae.read(vm_struct[6], 44)
+
+                    if self.build == '11D50': # temporary 12.04.24 n0fate
+ 			pmap_info = self.x86_mem_pae.read(vm_struct[6], 44)
 			pmap_struct = struct.unpack('=36xQ', pmap_info)
+			pm_cr3 = pmap_struct[0]                       
+		    elif self.os_version == 11:   # Lion xnu-1699, build version 11D50 has some bug (36xQ)
+			pmap_info = self.x86_mem_pae.read(vm_struct[6], 12)
+			pmap_struct = struct.unpack('=4xQ', pmap_info)
 			pm_cr3 = pmap_struct[0]
 		    else: # Leopard or Snow Leopard xnu-1456
 			pmap_info = self.x86_mem_pae.read(vm_struct[6], 100)
@@ -1179,7 +1184,7 @@ def usage():
     '''
     
     print ''
-    print 'volafox: release r57'
+    print 'volafox: release r58'
     print 'project: http://code.google.com/p/volafox'
     print 'support: 10.6-7; 32/64-bit kernel'
     print '  input: *.vmem (VMWare memory file), *.mmr (Mac Memory Reader, flattened x86)'
