@@ -156,8 +156,8 @@ class volafox():
         elif build == '11C74':
                 self.kern_version = '10.7.2'
                 
-    # LSOF: fixed to work for all 10.7.3 builds (e.g. b, d)
-	elif build[:-1] == '11D50':
+        # n0fate : bug fix
+    	elif build == '11D50b' or build == '11D50' or build == '11D50d':
 		self.kern_version = '10.7.3'
 		
 	# LSOF: 10.6.0 Server support
@@ -174,7 +174,7 @@ class volafox():
         if vflag:
         	print ' [-] Kernel Version: %s'%self.kern_version
         	
-	return self.valid_format, self.arch, self.kern_version
+	return self.valid_format, self.arch, self.kern_version, build
 
     def set_architecture(self, arch_num):
         if (arch_num is not 32) and (arch_num is not 64):
@@ -1306,6 +1306,7 @@ def main():
     valid_format = init_data[0] # bool
     architecture = init_data[1] # integer
     kernel_version = init_data[2] # string
+    build_number = init_data[3] # string
 
     ## check to valid image format
     if valid_format == 0:
@@ -1324,9 +1325,10 @@ def main():
         sys.exit()
 
     ## open overlay file
-    filepath = 'overlays/%s_%d.overlay'%(kernel_version, architecture)
+    filepath = 'overlays/%sx%d.overlay'%(build_number, architecture)
 
     try:
+        #print '[+] Open overlay file \'%s\''%filepath
         overlay_file = open(filepath, 'rb')
         symbol_list = pickle.load(overlay_file)
         overlay_file.close()
