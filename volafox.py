@@ -137,32 +137,53 @@ class volafox():
 		
 	if build == '10A432':
 		self.kern_version = '10.6.0'
+		self.os_version = int(build[:2])
+
 	elif build == '10D573' or build == '10D578' or build == '10D572':
 		self.kern_version = '10.6.3'
+		self.os_version = int(build[:2])
+		
 	elif build == '10F659' or build == '10F616':
 		self.kern_version = '10.6.4'
+		self.os_version = int(build[:2])
+
 	elif build == '10H574' or build == '10H575':
 		self.kern_version = '10.6.5'
+		self.os_version = int(build[:2])
+
 	elif build == '10J567':
 		self.kern_version = '10.6.6'
+		self.os_version = int(build[:2])
+
 	elif build == '10J869' or build == '10J3250':
 		self.kern_version = '10.6.7'
+		self.os_version = int(build[:2])
+
 	elif build == '10K540' or build ==  '10K549':
 		self.kern_version = '10.6.8'
+		self.os_version = int(build[:2])
+
 	elif build == '11A511':
                 self.kern_version = '10.7.0'
+                self.os_version = int(build[:2])
+
         elif build == '11B26':
                 self.kern_version = '10.7.1'
+                self.os_version = int(build[:2])
+
         elif build == '11C74':
                 self.kern_version = '10.7.2'
+                self.os_version = int(build[:2])
                 
         # n0fate : bug fix
     	elif build == '11D50b' or build == '11D50' or build == '11D50d':
 		self.kern_version = '10.7.3'
+		self.os_version = int(build[:2])
 		
 	# LSOF: 10.6.0 Server support
 	elif build == '10A433':
 		self.kern_version = '10.6.0'
+		self.os_version = int(build[:2])
 	
 	elif build == 'Darwin ':
 		#print ' [-] Wrong Catfish symbol. Memory capture incomplete?'
@@ -212,18 +233,17 @@ class volafox():
     	data = struct.unpack('i', wake_time)
     	return data   
 
-    def os_info(self, sym_addr): # 11.11.23 64bit suppport
+    def sw_vers(self, sym_addr): # 11.11.23 64bit suppport
         os_version = self.x86_mem_pae.read(sym_addr, 10) # __DATA.__common _osversion
         data = struct.unpack('10s', os_version)
         return data
 
-    def machine_info(self, sym_addr): # 11.11.23 64bit suppport
+    def system_profiler(self, sym_addr): # 11.11.23 64bit suppport
         machine_info = self.x86_mem_pae.read(sym_addr, 40); # __DATA.__common _machine_info
         data = struct.unpack('IIIIQIIII', machine_info)
-        self.os_version = data[0] # 11.09.28
         return data
 
-    def kernel_kext_info(self, sym_addr): # 11.11.23 64bit suppport
+    def kern_kextstat(self, sym_addr): # 11.11.23 64bit suppport
         if self.arch == 32:
             Kext = self.x86_mem_pae.read(sym_addr, 168); # .data _g_kernel_kmod_info
             data = struct.unpack('III64s64sIIIIIII', Kext)
@@ -232,7 +252,7 @@ class volafox():
             data = struct.unpack('=QII64s64sIQQQQQQ', Kext)
         return data
 
-    def kext_info(self, sym_addr): # 11.11.23 64bit suppport
+    def kextstat(self, sym_addr): # 11.11.23 64bit suppport
         #print 'symboladdr: %x'%sym_addr
         kext_list = []
 
@@ -264,7 +284,7 @@ class volafox():
 
     def kextdump(self, offset, size, kext_name):
         if not(self.x86_mem_pae.is_valid_address(offset)):
-            print 'Invalid Offset'
+            print '[+] Invalid Offset : %x'%offset
             return
         print '[DUMP] FILENAME: %s-%x-%x'%(kext_name, offset, offset+size)
 
@@ -287,7 +307,7 @@ class volafox():
 	print '[DUMP] Complete.'
 	return
     
-    def mount_info(self, sym_addr): # 11.11.23 64bit suppport(Lion)
+    def mount(self, sym_addr): # 11.11.23 64bit suppport(Lion)
         mount_list = []
 	if self.arch == 32:
 	    mount_t = self.x86_mem_pae.read(sym_addr, 4); # .data _g_kernel_kmod_info
@@ -316,7 +336,7 @@ class volafox():
 
         return mount_list
 
-    def process_info(self, sym_addr): # 11.11.23 64bit suppport
+    def ps(self, sym_addr): # 11.11.23 64bit suppport
         proc_list = []
 	if self.arch == 32:
 	    kernproc = self.x86_mem_pae.read(sym_addr, 4); # __DATA.__common _kernproc
@@ -390,7 +410,7 @@ class volafox():
 		
 		return getfilelist(self.x86_mem_pae, self.arch, self.os_version, proc_head, pid, vflag)
 
-    def syscall_info(self, sym_addr): # 11.11.23 64bit suppport
+    def systab(self, sym_addr): # 11.11.23 64bit suppport
         syscall_list = []
 	if self.arch == 32:
 	    nsysent = self.x86_mem_pae.read(sym_addr, 4) # .data _nsysent
@@ -520,7 +540,7 @@ class volafox():
 			vm_temp_list.append(vme_list[2]) # start
 			vm_temp_list.append(vme_list[3]) # end
 			vm_list.append(vm_temp_list)
-			# get permission at virtual memory ('rwx')
+			# get permission on virtual memory ('rwx')
 			permission = ''
 			max_permission = ''
 			
@@ -581,8 +601,8 @@ class volafox():
     #	vm_offset_t     pm_hold;        /* true pdpt zalloc addr */
     
 		    if self.os_version >= 11:   # Lion xnu-1699
-			pmap_info = self.x86_mem_pae.read(vm_struct[6], 12)
-			pmap_struct = struct.unpack('=4xQ', pmap_info)
+			pmap_info = self.x86_mem_pae.read(vm_struct[6], 44)
+			pmap_struct = struct.unpack('=36xQ', pmap_info)
 			pm_cr3 = pmap_struct[0]
 		    else: # Leopard or Snow Leopard xnu-1456
 			pmap_info = self.x86_mem_pae.read(vm_struct[6], 100)
@@ -904,7 +924,7 @@ class volafox():
     # network information (inpcbinfo.hashbase, test code)
     # it can dump real network information. if rootkit has hiding technique.
     #################################################
-    def net_info(self, sym_addr, pml4):
+    def netstat(self, sym_addr, pml4):
         network_list = []
         if isMachoVolafoxCompatible(self.mempath):
             net_pae = IA32PML4MemoryPae(MachoAddressSpace(self.mempath), pml4) 
@@ -1064,7 +1084,7 @@ class volafox():
 
     # 2011.08.30 test code(plist chain)
     #################################################
-    def net_info_test(self, sym_addr, pml4):
+    def netstat_test(self, sym_addr, pml4):
         network_list = []
         if isMachoVolafoxCompatible(self.mempath):
             net_pae = IA32PML4MemoryPae(MachoAddressSpace(self.mempath), pml4)
@@ -1151,7 +1171,7 @@ def usage():
     
     '''
     TODO
-    1. Replace existing commands with their CLI equivalents (e.g. proc_info --> ps)
+    1. Replace existing commands with their CLI equivalents (e.g. proc_info --> ps) - complete - 11/04/24 - n0fate
     2. Use more conventional usage format
     3. Make -m/x/p/v suboptions of their respective commands
     4. Print all tables using new lsof print function
@@ -1159,15 +1179,14 @@ def usage():
     '''
     
     print ''
-    print 'volafox: release r52; lsof research build %s' %BUILD		# LSOF: build specification
+    print 'volafox: release r57'
     print 'project: http://code.google.com/p/volafox'
-    print '   lsof: osxmem@gmail.com'
     print 'support: 10.6-7; 32/64-bit kernel'
     print '  input: *.vmem (VMWare memory file), *.mmr (Mac Memory Reader, flattened x86)'
     print '  usage: python %s -i IMAGE [-o COMMAND [-vp PID]][-m KEXT_ID][-x PID]\n' %sys.argv[0]
     
-    print 'WARNING: this is an experimental development build adding support for listing'
-    print '         open files. The code here is NOT in sync with project trunk.\n'
+#    print 'WARNING: this is an experimental development build adding support for listing'
+#    print '         open files. The code here is NOT in sync with project trunk.\n'
     
     print 'Options:'
     print '-o CMD : Print kernel information for CMD (below)'
@@ -1176,15 +1195,15 @@ def usage():
     print '-m KID : Dump kernel extension address space for KID'
     print '-x PID : Dump process address space for PID\n'
     print 'COMMANDS:'
-    print 'os_version\tMac OS X build version (http://support.apple.com/kb/HT1159)'
-    print 'machine_info\tkernel version, CPU, and memory specifications'
-    print 'mount_info\tmounted filesystems'
-    print 'kern_kext_info\tkernel KEXT (Kernel Extensions) listing'
-    print 'kext_info\tKEXT (Kernel Extensions) listing'
-    print 'proc_info\tprocess list'
-    print 'syscall_info\tsyscall table'
-    print 'net_info\tnetwork socket listing (hash table)'
-    print 'lsof\t\topen files listing by process (research)'	# LSOF: new lsof command
+    print 'sw_vers         : Mac OS X build version (http://support.apple.com/kb/HT1159)'
+    print 'system_profiler : Kernel version, CPU, and memory specifications'
+    print 'mount           : Mounted filesystems'
+    print 'kern_kextstat   : Kernel KEXT (Kernel Extensions) listing'
+    print 'kextstat        : KEXT (Kernel Extensions) listing'
+    print 'ps              : Process listing'
+    print 'systab          : Syscall table (Hooking Detection)'
+    print 'netstat         : Network socket listing (Hash table)'
+    print 'lsof            : Open files listing by process (research, osxmem@gmail.com)'	# LSOF: new lsof command
 #    print 'net_info_test\t network information(plist), (experiment)'
 
 def main():
@@ -1340,20 +1359,20 @@ def main():
     ## Setting Page Table Map
     nRet = m_volafox.init_vatopa_x86_pae(symbol_list['_IdlePDPT'], symbol_list['_IdlePML4'])
     if nRet == 1:
-        print '[+]  WARNING: Memory Image Load Failed'
+        print '[+] WARNING: Memory Image Load Failed'
         sys.exit()
 
-### 11.09.28 start n0fate
-    ## Pre-loading Machine Information for storing Major Kernel Version
-    ## It is used to code branch according to major kernel version
-    m_volafox.machine_info(symbol_list['_machine_info'])
-### 11.09.28 end n0fate    
-
     if mflag == 1:
-        data_list = m_volafox.kext_info(symbol_list['_kmod'])
+        kern_kext = m_volafox.kern_kextstat(symbol_list['_g_kernel_kmod_info'])
+        if kern_kext[2] == kext_num:
+            print '[+] Find KEXT, Offset: %x, Size: %x'%(kern_kext[7], kern_kext[8])
+            m_volafox.kextdump(kern_kext[7], kern_kext[8], kern_kext[3].replace('\x00', '')) # addr, size, name
+            sys.exit()
+            
+        data_list = m_volafox.kextstat(symbol_list['_kmod'])
         for data in data_list:
             if data[2] == kext_num:
-                print 'find kext, offset: %x, size: %x'%(data[7], data[8])
+                print '[+] Find KEXT, Offset: %x, Size: %x'%(data[7], data[8])
                 m_volafox.kextdump(data[7], data[8], data[3].replace('\x00', '')) # addr, size, name
         sys.exit()
         
@@ -1361,18 +1380,18 @@ def main():
         m_volafox.vaddump(symbol_list['_kernproc'], pid)
         sys.exit()
 
-    if oflag == 'os_version':
-        data = m_volafox.os_info(symbol_list['_osversion'])
+    if oflag == 'sw_vers':
+        data = m_volafox.sw_vers(symbol_list['_osversion'])
         sys.stdout.write('[+] Detail Darwin kernel version: %s'%data[0].strip('\x00'))
         sys.stdout.write('\n')
         sys.exit()
 
-    elif oflag == 'machine_info':
+    elif oflag == 'system_profiler':
     	# LSOF: looks better without newline
         #print '\n[+] Mac OS X Basic Information'
         print '[+] Mac OS X Basic Information'
         
-        data = m_volafox.machine_info(symbol_list['_machine_info'])
+        data = m_volafox.system_profiler(symbol_list['_machine_info'])
         print ' [-] Major Version: %d'%data[0]
         print ' [-] Minor Version: %d'%data[1]
         print ' [-] Number of Physical CPUs: %d'%data[2]
@@ -1384,8 +1403,8 @@ def main():
         print ' [-] Max number of logical CPUs now possible: %d'%data[8]
         sys.exit()
 
-    elif oflag == 'kern_kext_info':
-        data = m_volafox.kernel_kext_info(symbol_list['_g_kernel_kmod_info'])
+    elif oflag == 'kern_kextstat':
+        data = m_volafox.kern_kextstat(symbol_list['_g_kernel_kmod_info'])
         print '\n-= Kernel Extentions(Kext) =-'
         sys.stdout.write( 'kmod_info_ptr\tinfo_version\tid\tname\tversion\treference_count\treference_list\taddress_ptr\tsize\thdr_size\tstart_ptr\tstop_ptr')
         sys.stdout.write('\n')
@@ -1404,8 +1423,8 @@ def main():
         sys.stdout.write('%.8x'%data[11])
         sys.exit()
 
-    elif oflag == 'kext_info':
-        data_list = m_volafox.kext_info(symbol_list['_kmod'])
+    elif oflag == 'kextstat':
+        data_list = m_volafox.kextstat(symbol_list['_kmod'])
         print '\n-= Kernel Extentions(Kext) =-'
         sys.stdout.write( 'kmod_info_ptr\tinfo_version\tid\tname\tversion\treference_count\treference_list\taddress_ptr\tsize\thdr_size\tstart_ptr\tstop_ptr')
         sys.stdout.write('\n')
@@ -1427,7 +1446,7 @@ def main():
         sys.exit()
 
     elif oflag == 'mount_info':
-        data_list = m_volafox.mount_info(symbol_list['_mountlist'])
+        data_list = m_volafox.mount(symbol_list['_mountlist'])
         print '\n-= Mount List =-'
         sys.stdout.write('list entry-next\tfstypename\tmount on name\tmount from name')
         sys.stdout.write('\n')
@@ -1439,8 +1458,8 @@ def main():
             sys.stdout.write('\n')
         sys.exit()
 
-    elif oflag == 'proc_info':
-        data_list = m_volafox.process_info(symbol_list['_kernproc'])
+    elif oflag == 'ps':
+        data_list = m_volafox.ps(symbol_list['_kernproc'])
         print '\n-= process list =-'
         sys.stdout.write('list_entry_next\tpid\tppid\tprocess name\tusername')
         sys.stdout.write('\n')
@@ -1462,8 +1481,8 @@ def main():
     	printfilelist(filelist)
     	sys.exit()
 
-    elif oflag == 'syscall_info':
-        data_list = m_volafox.syscall_info(symbol_list['_nsysent'])
+    elif oflag == 'systab':
+        data_list = m_volafox.systab(symbol_list['_nsysent'])
         sym_name_list = symbol_list.keys()
         sym_addr_list = symbol_list.values()
         print '\n-= syscall list =-'
@@ -1495,24 +1514,24 @@ def main():
 
         sys.exit()
 
-    elif oflag == 'net_info':
+    elif oflag == 'netstat':
         print '\n-= NETWORK INFORMATION (hashbase) =-'
-        network_list = m_volafox.net_info(symbol_list['_tcbinfo'], symbol_list['_IdlePML4'])
+        network_list = m_volafox.netstat(symbol_list['_tcbinfo'], symbol_list['_IdlePML4'])
         for network in network_list:
             print '[TCP] Local Address: %s:%d, Foreign Address: %s:%d, flag: %x'%(network[1], network[3], network[2], network[4], network[0])
 	    
-	network_list = m_volafox.net_info(symbol_list['_udbinfo'], symbol_list['_IdlePML4'])
+	network_list = m_volafox.netstat(symbol_list['_udbinfo'], symbol_list['_IdlePML4'])
         for network in network_list:
             print '[UDP] Local Address: %s:%d, Foreign Address: %s:%d, flag: %x'%(network[1], network[3], network[2], network[4], network[0])
         sys.exit()
 
-    elif oflag == 'net_info_test':
+    elif oflag == 'netstat_test':
         print '\n-= NETWORK INFORMATION (plist) =-'
-        network_list = m_volafox.net_info_test(symbol_list['_tcbinfo'], symbol_list['_IdlePML4'])
+        network_list = m_volafox.netstat_test(symbol_list['_tcbinfo'], symbol_list['_IdlePML4'])
         for network in network_list:
             print '[TCP] Local Address: %s:%d, Foreign Address: %s:%d, flag: %x'%(network[1], network[3], network[2], network[4], network[0])
 	    
-	network_list = m_volafox.net_info_test(symbol_list['_udbinfo'], symbol_list['_IdlePML4'])
+	network_list = m_volafox.netstat_test(symbol_list['_udbinfo'], symbol_list['_IdlePML4'])
         for network in network_list:
             print '[UDP] Local Address: %s:%d, Foreign Address: %s:%d, flag: %x'%(network[1], network[3], network[2], network[4], network[0])
         sys.exit()
