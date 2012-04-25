@@ -16,7 +16,7 @@ _______________________SUPPORT_________________________
       OSX: Lion (10.7.x), Snow Leopard (10.6.x)
 	 Arch: i386, x86_64
 	Image: *.vmem (VMware), *.mmr (flattened, x86 ONLY)
-  Release: r52
+  Release: r59
 
 Dependent: addrspace.py
            ia32_pml4.py
@@ -1184,7 +1184,7 @@ def usage():
     '''
     
     print ''
-    print 'volafox: release r58'
+    print 'volafox: release r59'
     print 'project: http://code.google.com/p/volafox'
     print 'support: 10.6-7; 32/64-bit kernel'
     print '  input: *.vmem (VMWare memory file), *.mmr (Mac Memory Reader, flattened x86)'
@@ -1224,17 +1224,21 @@ def main():
     try:
     	# LSOF: added -p flag for pid specification with lsof, -v no longer needs arg
         #option, args = getopt.getopt(sys.argv[1:], 'o:i:x:v:m:')
-        option, args = getopt.getopt(sys.argv[1:], 'o:i:s:x:vm:p:')
+        option, args = getopt.getopt(sys.argv[1:], 'o:i:x:vm:p:', ['help'])
 
     except getopt.GetoptError, err:
         print str(err)
-        usage()
+        print >> sys.stderr, 'Enter `%s --help` if you want to know more options'%sys.argv[0]
         sys.exit()
 
     debug = ""	# LSOF: debug string, print only with -v flag
     
     for op, p, in option:
-        if op in '-o':  # data type
+        if op in '--help':
+            usage()
+            sys.exit()
+            
+        elif op in ('-o'):  # data type
         
             # LSOF: add to debug string, no newline so -p can be added
             #print '[+] Information:', p
@@ -1252,7 +1256,7 @@ def main():
             
             debug += "\n"	# LSOF: replacing newline
 
-        elif op in '-i': # physical memory image file
+        elif op in ('-i'): # physical memory image file
         	
             # LSOF: add to debug string
             #print '[+] Memory Image:', p
@@ -1261,11 +1265,11 @@ def main():
             mempath = p
 
         # LSOF: reworked this, it appears to have been unused (now shows debug string)
-        elif op == '-v': # verbose
+        elif op in ('-v'): # verbose
             #print 'Verbose:', p
             vflag = 1
        
-        elif op =='-x':
+        elif op in ('-x'):
         
             # LSOF: add to debug string
             #print '[+] Dump PID: %s'%p
@@ -1274,7 +1278,7 @@ def main():
             pid = int(p, 10)
             dflag = 1
         
-        elif op =='-m':
+        elif op in ('-m'):
         	
             # LSOF: add to debug string
             #print '[+] Dump KEXT: %s'%p
@@ -1284,8 +1288,7 @@ def main():
             mflag = 1
            
         else:
-            #print '[+] Command error:', op	# LSOF: not printed, getopt catches this
-            usage()
+            
             sys.exit()
             
     # LSOF: all of this information now requires an explicit flag (or command error)
@@ -1450,7 +1453,7 @@ def main():
             sys.stdout.write('\n')
         sys.exit()
 
-    elif oflag == 'mount_info':
+    elif oflag == 'mount':
         data_list = m_volafox.mount(symbol_list['_mountlist'])
         print '\n-= Mount List =-'
         sys.stdout.write('list entry-next\tfstypename\tmount on name\tmount from name')
