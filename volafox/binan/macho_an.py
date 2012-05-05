@@ -128,24 +128,6 @@ class macho_an():
                 self.sym_table = self.macho_file[symoff:symoff + (nsyms*NLIST_SIZE)] # symbol table
                 self.symbol_str = self.macho_file[stroff:stroff+strsize] # symbol str
                 
-                
-                # generate string table list
-                #sym_table_count = 0
-                #sym_str_list = []
-                #while 1:
-                #    pos = self.symbol_str.index('\x00', sym_table_count)
-                #    if pos:
-                #        if sym_table_count == pos:
-                #            sym_table_count += 1
-                #        else:
-                #            sym_str_list.append(self.symbol_str[sym_table_count:pos])
-                #            print self.symbol_str[sym_table_count:pos]
-                #            sym_table_count = pos
-                #    
-                #    sym_table_count += 1
-                #    if sym_table_count >= strsize:
-                #        break;
-                
                 sym_table_count = 0
                 for sym_table_count in range(0, nsyms):
                     nlist = struct.unpack('=IBBHI', self.sym_table[sym_table_count*NLIST_SIZE:(sym_table_count*NLIST_SIZE)+NLIST_SIZE])
@@ -155,10 +137,10 @@ class macho_an():
                     n_desc = nlist[3]
                     n_value = nlist[4]
 
-                    if n_type == 15: # we need this symbol 'SECT'
-                        symbol_name = self.symbol_str[n_un:n_un+self.symbol_str[n_un:].index('\x00')]
-                        self.symbol_diclist[symbol_name] = n_value
-                        #print 'symbol_name: %s, address: %x'%(symbol_name, n_value)
+                    #if n_type == 15: # we need this symbol 'SECT'
+                    symbol_name = self.symbol_str[n_un:n_un+self.symbol_str[n_un:].index('\x00')]
+                    self.symbol_diclist[symbol_name] = n_value
+                    #print 'symbol_name: %s, address: %x'%(symbol_name, n_value)
                 break
                 
             i += cmd[1] # index + load_command.cmd_size
@@ -224,10 +206,10 @@ class macho_an():
                     n_desc = nlist[3]
                     n_value = nlist[4]
 
-                    if n_type == 15: # 'SECT'
-                        symbol_name = self.symbol_str[n_un:n_un+self.symbol_str[n_un:].index('\x00')]
-                        self.symbol_diclist[symbol_name] = n_value
-                        #print 'symbol_name: %s, address: %x'%(symbol_name, n_value)
+                    #if n_type == 15: # 'SECT'
+                    symbol_name = self.symbol_str[n_un:n_un+self.symbol_str[n_un:].index('\x00')]
+                    self.symbol_diclist[symbol_name] = n_value
+                    #print 'symbol_name: %s, address: %x'%(symbol_name, n_value)
                 break
                 
             i += cmd[1] # index + load_command.cmd_size
