@@ -23,7 +23,7 @@
 
 import sys
 import mmap
-import macho
+import volafox.binan.macho
 
 if len(sys.argv) != 2:
     print "Usage: showbootermemorymap <mach-o image>."

@@ -1,5 +1,5 @@
 import sys
-from macho_an import *
+from volafox.binan.macho_an import *
 import pickle
 
 def usage():
