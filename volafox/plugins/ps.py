@@ -243,7 +243,7 @@ class process_manager:
 ##            sys.stdout.write('%s\t'%time.strftime("%a %b %d %H:%M:%S %Y", time.gmtime(data[8])))
 ##            sys.stdout.write('\n')
 
-        headerlist = ["NEXT ENTRY", "PID", "PPID", "  PROCESS NAME  ", "USERNAME", "CREATE TIME"]
+        headerlist = ["NEXT ENTRY", "PID", "PPID", "PROCESS_NAME", "USERNAME", "CREATE_TIME (GMT +0)"]
         contentlist = []
 
         for data in data_list:
