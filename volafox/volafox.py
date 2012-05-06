@@ -11,16 +11,6 @@ _______________________SUPPORT_________________________
       OSX: Lion (10.7.x), Snow Leopard (10.6.x)
 	 Arch: i386, x86_64
 	Image: *.vmem (VMware), *.mmr (flattened, x86 ONLY)
-  Release: r52
-
-Dependent: addrspace.py
-           ia32_pml4.py
-           imageinfo.py
-           lsof.py
-           macho_an.py
-           macho.py
-           x86.py
-           /overlays
 '''
 
 # volafox
@@ -119,7 +109,7 @@ class volafox():
 	self.filepath = 'overlays/%sx%d.overlay'%(self.build, self.arch)
 	return 0
     
-    def init_vatopa_x86_pae(self): # 11.11.23 64bit suppport
+    def init_vatopa_x86_pae(self, vflag): # 11.11.23 64bit suppport
         if self.mempath == '':
             return 1
 
@@ -127,11 +117,15 @@ class volafox():
         self.idlepml4 = self.symbol_list['_IdlePML4']
         
         if self.arch is 32:
+            if vflag:
+                print '[+] Loading Intel 32bit(PAE Enabled) Paging Table'
             if isMachoVolafoxCompatible(self.mempath):
                 self.x86_mem_pae = IA32PagedMemoryPae(MachoAddressSpace(self.mempath), self.idlepdpt)
             else:
                 self.x86_mem_pae = IA32PagedMemoryPae(FileAddressSpace(self.mempath), self.idlepdpt)
         else: # 64
+            if vflag:
+                print '[+] Loading Intel IA-32e(PAE Enabled) Paging Table'
             if isMachoVolafoxCompatible(self.mempath):
                 self.x86_mem_pae = IA32PML4MemoryPae(MachoAddressSpace(self.mempath), self.idlepml4)
             else:

@@ -2,6 +2,8 @@ import sys
 import struct
 import time
 
+from tableprint import columnprint
+
 # Lion 32bit, SN 32bit, Lion64bit, SN 64bit
 DATA_PROC_STRUCTURE = [[476+24+168, '=4xIIIII392x24xI52sI164xI', 16, '=IIII', 283, '=IIIIIII255s'],
     [476+168, '=4xIIIII392xI52sI164xI', 16, '=IIII', 283, '=IIIIIII255s'],
@@ -105,8 +107,8 @@ class process_manager:
         print ' [-] Reference Count: %x'%task_struct[0]
         print ' [-] Process Active: %x'%task_struct[1]
         print ' [-] Process Halting: %x'%task_struct[2]
-        print 'uni and smp lock: %d'%task_struct[4]
-        print 'vm_map_t: %x'%self.x86_mem_pae.vtop(task_struct[3])
+        #print 'uni and smp lock: %d'%task_struct[4]
+        #print 'vm_map_t: %x'%self.x86_mem_pae.vtop(task_struct[3])
         #print 'tasks: %x'%task_struct[4]
         #print 'userdata: %x'%task_struct[5]
         return task_struct
@@ -230,16 +232,33 @@ class process_manager:
 
     def proc_print(self, data_list):
         print '[+] Process List'
-        sys.stdout.write('Next Entry\tPID\tPPID\tProcess Name\tUser\tCreate Time')
-        sys.stdout.write('\n')
+##        sys.stdout.write('Next Entry\tPID\tPPID\tProcess Name\tUser\tCreate Time')
+##        sys.stdout.write('\n')
+##        for data in data_list:
+##            sys.stdout.write('%.8x\t'%data[0]) # int
+##            sys.stdout.write('%d\t'%data[1]) # int
+##            sys.stdout.write('%d\t'%data[4]) # int
+##            sys.stdout.write('%s\t'%data[6].split('\x00', 1)[0]) # Changed by CL to read null formatted strings
+##            sys.stdout.write('%s\t'%data[9].strip('\x00'))
+##            sys.stdout.write('%s\t'%time.strftime("%a %b %d %H:%M:%S %Y", time.gmtime(data[8])))
+##            sys.stdout.write('\n')
+
+        headerlist = ["NEXT ENTRY", "PID", "PPID", "  PROCESS NAME  ", "USERNAME", "CREATE TIME"]
+        contentlist = []
+
         for data in data_list:
-            sys.stdout.write('%.8x\t'%data[0]) # int
-            sys.stdout.write('%d\t'%data[1]) # int
-            sys.stdout.write('%d\t'%data[4]) # int
-            sys.stdout.write('%s\t'%data[6].split('\x00', 1)[0]) # Changed by CL to read null formatted strings
-            sys.stdout.write('%s\t'%data[9].strip('\x00'))
-            sys.stdout.write('%s\t'%time.strftime("%a %b %d %H:%M:%S %Y", time.gmtime(data[8])))
-            sys.stdout.write('\n')
+            line = ["0x%.8X"%data[0]]
+            line.append('%d'%data[1]) # int
+            line.append('%d'%data[4]) # int
+            line.append('%s'%data[6].split('\x00', 1)[0]) # Changed by CL to read null formatted strings
+            line.append('%s'%data[9].strip('\x00'))
+            line.append('%s'%time.strftime("%a %b %d %H:%M:%S %Y", time.gmtime(data[8])))
+            contentlist.append(line)
+
+	# use optional max size list here to match default lsof output, otherwise specify
+	# lsof +c 0 on the command line to print full name of commands
+	mszlist = [-1, -1, -1, -1, -1, -1]
+	columnprint(headerlist, contentlist, mszlist)
         
 #################################### PUBLIC FUNCTIONS ####################################
 def get_proc_list(x86_mem_pae, sym_addr, arch, os_version, build):

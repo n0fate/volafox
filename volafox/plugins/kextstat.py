@@ -1,6 +1,8 @@
 import sys
 import struct
 
+from tableprint import columnprint
+
 # SN/Lion 32bit, SN/Lion 64bit
 DATA_KEXT_STRUCTURE = [168, '=III64s64sIIIIIII', 196, '=QII64s64sIQQQQQQ']
 
@@ -46,9 +48,6 @@ class kext_manager():
 		kext_list.append(data)
 
         return kext_list
-    
-    def print_kext(self):
-        print ''
 
 
 #################################### PUBLIC FUNCTIONS ####################################
@@ -62,30 +61,36 @@ def get_kext_list(x86_mem_pae, sym_addr, sym_addr2, arch, os_version, build):
     return kext_list
 
 def print_kext_list(kext_list):
-    print '\n-= Kernel Extentions(Kext) =-'
-    sys.stdout.write( 'kmod_info_ptr\tinfo_version\tid\tname\tversion\treference_count\treference_list\taddress_ptr\tsize\thdr_size\tstart_ptr\tstop_ptr')
-    sys.stdout.write('\n')
+    print '[+] Kernel Extention List'
 
+    headerlist = ["NEXT_ENTRY", "INFO", "KID", "KEXT_NAME", "VERSION", "REFER_COUNT", "REFER_LIST", "ADDRESS", "SIZE", "HDRSIZE", "START_PTR" ,"STOP_PTR"]
+    contentlist = []
+    
     for data in kext_list:
-        sys.stdout.write('%.8x\t'%data[0])
-        sys.stdout.write('%d\t'%data[1])
-        sys.stdout.write('%d\t'%data[2])
-        sys.stdout.write('%s\t'%data[3].strip('\x00'))
-        sys.stdout.write('%s\t'%data[4].strip('\x00'))
-        sys.stdout.write('%d\t'%data[5])
-        sys.stdout.write('%.8x\t'%data[6])
-        sys.stdout.write('%.8x\t'%data[7]) # address ptr
-        sys.stdout.write('%d\t'%data[8]) # size
-        sys.stdout.write('%d\t'%data[9])
-        sys.stdout.write('%.8x\t'%data[10])
-        sys.stdout.write('%.8x'%data[11])
-        sys.stdout.write('\n')
-    sys.exit()
+        line = ['0x%.8X'%data[0]]
+        line.append('%d'%data[1])
+        line.append('%d'%data[2])
+        line.append('%s'%data[3].strip('\x00'))
+        line.append('%s'%data[4].strip('\x00'))
+        line.append('%d'%data[5])
+        line.append('0x%.8X'%data[6])
+        line.append('0x%.8X'%data[7]) # address ptr
+        line.append('%d'%data[8]) # size
+        line.append('%d'%data[9])
+        line.append('0x%.8X'%data[10])
+        line.append('0x%.8X'%data[11])
+        contentlist.append(line)
+
+    # use optional max size list here to match default lsof output, otherwise specify
+    # lsof +c 0 on the command line to print full name of commands
+    mszlist = [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1]
+    columnprint(headerlist, contentlist, mszlist)
 
 def kext_dump(x86_mem_pae, sym_addr, sym_addr2, arch, os_version, build, KID):
     kextlist = []
     kext_list = get_kext_list(x86_mem_pae, sym_addr, sym_addr2, arch, os_version, build)
-    
+
+    kextname = ''
     offset = 0
     size = 0
     
@@ -93,7 +98,8 @@ def kext_dump(x86_mem_pae, sym_addr, sym_addr2, arch, os_version, build, KID):
     
     for data in kext_list:
         if data[2] == KID:
-            print '[+] Find KEXT: %s, Offset: %x, Size: %x'%(data[3].strip('\x00'), data[7], data[8])
+            print '[+] Find KEXT: %s, Virtual Address : 0x%.8X, Size: %d'%(data[3].strip('\x00'), data[7], data[8])
+            kextname = data[3].strip('\x00')
             offset = data[7]
             size = data[8]
             bflag = 1
@@ -103,16 +109,16 @@ def kext_dump(x86_mem_pae, sym_addr, sym_addr2, arch, os_version, build, KID):
         return 1
     
     if not(x86_mem_pae.is_valid_address(offset)) or not(offset) or not(size):
-        print '[+] Invalid Offset : %x, Size: %x'%(offset, size)
+        print '[+] Invalid Virtual Address : 0x%.8X, Size: %d'%(offset, size)
         return 1
-    print '[DUMP] FILENAME: %s-%x-%x'%(data[3].strip('\x00'), offset, offset+size)
+    print '[DUMP] FILENAME: %s-%x-%x'%(kextname, offset, offset+size)
 
     padding_code = 0x00
     pk_padding = struct.pack('=B', padding_code)
     padding = pk_padding*0x1000
 
 
-    file = open('%s-%x-%x'%(data[3].strip('\x00'), offset, offset+size), 'wb')
+    file = open('%s-%x-%x'%(kextname, offset, offset+size), 'wb')
     for kext_offset in range(offset, offset+size, 0x1000):
         if not(x86_mem_pae.is_valid_address(kext_offset)):
             file.write(padding)

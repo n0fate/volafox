@@ -1,6 +1,8 @@
 import sys
 import struct
 
+from tableprint import columnprint
+
 DATA_MOUNT_STRUCTURE = [2212, '=I144x16s1024s1024s', 2276, '=Q204x16s1024s1024s']
 
 class mount_manager():
@@ -48,11 +50,15 @@ def get_mount_list(x86_mem_pae, sym_addr, arch, os_version, build):
 
 def print_mount_list(mount_list):
     print '[+] Mount List'
-    sys.stdout.write('NEXT ENTRY\tFS TYPE\tMOUNT ON NAME\tMOUNT FROM NAME')
-    sys.stdout.write('\n')
+    headerlist = ["NEXT ENTRY", "FS TYPE", "MOUNT ON NAME", "MOUNT FROM NAME"]
+    contentlist = []
+    
     for data in mount_list:
-        sys.stdout.write('%.8x\t'%data[0])
-        sys.stdout.write('%s\t'%data[1].strip('\x00')) # char[16]
-        sys.stdout.write('%s\t'%data[2].strip('\x00')) # char[1024]
-        sys.stdout.write('%s'%data[3].strip('\x00')) # char[1024]
-        sys.stdout.write('\n')
+        line = ['0x%.8X'%data[0]]
+        line.append('%s'%data[1].strip('\x00').upper()) # char[16]
+        line.append('%s'%data[2].strip('\x00')) # char[1024]
+        line.append('%s'%data[3].strip('\x00')) # char[1024]
+        contentlist.append(line)
+        
+    mszlist = [-1, -1, -1, -1]
+    columnprint(headerlist, contentlist, mszlist)

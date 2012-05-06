@@ -164,13 +164,13 @@ def main():
         sys.exit()
 
     ## Setting Page Table Map
-    nRet = m_volafox.init_vatopa_x86_pae()
+    nRet = m_volafox.init_vatopa_x86_pae(vflag)
     if nRet == 1:
         print '[+] WARNING: Memory Image Load Failed'
         sys.exit()
 
     if mflag == 1:
-	m_volafox.kextdump(kext_num) # addr, size, name
+	m_volafox.kextdump(kext_num)
 	sys.exit()
         
     if dflag == 1:
@@ -178,7 +178,7 @@ def main():
         sys.exit()
 
     if oflag == 'sw_vers':
-	m_volafox.get_read_address(0x116f4540)
+	m_volafox.get_read_address(0xFFFFFF7F80F5A000)
 	sys.exit()
 	
     if oflag == 'system_profiler':
@@ -187,6 +187,7 @@ def main():
 
     elif oflag == 'kextstat':
         m_volafox.kextstat()
+        sys.exit()
 
     elif oflag == 'mount':
         data_list = m_volafox.mount()
