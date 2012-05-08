@@ -32,13 +32,9 @@ _______________________SUPPORT_________________________
 #
 
 import sys
-import math
 import binascii
 import pickle # added by CL
 import os
-
-import binan.macho_an # user-defined class -> n0fate
-from binan.macho import MachoAddressSpace, isMachoVolafoxCompatible, is_universal_binary
 
 # LSOF: most research functionality consolidated here
 from plugins.lsof import getfilelist, printfilelist
@@ -49,6 +45,7 @@ from plugins.kextstat import get_kext_list, kext_dump, print_kext_list
 from plugins.systab import get_system_call_table_list, print_syscall_table
 from plugins.mount import get_mount_list, print_mount_list
 from plugins.netstat import get_network_hash, print_network_list, get_network_list
+from vatopa.machaddrspace import MachoAddressSpace, isMachoVolafoxCompatible, is_universal_binary
 
 from vatopa.x86 import *
 from vatopa.ia32_pml4 import * # user-defined class -> n0fate
@@ -68,23 +65,23 @@ class volafox():
         self.os_version = 0
         self.build = ''# psdump -> cr3
         self.kern_version = ''
-	self.filepath = '' # overlay path
+	#self.filepath = '' # overlay path
 	self.symbol_list = []# symbol list
 
     def get_read_address(self, address):
 	print '%x'%self.x86_mem_pae.vtop(address)
 	return
     
-    def overlay_loader(self, vflag):
+    def overlay_loader(self, overlay_path, vflag):
 	try:
 	    if vflag:
-		print '[+] Open overlay file \'%s\''%self.filepath
-	    overlay_file = open(self.filepath, 'rb')
+		print '[+] Open overlay file \'%s\''%overlay_path
+	    overlay_file = open(overlay_path, 'rb')
 	    self.symbol_list = pickle.load(overlay_file)
 	    overlay_file.close()
 	    return 0
 	except IOError:
-	    print '[+] WARNING: volafox can\'t open \'%s\''%self.filepath
+	    print '[+] WARNING: volafox can\'t open \'%s\''%overlay_path
 	    print '[+] WARNING: You can create overlay file running \'overlay_generator.py\''
 	    return 1
     
@@ -94,20 +91,14 @@ class volafox():
 	self.kern_version = ret_data[2]
 	self.build = ret_data[3]
 	self.os_version = ret_data[4]
-	
-	## check to valid image format
-	if ret_data[0] == 0:
-	    print '[+] WARNING: Invalid Linear File Format'
-	    print '[+] WARNING: If you have image using MMR, Converting memory image to linear file format'
-	    return 1, ''
     
 	if self.kern_version is 'Darwin' or self.kern_version is 'NotFound':
 	    print '[+] WARNING: Wrong Memory Image'
-	    return 1, ''
+	    return ''
 	
 	## open overlay file
-	self.filepath = 'overlays/%sx%d.overlay'%(self.build, self.arch)
-	return 0
+	#self.filepath = 'overlays/%sx%d.overlay'%(self.build, self.arch)
+	return 'overlays/%sx%d.overlay'%(self.build, self.arch)
     
     def init_vatopa_x86_pae(self, vflag): # 11.11.23 64bit suppport
         if self.mempath == '':

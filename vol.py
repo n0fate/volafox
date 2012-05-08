@@ -155,11 +155,12 @@ def main():
     ## get kernel version, architecture ##
     
     # LSOF: pass the verbose flag so debugging information can be optionally printed
-    retData = m_volafox.get_kernel_version(vflag) # ret: true/false , overlay filepath
-    if retData == 1:
+    overlay_path = m_volafox.get_kernel_version(vflag) # ret: true/false , overlay filepath
+    if overlay_path == '':
+        print '[+] WARNING: Can not found image information'
 	sys.exit()
 
-    ret_loader = m_volafox.overlay_loader(vflag)
+    ret_loader = m_volafox.overlay_loader(overlay_path, vflag)
     if ret_loader == 1:
         sys.exit()
 
