@@ -15,19 +15,30 @@ def main():
     except IndexError:
         usage()
         sys.exit()
+
+    is_universal_binary = 1
     
     macho = macho_an(sys.argv[1])
     arch_count = macho.load()
-    #print arch_count
+
+    if arch_count == -1:
+        is_universal_binary = 0
+        
     if int(sys.argv[3]) is not 32 and int(sys.argv[3]) is not 64:
         usage()
         sys.exit()
     elif int(sys.argv[3]) == 32:
-        header = macho.get_header(arch_count, ARCH_I386) # only support Intel x86
-        symbol_list = macho.macho_getsymbol_x86(header[2], header[3])
+        if not(is_universal_binary):
+            symbol_list = macho.macho_getsymbol_x86(0, macho.getfilesize())
+        else:
+            header = macho.get_header(arch_count, ARCH_I386) # only support Intel x86
+            symbol_list = macho.macho_getsymbol_x86(header[2], header[3])
     elif int(sys.argv[3]) == 64:
-        header = macho.get_header(arch_count, ARCH_X86_64) # only support Intel x86
-        symbol_list = macho.macho_getsymbol_x64(header[2], header[3])
+        if not(is_universal_binary):
+            symbol_list = macho.macho_getsymbol_x64(0, macho.getfilesize())
+        else:
+            header = macho.get_header(arch_count, ARCH_X86_64) # only support Intel x86
+            symbol_list = macho.macho_getsymbol_x64(header[2], header[3])
     ###### Added by CL
     f = open(sys.argv[2], 'wb')
     pickle.dump(symbol_list, f)

@@ -23,16 +23,15 @@
 
 import sys
 import mmap
-import volafox.binan.macho
+import volafox.vatopa.machaddrspace
 
 if len(sys.argv) != 2:
     print "Usage: showbootermemorymap <mach-o image>."
     exit(0)
 
 fin     = open(sys.argv[1], 'rb')
-map     = mmap.mmap(fin.fileno(), 4096*16, prot=mmap.PROT_READ)
-ncmds   = macho.getncmds(map)
-lcmds   = macho.loadcommand(map, ncmds)
+ncmds   = volafox.vatopa.machaddrspace.getncmds(fin)
+lcmds   = volafox.vatopa.machaddrspace.loadcommand(fin, ncmds)
 
 print "Type       Physical Start   Number of Pages"
 for cmd in lcmds:

@@ -12,40 +12,61 @@ class kext_manager():
         self.arch = arch
         
     def kern_kextstat(self, sym_addr): # 11.11.23 64bit suppport
+        kext = []
         if self.arch == 32:
             Kext = self.x86_mem_pae.read(sym_addr, DATA_KEXT_STRUCTURE[0]); # .data _g_kernel_kmod_info
             data = struct.unpack(DATA_KEXT_STRUCTURE[1], Kext)
+            
         else: # self.arch == 64
             Kext = self.x86_mem_pae.read(sym_addr, DATA_KEXT_STRUCTURE[2]); # .data _g_kernel_kmod_info
             data = struct.unpack(DATA_KEXT_STRUCTURE[3], Kext)
-        return data
+
+        kext.append(self.x86_mem_pae.vtop(sym_addr))
+        for element in data[1:]:
+            kext.append(element)
+        return kext
 
     def get_kextstat(self, sym_addr): # 11.11.23 64bit suppport
         kext_list = []
-
         if self.arch == 32:
             Kext = self.x86_mem_pae.read(sym_addr, 4); # .data _kmod
-            data = struct.unpack('I', Kext)
+            kext_offset = struct.unpack('I', Kext)[0]
 	    while(1):
-		if data[0] == 0:
+                kext = []
+		if kext_offset == 0:
 		    break
-		if not(self.x86_mem_pae.is_valid_address(data[0])):
+		if not(self.x86_mem_pae.is_valid_address(kext_offset)):
 		    break
-                Kext = self.x86_mem_pae.read(data[0], DATA_KEXT_STRUCTURE[0]); # .data _kmod
+                Kext = self.x86_mem_pae.read(kext_offset, DATA_KEXT_STRUCTURE[0]); # .data _kmod
                 data = struct.unpack(DATA_KEXT_STRUCTURE[1], Kext)
-		kext_list.append(data)
+
+                kext.append(self.x86_mem_pae.vtop(kext_offset))
+                for element in data[1:]:
+                    kext.append(element)
+                    
+		kext_list.append(kext)
+
+		kext_offset = data[0]
 		
         else: # 64
             Kext = self.x86_mem_pae.read(sym_addr, 8);
-            data = struct.unpack('Q', Kext)
+            kext_offset = struct.unpack('Q', Kext)[0]
 	    while(1):
-		if data[0] == 0:
+                kext = []
+		if kext_offset == 0:
 		    break
-		if not(self.x86_mem_pae.is_valid_address(data[0])):
+		if not(self.x86_mem_pae.is_valid_address(kext_offset)):
 		    break
-		Kext = self.x86_mem_pae.read(data[0], DATA_KEXT_STRUCTURE[2]); # .data _g_kernel_kmod_info
+		Kext = self.x86_mem_pae.read(kext_offset, DATA_KEXT_STRUCTURE[2]); # .data _g_kernel_kmod_info
 		data = struct.unpack(DATA_KEXT_STRUCTURE[3], Kext)
-		kext_list.append(data)
+
+                kext.append(self.x86_mem_pae.vtop(kext_offset))
+                for element in data[1:]:
+                    kext.append(element)
+                    
+		kext_list.append(kext)
+
+		kext_offset = data[0]
 
         return kext_list
 
@@ -63,15 +84,15 @@ def get_kext_list(x86_mem_pae, sym_addr, sym_addr2, arch, os_version, build):
 def print_kext_list(kext_list):
     print '[+] Kernel Extention List'
 
-    headerlist = ["NEXT_ENTRY", "INFO", "KID", "KEXT_NAME", "VERSION", "REFER_COUNT", "REFER_LIST", "ADDRESS", "SIZE", "HDRSIZE", "START_PTR" ,"STOP_PTR"]
+    headerlist = ["OFFSET(P)", "INFO", "KID", "KEXT_NAME", "VERSION", "REFER_COUNT", "REFER_LIST", "ADDRESS", "SIZE", "HDRSIZE", "START_PTR" ,"STOP_PTR"]
     contentlist = []
     
     for data in kext_list:
         line = ['0x%.8X'%data[0]]
         line.append('%d'%data[1])
         line.append('%d'%data[2])
-        line.append('%s'%data[3].strip('\x00'))
-        line.append('%s'%data[4].strip('\x00'))
+        line.append('%s'%data[3].split('\x00')[0])
+        line.append('%s'%data[4].split('\x00')[0])
         line.append('%d'%data[5])
         line.append('0x%.8X'%data[6])
         line.append('0x%.8X'%data[7]) # address ptr

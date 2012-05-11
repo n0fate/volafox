@@ -1,3 +1,4 @@
+# -*- coding: cp949 -*-
 import sys
 import struct
 import time
@@ -5,10 +6,10 @@ import time
 from tableprint import columnprint
 
 # Lion 32bit, SN 32bit, Lion64bit, SN 64bit
-DATA_PROC_STRUCTURE = [[476+24+168, '=4xIIIII392x24xI52sI164xI', 16, '=IIII', 283, '=IIIIIII255s'],
-    [476+168, '=4xIIIII392xI52sI164xI', 16, '=IIII', 283, '=IIIIIII255s'],
-    [752+24+268, '=8xQQQQI668xI52sQ264xI', 32, '=QQQQ', 303, '=IQQIQQQ255s'],
-    [1028, '=8xQQQQI652xI52sQ264xI', 32, '=QQQQ', 303, '=IQQIQQQ255s']]
+DATA_PROC_STRUCTURE = [[476+24+168, '=4xIIIII380xQII20xbbbb52sI164xI', 16, '=IIII', 283, '=IIIIIII255s'],
+    [476+168, '=4xIIIII356xQII20xbbbb52sI164xI', 16, '=IIII', 283, '=IIIIIII255s'],
+    [752+24+268, '=8xQQQQI628xQQQ16xbbbb52sQ264xI', 32, '=QQQQ', 303, '=IQQIQQQ255s'],
+    [1028, '=8xQQQQI612xQQQ16xbbbb52sQ264xI', 32, '=QQQQ', 303, '=IQQIQQQ255s']]
 
 # Lion 32bit, SN 32bit, Lion64bit, SN 64bit
 DATA_TASK_STRUCTURE = [[32, '=8xIIIIII'],
@@ -25,10 +26,14 @@ DATA_VME_STRUCTURE = [[162+12, '=12xIIQQII8x4xIQ16xIII42xIIIIIIIII', 52, '=IIQQ2
 # 11D50, Lion 32bit, SN 32bit, Lion64bit, SN 64bit
 DATA_PMAP_STRUCTURE = [[44, '=36xQ'],
     [12, '=4xQ'],
-    [100, '=IQIIII56xQII'],
+    [100, '=84xQII'],
     [80, '=72xQ'],
     [16, '=8xQ'],
     [152, '=128xQQQ']]
+
+# 32비트 unsigned 형으로 변환하는 함수 정의
+def unsigned8(n):
+  return n & 0xFFL
 
 class process_manager:
     def __init__(self, x86_mem_pae, arch, os_version, build):
@@ -66,21 +71,40 @@ class process_manager:
             if not(self.x86_mem_pae.is_valid_address(proc_sym_addr)):
                 break
             try:
+                proc = []
                 proclist = self.x86_mem_pae.read(proc_sym_addr, PROC_STRUCTURE[0])
                 data = struct.unpack(PROC_STRUCTURE[1], proclist)
                 proc_sym_addr = data[0]
             
-                pgrp_t = self.x86_mem_pae.read(data[7], PROC_STRUCTURE[2]); # pgrp structure
+                pgrp_t = self.x86_mem_pae.read(data[13], PROC_STRUCTURE[2]); # pgrp structure
                 m_pgrp = struct.unpack(PROC_STRUCTURE[3], pgrp_t)
     
                 session_t = self.x86_mem_pae.read(m_pgrp[3], PROC_STRUCTURE[4]); # session structure
                 m_session = struct.unpack(PROC_STRUCTURE[5], session_t)
-                data += (str(m_session[7]).strip('\x00'), )
+
+                proc.append(self.x86_mem_pae.vtop(proc_sym_addr))
+                proc.append(data[1])
+                proc.append(data[2])
+                proc.append(data[3])
+                proc.append(data[4])
+                proc.append(data[5]) # user_stack
+                proc.append(data[6]) # vnode of executable
+                proc.append(data[7]) # offset in executable vnode
+                proc.append(data[8]) # Process Priority
+                proc.append(data[9]) # User-Priority based on p_cpu and p_nice
+                proc.append(data[10]) # Process 'nice' value
+                proc.append(data[11]) # User-Priority based on p_cpu and p_nice
+                proc.append(data[12].split('\x00', 1)[0])
+                proc.append(str(m_session[7]).strip('\x00'))
+                proc.append(data[14])
+                #proc.append(data[8])
+                
+                proc_sym_addr = data[0]
                 if pid == -1: # All Process
-                    proc_list.append(data)
+                    proc_list.append(proc)
                 else: # Process Dump or filtering
                     if data[1] == pid:
-                        proc_list.append(data)
+                        proc_list.append(proc)
                         return 0
             
             except struct.error:
@@ -102,6 +126,10 @@ class process_manager:
                 
         task_info = self.x86_mem_pae.read(proc[2], TASK_STRUCTURE[0])
         task_struct = struct.unpack(TASK_STRUCTURE[1], task_info)
+
+        print ' [-] User Stack Address: 0x%.8X'%proc[5]
+        print ' [-] Vnode of Executable Address: 0x%.8X'%proc[6]
+        print ' [-] Offset in executable vnode: 0x%.8X'%proc[7]
         
         #print 'task_t'
         print ' [-] Reference Count: %x'%task_struct[0]
@@ -113,7 +141,7 @@ class process_manager:
         #print 'userdata: %x'%task_struct[5]
         return task_struct
     
-    def get_proc_region(self, task_ptr):
+    def get_proc_region(self, task_ptr, user_stack):
         
         vm_list = []
         vm_struct = []
@@ -199,8 +227,10 @@ class process_manager:
             else:
                 max_permission += '-'
             ##########################################
-            
-            print ' [-] Region from 0x%x to 0x%x (%s, max %s;)'%(vme_list[2], vme_list[3], permission, max_permission)
+            if vme_list[3] == user_stack:
+              print ' [-] Region from 0x%x to 0x%x (%s, max %s;), %s'%(vme_list[2], vme_list[3], permission, max_permission, "<UserStack>")
+            else:
+              print ' [-] Region from 0x%x to 0x%x (%s, max %s;)'%(vme_list[2], vme_list[3], permission, max_permission)
             #print 'next[data]: %x'%self.x86_mem_pae.vtop(vme_list[1])
             entry_next_ptr = vme_list[1]
         
@@ -232,32 +262,24 @@ class process_manager:
 
     def proc_print(self, data_list):
         print '[+] Process List'
-##        sys.stdout.write('Next Entry\tPID\tPPID\tProcess Name\tUser\tCreate Time')
-##        sys.stdout.write('\n')
-##        for data in data_list:
-##            sys.stdout.write('%.8x\t'%data[0]) # int
-##            sys.stdout.write('%d\t'%data[1]) # int
-##            sys.stdout.write('%d\t'%data[4]) # int
-##            sys.stdout.write('%s\t'%data[6].split('\x00', 1)[0]) # Changed by CL to read null formatted strings
-##            sys.stdout.write('%s\t'%data[9].strip('\x00'))
-##            sys.stdout.write('%s\t'%time.strftime("%a %b %d %H:%M:%S %Y", time.gmtime(data[8])))
-##            sys.stdout.write('\n')
 
-        headerlist = ["NEXT ENTRY", "PID", "PPID", "PROCESS_NAME", "USERNAME", "CREATE_TIME (GMT +0)"]
+        headerlist = ["OFFSET(P)", "PID", "PPID", "PRIORITY", "NICE", "PROCESS_NAME", "USERNAME", "CREATE_TIME (GMT +0)"]
         contentlist = []
 
         for data in data_list:
-            line = ["0x%.8X"%data[0]]
-            line.append('%d'%data[1]) # int
-            line.append('%d'%data[4]) # int
-            line.append('%s'%data[6].split('\x00', 1)[0]) # Changed by CL to read null formatted strings
-            line.append('%s'%data[9].strip('\x00'))
-            line.append('%s'%time.strftime("%a %b %d %H:%M:%S %Y", time.gmtime(data[8])))
+            line = ["0x%.8X"%data[0]] # offset
+            line.append('%d'%data[1]) # pid
+            line.append('%d'%data[4]) # ppid
+            line.append('%d'%unsigned8(data[8])) # Priority
+            line.append('%d'%unsigned8(data[10])) # nice
+            line.append('%s'%data[12]) # Changed by CL to read null formatted strings
+            line.append('%s'%data[13])
+            line.append('%s'%time.strftime("%a %b %d %H:%M:%S %Y", time.gmtime(data[14])))
             contentlist.append(line)
 
 	# use optional max size list here to match default lsof output, otherwise specify
 	# lsof +c 0 on the command line to print full name of commands
-	mszlist = [-1, -1, -1, -1, -1, -1]
+	mszlist = [-1, -1, -1, -1, -1, -1, -1, -1]
 	columnprint(headerlist, contentlist, mszlist)
         
 #################################### PUBLIC FUNCTIONS ####################################
@@ -281,11 +303,11 @@ def get_proc_dump(x86_mem_pae, sym_addr, arch, os_version, build, pid):
     
     task_struct = ProcMan.get_task(proclist[0])
     
-    retData = ProcMan.get_proc_region(task_struct[3])
+    retData = ProcMan.get_proc_region(task_struct[3], proclist[0][5])
     
     vm_list = retData[0]
     vm_struct = retData[1]
     
     pm_cr3 = ProcMan.get_proc_dump(vm_list, vm_struct)
     
-    return pm_cr3, vm_list, proclist[0][6].split('\x00', 1)[0]
+    return pm_cr3, vm_list, proclist[0][12]
