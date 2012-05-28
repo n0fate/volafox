@@ -174,6 +174,11 @@ def get_imageinfo(mempath, vflag):
     elif build == '10A433':
 	    kern_version = '10.6.0'
 	    os_version = int(build[:2])
+	    
+    # osxmem: 10.7.4 support
+    elif build == '11E53':
+	    kern_version = '10.7.4'
+	    os_version = int(build[:2])
     
     elif build == 'Darwin ':
 	    #print ' [-] Wrong Catfish symbol. Memory capture incomplete?'
