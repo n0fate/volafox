@@ -31,7 +31,7 @@ DATA_PMAP_STRUCTURE = [[44, '=36xQ'],
     [16, '=8xQ'],
     [152, '=128xQQQ']]
 
-# 32비트 unsigned 형으로 변환하는 함수 정의
+
 def unsigned8(n):
   return n & 0xFFL
 
@@ -141,7 +141,7 @@ class process_manager:
         #print 'userdata: %x'%task_struct[5]
         return task_struct
     
-    def get_proc_region(self, task_ptr, user_stack):
+    def get_proc_region(self, task_ptr, user_stack, fflag):
         
         vm_list = []
         vm_struct = []
@@ -177,8 +177,17 @@ class process_manager:
         #print 'entries_pageable: %x'%vm_struct[5]
         #print 'pmap_t: %x'%self.x86_mem_pae.vtop(vm_struct[6])
         #print 'Virtual size: %x\n'%vm_struct[7]
+	
+	vm_list = []
+	
+	# process full dump
+	if fflag == 1:
+	  vm_temp_list = []
+	  vm_temp_list.append(vm_struct[2])
+	  vm_temp_list.append(vm_struct[3])
+	  vm_list.append(vm_temp_list)
+	  return vm_list, vm_struct
 
-        vm_list = []
         print '[+] Generating Process Virtual Memory Maps'
         entry_next_ptr = vm_struct[1]
         for data in range(0, vm_struct[4]): # number of entries
@@ -293,7 +302,7 @@ def get_proc_list(x86_mem_pae, sym_addr, arch, os_version, build):
         ProcMan.proc_print(proclist)
         return 0
     
-def get_proc_dump(x86_mem_pae, sym_addr, arch, os_version, build, pid):
+def get_proc_dump(x86_mem_pae, sym_addr, arch, os_version, build, pid, fflag):
     proclist = []
     ProcMan = process_manager(x86_mem_pae, arch, os_version, build)
     ret = ProcMan.get_proc(sym_addr, proclist, pid)
@@ -303,10 +312,15 @@ def get_proc_dump(x86_mem_pae, sym_addr, arch, os_version, build, pid):
     
     task_struct = ProcMan.get_task(proclist[0])
     
-    retData = ProcMan.get_proc_region(task_struct[3], proclist[0][5])
+    retData = ProcMan.get_proc_region(task_struct[3], proclist[0][5], fflag)
     
     vm_list = retData[0]
     vm_struct = retData[1]
+    
+    continue_flag = 0
+    
+    if fflag == 1:
+      print'[+] full dump size is %d bytes'%(vm_list[0][1] - vm_list[0][0])
     
     pm_cr3 = ProcMan.get_proc_dump(vm_list, vm_struct)
     

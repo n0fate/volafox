@@ -1,3 +1,7 @@
+#!/usr/bin/env python						# LSOF: new path
+#!c:\python\python.exe
+# -*- coding: utf-8 -*-
+#  -*- mode: python; -*-
 
 import getopt
 import sys
@@ -6,14 +10,12 @@ from volafox.volafox import volafox
 
 def usage():
     
-    # LSOF: this usage statement has been reworked and adds research options
-    
     '''
     TODO
     1. Replace existing commands with their CLI equivalents (e.g. proc_info --> ps) - complete - 11/04/24 - n0fate
     2. Use more conventional usage format
-    3. Make -m/x/p/v suboptions of their respective commands
-    4. Print all tables using new lsof print function
+    3. Make -m/x/p/v suboptions of their respective commands - working
+    4. Print all tables using new lsof print function - complete
     5. kern_kext_info appears to be broken... - complete
     '''
     
@@ -22,14 +24,15 @@ def usage():
     print 'project: http://code.google.com/p/volafox'
     print 'support: 10.6-7; 32/64-bit kernel'
     print '  input: *.vmem (VMWare memory file), *.mmr (Mac Memory Reader, flattened x86)'
-    print '  usage: python %s -i IMAGE [-o COMMAND [-vp PID]][-m KEXT_ID][-x PID]\n' %sys.argv[0]
+    print '  usage: python %s -i IMAGE [-o COMMAND [-vp PID][-fx PID][-x KEXT_ID]]\n' %sys.argv[0]
     
     print 'Options:'
-    print '-o CMD : Print kernel information for CMD (below)'
-    print '-p PID : List open files for PID (where CMD is "lsof")'
-    print '-v     : Print all files, including unsupported types (where CMD is "lsof")'  
-    print '-m KID : Dump kernel extension address space for KID'
-    print '-x PID : Dump process address space for PID\n'
+    print '-o CMD     : Print kernel information for CMD (below)'
+    print '-p PID     : List open files for PID (where CMD is "lsof")'
+    print '-v         : Print all files, including unsupported types (where CMD is "lsof")'  
+    #print '-m KID : Dump kernel extension address space for KID (where CMD is "kextstat")'
+    print '-x PID/KID : Dump process/kernel extension address space for PID/KID (where CMD is "ps"/"kextstat")\n'
+    print '-f         : Full dump process address space for PID (where CMD is "ps" and -x PID) (experiment)\n'
     print 'COMMANDS:'
 #    print 'sw_vers         : Mac OS X build version (http://support.apple.com/kb/HT1159)'
     print 'system_profiler : Kernel version, CPU, and memory spec, Boot/Sleep/Wakeup time'
@@ -47,14 +50,14 @@ def main():
     pflag = 0			# LSOF: new pid flag
     vflag = 0			# LSOF: show debugging output and experimental options for lsof
     dflag = 0
-    mflag = 0
-    arch_num = 0
+    mflag = 0   
+    fflag = 0			# process full dump option  
     pid = -1			# LSOF: relocated this definition
 
     try:
     	# LSOF: added -p flag for pid specification with lsof, -v no longer needs arg
         #option, args = getopt.getopt(sys.argv[1:], 'o:i:x:v:m:')
-        option, args = getopt.getopt(sys.argv[1:], 'o:i:s:x:vm:p:')
+        option, args = getopt.getopt(sys.argv[1:], 'o:i:s:x:vp:f')
 
     except getopt.GetoptError, err:
         print str(err)
@@ -74,12 +77,30 @@ def main():
             
             # LSOF: new pid flag
             for i,x in enumerate(option):
-            	if x[0] == '-p':
-            		pid = int(x[1], 10)
-            		pflag = 1;
-            		del option[i]
-            		debug += " -p %d" %pid
+            	if p == 'lsof' and x[0] == '-p':
+		    pid = int(x[1], 10)
+		    pflag = 1;
+		    debug += " -p %d" %pid
+		    break
+
+		elif p == 'ps' and x[0] == '-x': # process dump
+		    pid = int(x[1], 10)
+		    debug += ' -x %d' %pid
+		    dflag = 1
+		    for i,x in enumerate(option):
+			if x[0] == '-f':
+			    fflag = 1;
+			    break
+			del option[i]
+		    break
+		
+		elif p == 'kextstat' and x[0] == '-x': # kext dump
+		    kext_num = int(x[1], 10)
+		    debug += ' -x %d' %kext_num
+		    mflag = 1
+		    break
             
+	    del option[i]
             debug += "\n"	# LSOF: replacing newline
 
         elif op in '-i': # physical memory image file
@@ -95,23 +116,29 @@ def main():
             #print 'Verbose:', p
             vflag = 1
        
-        elif op =='-x':
-        
-            # LSOF: add to debug string
-            #print '[+] Dump PID: %s'%p
-            debug += '[+] Dump PID: %s\n' %p
-            
-            pid = int(p, 10)
-            dflag = 1
-        
-        elif op =='-m':
-        	
-            # LSOF: add to debug string
-            #print '[+] Dump KEXT: %s'%p
-            debug += '[+] Dump KEXT: %s\n' %p
-            
-            kext_num = int(p, 10)
-            mflag = 1
+#        elif op =='-x':
+#        
+#            # LSOF: add to debug string
+#            #print '[+] Dump PID: %s'%p
+#            debug += '[+] Dump PID: %s\n' %p
+#            
+#            pid = int(p, 10)
+#            dflag = 1
+#	    
+#	    # full dump option
+#            for i,x in enumerate(option):
+#            	if x[0] == '-f':
+#		    fflag = 1;
+#		    del option[i]
+#        
+#        elif op =='-m':
+#        	
+#            # LSOF: add to debug string
+#            #print '[+] Dump KEXT: %s'%p
+#            debug += '[+] Dump KEXT: %s\n' %p
+#            
+#            kext_num = int(p, 10)
+#            mflag = 1
            
         else:
             #print '[+] Command error:', op	# LSOF: not printed, getopt catches this
@@ -167,7 +194,7 @@ def main():
     ## Setting Page Table Map
     nRet = m_volafox.init_vatopa_x86_pae(vflag)
     if nRet == 1:
-        print '[+] WARNING: Memory Image Load Failed'
+        print "[+] WARNING: Memory Image Load Failed"
         sys.exit()
 
     if mflag == 1:
@@ -175,9 +202,10 @@ def main():
 	sys.exit()
         
     if dflag == 1:
-        m_volafox.proc_dump(pid)
+        m_volafox.proc_dump(pid, fflag)
         sys.exit()
 
+    # test
     if oflag == 'sw_vers':
 	m_volafox.get_read_address(0xFFFFFF7F80F5A000)
 	sys.exit()

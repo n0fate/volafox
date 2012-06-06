@@ -1,5 +1,3 @@
-#!/usr/bin/env python						# LSOF: new path
-#!c:\python\python.exe
 # -*- coding: utf-8 -*-
 #  -*- mode: python; -*-
 
@@ -181,10 +179,10 @@ class volafox():
 	syscall_list = get_system_call_table_list(self.x86_mem_pae, sym_addr, self.arch, self.os_version, self.build)
 	print_syscall_table(syscall_list, self.symbol_list)
 
-    def proc_dump(self, pid):
+    def proc_dump(self, pid, fflag):
 	sym_addr = self.symbol_list['_kernproc']
         
-	dump_param = get_proc_dump(self.x86_mem_pae, sym_addr, self.arch, self.os_version, self.build, pid)
+	dump_param = get_proc_dump(self.x86_mem_pae, sym_addr, self.arch, self.os_version, self.build, pid, fflag)
 	
 	pm_cr3 = dump_param[0]
 	vm_list = dump_param[1]
