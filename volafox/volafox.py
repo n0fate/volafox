@@ -62,8 +62,6 @@ class volafox():
         self.data_list = []
         self.os_version = 0
         self.build = ''# psdump -> cr3
-        self.kern_version = ''
-	#self.filepath = '' # overlay path
 	self.symbol_list = []# symbol list
 
     def get_read_address(self, address):
@@ -86,16 +84,10 @@ class volafox():
     def get_kernel_version(self, vflag):
 	ret_data = get_imageinfo(self.mempath, vflag)
 	self.arch = ret_data[1]
-	self.kern_version = ret_data[2]
-	self.build = ret_data[3]
-	self.os_version = ret_data[4]
-    
-	if self.kern_version is 'Darwin' or self.kern_version is 'NotFound':
-	    print '[+] WARNING: Wrong Memory Image'
-	    return ''
+	self.build = ret_data[2]
+	self.os_version = ret_data[3]
 	
 	## open overlay file
-	#self.filepath = 'overlays/%sx%d.overlay'%(self.build, self.arch)
 	return 'overlays/%sx%d.overlay'%(self.build, self.arch)
     
     def init_vatopa_x86_pae(self, vflag): # 11.11.23 64bit suppport

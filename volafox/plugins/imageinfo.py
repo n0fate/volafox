@@ -125,72 +125,70 @@ def get_imageinfo(mempath, vflag):
     if vflag:
 	    print " [-] Build Version in Memory : %s"%build
 	    
-    if build == '10A432':
-	    kern_version = '10.6.0'
-	    os_version = int(build[:2])
-
-    elif build == '10D573' or build == '10D578' or build == '10D572':
-	    kern_version = '10.6.3'
-	    os_version = int(build[:2])
-	    
-    elif build == '10F659' or build == '10F616':
-	    kern_version = '10.6.4'
-	    os_version = int(build[:2])
-
-    elif build == '10H574' or build == '10H575':
-	    kern_version = '10.6.5'
-	    os_version = int(build[:2])
-
-    elif build == '10J567':
-	    kern_version = '10.6.6'
-	    os_version = int(build[:2])
-
-    elif build == '10J869' or build == '10J3250':
-	    kern_version = '10.6.7'
-	    os_version = int(build[:2])
-
-    elif build == '10K540' or build ==  '10K549':
-	    kern_version = '10.6.8'
-	    os_version = int(build[:2])
-
-    elif build == '11A511':
-	    kern_version = '10.7.0'
-	    os_version = int(build[:2])
-
-    elif build == '11B26':
-	    kern_version = '10.7.1'
-	    os_version = int(build[:2])
-
-    elif build == '11C74':
-	    kern_version = '10.7.2'
-	    os_version = int(build[:2])
-	    
-    # n0fate : bug fix
-    elif build == '11D50b' or build == '11D50' or build == '11D50d':
-	    kern_version = '10.7.3'
-	    os_version = int(build[:2])
-	    
-    # LSOF: 10.6.0 Server support
-    elif build == '10A433':
-	    kern_version = '10.6.0'
-	    os_version = int(build[:2])
-	    
-    # osxmem: 10.7.4 support
-    elif build == '11E53':
-	    kern_version = '10.7.4'
-	    os_version = int(build[:2])
-    
-    elif build == 'Darwin ':
-	    #print ' [-] Wrong Catfish symbol. Memory capture incomplete?'
-	    kern_version = 'Darwin'
-    else:
-	    kern_version = 'NotFound'
-	    
+    os_version = int(build[:2])
+#
+#    elif build == '10D573' or build == '10D578' or build == '10D572':
+#	    kern_version = '10.6.3'
+#	    os_version = int(build[:2])
+#	    
+#    elif build == '10F659' or build == '10F616':
+#	    kern_version = '10.6.4'
+#	    os_version = int(build[:2])
+#
+#    elif build == '10H574' or build == '10H575':
+#	    kern_version = '10.6.5'
+#	    os_version = int(build[:2])
+#
+#    elif build == '10J567':
+#	    kern_version = '10.6.6'
+#	    os_version = int(build[:2])
+#
+#    elif build == '10J869' or build == '10J3250':
+#	    kern_version = '10.6.7'
+#	    os_version = int(build[:2])
+#
+#    elif build == '10K540' or build ==  '10K549':
+#	    kern_version = '10.6.8'
+#	    os_version = int(build[:2])
+#
+#    elif build == '11A511':
+#	    kern_version = '10.7.0'
+#	    os_version = int(build[:2])
+#
+#    elif build == '11B26':
+#	    kern_version = '10.7.1'
+#	    os_version = int(build[:2])
+#
+#    elif build == '11C74':
+#	    kern_version = '10.7.2'
+#	    os_version = int(build[:2])
+#	    
+#    # n0fate : bug fix
+#    elif build == '11D50b' or build == '11D50' or build == '11D50d':
+#	    kern_version = '10.7.3'
+#	    os_version = int(build[:2])
+#	    
+#    # LSOF: 10.6.0 Server support
+#    elif build == '10A433':
+#	    kern_version = '10.6.0'
+#	    os_version = int(build[:2])
+#	    
+#    # osxmem: 10.7.4 support
+#    elif build == '11E53':
+#	    kern_version = '10.7.4'
+#	    os_version = int(build[:2])
+#    
+#    elif build == 'Darwin ':
+#	    #print ' [-] Wrong Catfish symbol. Memory capture incomplete?'
+#	    kern_version = 'Darwin'
+#    else:
+#	    kern_version = 'NotFound'
+#	    
     # LSOF: verbose support
-    if vflag:
-	    print ' [-] Kernel Version: %s'%kern_version
+#    if vflag:
+#	    print ' [-] Kernel Version: %s'%os_version
 
-    return valid_format, arch, kern_version, build, os_version
+    return valid_format, arch, build, os_version
 #
 #def main():
 #	f = sys.argv[1]
