@@ -269,6 +269,6 @@ def print_boot_args(bootargs, arch, os_version, build):
         print ' [-] EFI Mode: %d Bits'%bootargs[20]
         print ' [-] Physical Address of log: 0x%.8x'%bootargs[21]
         print ' [-] Size of log: 0x%.8x'%bootargs[22]
-        print ' [-] EFI Runtime SErvice Virtual Page Start: 0x%.8x'%bootargs[23]
+        print ' [-] EFI Runtime Service Virtual Page Start: 0x%.8x'%bootargs[23]
         print '  --> Virtual Address of defragmented runtime pages'
     

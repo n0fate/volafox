@@ -44,6 +44,7 @@ from plugins.systab import get_system_call_table_list, print_syscall_table
 from plugins.mount import get_mount_list, print_mount_list
 from plugins.netstat import get_network_hash, print_network_list, get_network_list
 from plugins.pe_state import get_pe_state, print_pe_state, get_boot_args, print_boot_args
+from plugins.efiinfo import get_efi_system_table, print_efi_system_table, get_efi_runtime_services, print_efi_runtime_services
 from vatopa.machaddrspace import MachoAddressSpace, isMachoVolafoxCompatible, is_universal_binary
 
 from vatopa.x86 import *
@@ -270,4 +271,14 @@ class volafox():
         
         boot_args_info = get_boot_args(self.x86_mem_pae, boot_args_ptr, self.arch, self.os_version, self.build)
         print_boot_args(boot_args_info, self.arch, self.os_version, self.build)
+    
+    def efi_system_table(self):
+        efi_system_symbol_addr = self.symbol_list['_gPEEFISystemTable']
+        #print '0x%.8x'%self.x86_mem_pae.vtop(efi_system_symbol_addr)
+        efi_system_table_info, configuration_table = get_efi_system_table(self.x86_mem_pae, efi_system_symbol_addr, self.arch, self.os_version, self.build)
+        print_efi_system_table(efi_system_table_info, configuration_table, self.arch, self.os_version, self.build)
+
+        efi_runtime_symbol_addr = self.symbol_list['_gPEEFIRuntimeServices']
+        efi_runtime_info = get_efi_runtime_services(self.x86_mem_pae, efi_runtime_symbol_addr, self.arch, self.os_version, self.build)
+        print_efi_runtime_services(efi_runtime_info, self.arch, self.os_version, self.build)
         

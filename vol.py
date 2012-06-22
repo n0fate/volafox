@@ -41,6 +41,7 @@ def usage():
     print 'netstat         : Network socket listing (Hash table)'
     print 'lsof            : Open files listing by process (research, osxmem@gmail.com)'	# LSOF: new lsof command
     print 'pestate         : Show Boot information (experiment)'
+    print 'efiinfo         : EFI System Table, EFI Runtime Services(experiment)'
 #    print 'net_info_test\t network information(plist), (experiment)'
 
 def main():
@@ -205,8 +206,8 @@ def main():
         sys.exit()
 
     # test
-    if oflag == 'sw_vers':
-	m_volafox.get_read_address(0xFFFFFF7F80F5A000)
+    if oflag == 'get_phy':
+	m_volafox.get_read_address(0xffffff8000b495a0)
 	sys.exit()
 	
     if oflag == 'system_profiler':
@@ -249,6 +250,10 @@ def main():
     
     elif oflag == 'pestate':
         m_volafox.pe_state()
+        sys.exit()
+
+    elif oflag == 'efiinfo':
+        m_volafox.efi_system_table()
         sys.exit()
         
     else:
