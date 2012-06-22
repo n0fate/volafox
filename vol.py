@@ -30,11 +30,9 @@ def usage():
     print '-o CMD     : Print kernel information for CMD (below)'
     print '-p PID     : List open files for PID (where CMD is "lsof")'
     print '-v         : Print all files, including unsupported types (where CMD is "lsof")'  
-    #print '-m KID : Dump kernel extension address space for KID (where CMD is "kextstat")'
     print '-x PID/KID : Dump process/kernel extension address space for PID/KID (where CMD is "ps"/"kextstat")\n'
     print '-f         : Full dump process address space for PID (where CMD is "ps" and -x PID) (experiment)\n'
     print 'COMMANDS:'
-#    print 'sw_vers         : Mac OS X build version (http://support.apple.com/kb/HT1159)'
     print 'system_profiler : Kernel version, CPU, and memory spec, Boot/Sleep/Wakeup time'
     print 'mount           : Mounted filesystems'
     print 'kextstat        : KEXT (Kernel Extensions) listing'
@@ -42,6 +40,7 @@ def usage():
     print 'systab          : Syscall table (Hooking Detection)'
     print 'netstat         : Network socket listing (Hash table)'
     print 'lsof            : Open files listing by process (research, osxmem@gmail.com)'	# LSOF: new lsof command
+    print 'pestate         : Show Boot information (experiment)'
 #    print 'net_info_test\t network information(plist), (experiment)'
 
 def main():
@@ -247,7 +246,11 @@ def main():
     elif oflag == 'netstat_test':
         m_volafox.netstat_test()
         sys.exit()
-
+    
+    elif oflag == 'pestate':
+        m_volafox.pe_state()
+        sys.exit()
+        
     else:
         print '[+] WARNING: -o Argument Error\n'
         sys.exit()

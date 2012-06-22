@@ -43,6 +43,7 @@ from plugins.kextstat import get_kext_list, kext_dump, print_kext_list
 from plugins.systab import get_system_call_table_list, print_syscall_table
 from plugins.mount import get_mount_list, print_mount_list
 from plugins.netstat import get_network_hash, print_network_list, get_network_list
+from plugins.pe_state import get_pe_state, print_pe_state, get_boot_args, print_boot_args
 from vatopa.machaddrspace import MachoAddressSpace, isMachoVolafoxCompatible, is_universal_binary
 
 from vatopa.x86 import *
@@ -136,18 +137,18 @@ class volafox():
 	print_kext_list(kext_list)
 
     def kextdump(self, KID):
-	sym_addr = self.symbol_list['_kmod']
-	sym_addr2 = self.symbol_list['_g_kernel_kmod_info']
+        sym_addr = self.symbol_list['_kmod']
+        sym_addr2 = self.symbol_list['_g_kernel_kmod_info']
         kext_dump(self.x86_mem_pae, sym_addr, sym_addr2, self.arch, self.os_version, self.build, KID)
     
     def mount(self): # 11.11.23 64bit suppport(Lion)
         sym_addr = self.symbol_list['_mountlist']
-	mount_list = get_mount_list(self.x86_mem_pae, sym_addr, self.arch, self.os_version, self.build)
-	print_mount_list(mount_list)
+        mount_list = get_mount_list(self.x86_mem_pae, sym_addr, self.arch, self.os_version, self.build)
+        print_mount_list(mount_list)
 
     def get_ps(self): # 11.11.23 64bit suppport
         sym_addr = self.symbol_list['_kernproc']
-	get_proc_list(self.x86_mem_pae, sym_addr, self.arch, self.os_version, self.build)
+        get_proc_list(self.x86_mem_pae, sym_addr, self.arch, self.os_version, self.build)
 
 
     # LSOF: new lsof module (stub)
@@ -168,27 +169,29 @@ class volafox():
 
     def systab(self): # 11.11.23 64bit suppport
         sym_addr = self.symbol_list['_nsysent']
-	syscall_list = get_system_call_table_list(self.x86_mem_pae, sym_addr, self.arch, self.os_version, self.build)
-	print_syscall_table(syscall_list, self.symbol_list)
+        syscall_list = get_system_call_table_list(self.x86_mem_pae, sym_addr, self.arch, self.os_version, self.build)
+        print_syscall_table(syscall_list, self.symbol_list)
 
     def proc_dump(self, pid, fflag):
-	sym_addr = self.symbol_list['_kernproc']
+        sym_addr = self.symbol_list['_kernproc']
         
-	dump_param = get_proc_dump(self.x86_mem_pae, sym_addr, self.arch, self.os_version, self.build, pid, fflag)
-	
-	pm_cr3 = dump_param[0]
-	vm_list = dump_param[1]
-	process_name = dump_param[2]
-	
-	proc_pae = 0
+        dump_param = get_proc_dump(self.x86_mem_pae, sym_addr, self.arch, self.os_version, self.build, pid, fflag)
+        
+        pm_cr3 = dump_param[0]
+        vm_list = dump_param[1]
+        process_name = dump_param[2]
+        
+        proc_pae = 0
+        
         print '[+] Resetting the Page Mapping Table: 0x%x'%pm_cr3
-	
-	if isMachoVolafoxCompatible(self.mempath):
+        
+        if isMachoVolafoxCompatible(self.mempath):
             proc_pae = IA32PML4MemoryPae(MachoAddressSpace(self.mempath), pm_cr3)
         else:
             proc_pae = IA32PML4MemoryPae(FileAddressSpace(self.mempath), pm_cr3)
         
         print '[+] Process Dump Start'
+        
         for vme_info in  vm_list:
             #print vme_info[0]
             #print vme_info[1]
@@ -229,28 +232,42 @@ class volafox():
     # it can dump real network information. if rootkit has hiding technique.
     #################################################
     def netstat(self):
-	tcb_symbol_addr = self.symbol_list['_tcbinfo']
-	udb_symbol_addr = self.symbol_list['_udbinfo']
-	
+        tcb_symbol_addr = self.symbol_list['_tcbinfo']
+        udb_symbol_addr = self.symbol_list['_udbinfo']
+        
         if isMachoVolafoxCompatible(self.mempath):
             net_pae = IA32PML4MemoryPae(MachoAddressSpace(self.mempath), self.idlepml4) 
         else:
             net_pae = IA32PML4MemoryPae(FileAddressSpace(self.mempath), self.idlepml4)
-        
-	network_list = get_network_hash(net_pae, tcb_symbol_addr, udb_symbol_addr, self.arch, self.os_version, self.build)
-	print_network_list(network_list[0], network_list[1])
+        network_list = get_network_hash(net_pae, tcb_symbol_addr, udb_symbol_addr, self.arch, self.os_version, self.build)
+        print_network_list(network_list[0], network_list[1])
 
     # 2011.08.30 test code(plist chain)
     #################################################
     def netstat_test(self):
         tcb_symbol_addr = self.symbol_list['_tcbinfo']
-	udb_symbol_addr = self.symbol_list['_udbinfo']
+        udb_symbol_addr = self.symbol_list['_udbinfo']
 	
         if isMachoVolafoxCompatible(self.mempath):
             net_pae = IA32PML4MemoryPae(MachoAddressSpace(self.mempath), self.idlepml4)
         else:
             net_pae = IA32PML4MemoryPae(FileAddressSpace(self.mempath), self.idlepml4)
         
-	network_list = get_network_list(net_pae, tcb_symbol_addr, udb_symbol_addr, self.arch, self.os_version, self.build)
-	print_network_list(network_list[0], network_list[1])
+        network_list = get_network_list(net_pae, tcb_symbol_addr, udb_symbol_addr, self.arch, self.os_version, self.build)
+        print_network_list(network_list[0], network_list[1])
 
+    # 2012.06.22 test code(EFI Runtime & SystemTable Analysis)
+    #################################################
+    def pe_state(self):
+        pe_state_symbol_addr = self.symbol_list['_PE_state']
+        #print '0x%.8x'%self.x86_mem_pae.vtop(pe_state_symbol_addr)
+        pe_state_info = get_pe_state(self.x86_mem_pae, pe_state_symbol_addr, self.arch, self.os_version, self.build)
+        print_pe_state(pe_state_info, self.arch, self.os_version, self.build)
+        
+        boot_args_ptr = pe_state_info[13]
+        
+        #print '0x%.8x'%self.x86_mem_pae.vtop(boot_args_ptr)
+        
+        boot_args_info = get_boot_args(self.x86_mem_pae, boot_args_ptr, self.arch, self.os_version, self.build)
+        print_boot_args(boot_args_info, self.arch, self.os_version, self.build)
+        

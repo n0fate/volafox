@@ -58,11 +58,11 @@ class process_manager:
                 PROC_STRUCTURE = DATA_PROC_STRUCTURE[3] # Snow Leopard 64bit
         
         if self.arch == 32:
-	    kernproc = self.x86_mem_pae.read(sym_addr, 4); # __DATA.__common _kernproc
-	    proc_sym_addr = struct.unpack('I', kernproc)[0]
+    	    kernproc = self.x86_mem_pae.read(sym_addr, 4); # __DATA.__common _kernproc
+    	    proc_sym_addr = struct.unpack('I', kernproc)[0]
         else:
             kernproc = self.x86_mem_pae.read(sym_addr, 8); # __DATA.__common _kernproc
-	    proc_sym_addr = struct.unpack('Q', kernproc)[0]
+            proc_sym_addr = struct.unpack('Q', kernproc)[0]
 	    
         while 1:
             #break
