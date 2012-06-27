@@ -148,6 +148,23 @@ def get_efi_system_table(x86_mem_pae, efi_system_ptr, arch, os_version, build):
     
     return efi_system_info, configuration_table
 
+def efi_vendor_guid(uuid):
+    if uuid == '05ad34ba-6f02-4214-952e-4da0398e2bb9':
+        return "EFI_DXE_SERVICS_TABLE_GUID"
+    elif uuid == '7739f24c-93d7-11d4-9a3a-0090273fc14d':
+        return "EFI_HOB_LIST_GUID"
+    elif uuid == '4c19049f-4137-4dd3-9c10-8b97a83ffdfa':
+        return "EFI_MEMORY_TYPE_INFORMATION"
+    elif uuid == '49152e77-1ada-4764-b7a2-7afefed95e8b':
+        return "EFI_IMAGE_DEBUG_INFO_TABLE"
+    elif uuid == 'eb9d2d31-2d88-11d3-9a16-0090273fc14d':
+        return "SMBIOS_TABLE_GUID"
+    elif uuid == 'eb9d2d30-2d88-11d3-9a16-0090273fc14d':
+        return "EFI_ACPI_TABLE_GUID"
+    elif uuid == '8868e871-e4f1-11d3-bc22-0080c73c8881':
+        return "ACPI_20_TABLE_GUID EFI_GUID"
+    else:
+        return "UNKNOWN GUID"
 
 def print_efi_system_table(system_table, configuration_table, arch, os_version, build):
     print '[+] EFI System Table'
@@ -174,7 +191,7 @@ def print_efi_system_table(system_table, configuration_table, arch, os_version, 
     if configuration_table != 1:
         print '[+] Configuration Table'
         for table in configuration_table:
-            print ' [-] Vendor GUID : %s'%uuid.UUID(bytes_le=table[0])
+            print ' [-] Vendor GUID : %s (%s)'%(efi_vendor_guid(str(uuid.UUID(bytes_le=table[0]))), uuid.UUID(bytes_le=table[0]))
             print ' [-] Vendor Table Pointer: 0x%.8x'%table[1]
             print ''
 
