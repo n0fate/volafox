@@ -38,6 +38,7 @@ def usage():
     print 'kextstat        : KEXT (Kernel Extensions) listing'
     print 'ps              : Process listing'
     print 'systab          : Syscall table (Hooking Detection)'
+    print 'mtt             : Mach trap table (Hooking Detection)'
     print 'netstat         : Network socket listing (Hash table)'
     print 'lsof            : Open files listing by process (research, osxmem@gmail.com)'	# LSOF: new lsof command
     print 'pestate         : Show Boot information (experiment)'
@@ -238,6 +239,10 @@ def main():
 
     elif oflag == 'systab':
         m_volafox.systab()
+        sys.exit()
+    
+    elif oflag == 'mtt':
+        m_volafox.mtt()
         sys.exit()
 
     elif oflag == 'netstat':

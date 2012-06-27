@@ -41,6 +41,7 @@ from plugins.system_profiler import get_system_profile
 from plugins.ps import get_proc_list, get_proc_dump
 from plugins.kextstat import get_kext_list, kext_dump, print_kext_list
 from plugins.systab import get_system_call_table_list, print_syscall_table
+from plugins.mach_trap import get_mach_trap_table_list, print_mach_trap_table
 from plugins.mount import get_mount_list, print_mount_list
 from plugins.netstat import get_network_hash, print_network_list, get_network_list
 from plugins.pe_state import get_pe_state, print_pe_state, get_boot_args, print_boot_args
@@ -172,6 +173,13 @@ class volafox():
         sym_addr = self.symbol_list['_nsysent']
         syscall_list = get_system_call_table_list(self.x86_mem_pae, sym_addr, self.arch, self.os_version, self.build)
         print_syscall_table(syscall_list, self.symbol_list)
+
+    def mtt(self):
+        mtt_ptr = self.symbol_list['_mach_trap_table']
+	mtt_count = self.symbol_list['_mach_trap_count']
+	print mtt_ptr, mtt_count
+        mtt_list = get_mach_trap_table_list(self.x86_mem_pae, mtt_ptr, mtt_count, self.arch, self.os_version, self.build)
+        print_mach_trap_table(mtt_list, self.symbol_list, self.os_version)
 
     def proc_dump(self, pid, fflag):
         sym_addr = self.symbol_list['_kernproc']
