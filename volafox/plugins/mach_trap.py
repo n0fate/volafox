@@ -101,9 +101,9 @@ def print_mach_trap_table(data_list, symbol_list, os_version):
             
             line.append('0x%.8X'%data[1])
             if symflag == 1:
-                line.append('VALID SYSCALL')
+                line.append('VALID MACH TRAP')
             else:
-                line.append('SYSCALL HOOKING')
+                line.append('MACH TRAP HOOKING')
             count -= 1
             contentlist.append(line)
     

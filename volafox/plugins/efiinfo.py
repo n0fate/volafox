@@ -162,7 +162,9 @@ def efi_vendor_guid(uuid):
     elif uuid == 'eb9d2d30-2d88-11d3-9a16-0090273fc14d':
         return "EFI_ACPI_TABLE_GUID"
     elif uuid == '8868e871-e4f1-11d3-bc22-0080c73c8881':
-        return "ACPI_20_TABLE_GUID EFI_GUID"
+        return "ACPI_20_TABLE_GUID"
+    elif uuid == 'eb9d2d32-2d88-11d3-9a16-0090273fc14d':
+        return "SAL_SYSTEM_TABLE_GUID"
     else:
         return "UNKNOWN GUID"
 
@@ -308,8 +310,6 @@ class EFIRuntimeServices:
             
             EFI_RUNTIME_SERVICES = DATA_EFI_RUNTIME_SERVICES[1]
         
-        #print '0x%.8x'%sym_addr
-        
         if not(self.x86_mem_pae.is_valid_address(sym_addr)):
             print 'Invalid System Table Pointer'
             return 1
@@ -325,7 +325,6 @@ def get_efi_runtime_services(x86_mem_pae, efi_runtime_ptr, arch, os_version, bui
     efi_runtime_info = EFIRUNTIMECLASS.get_info(efi_runtime_ptr)
     
     return efi_runtime_info
-
 
 def print_efi_runtime_services(efi_runtime, arch, os_version, build):
     print '[+] EFI Runtime Services'
