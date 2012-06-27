@@ -21,7 +21,6 @@ class Mach_Trap_Table():
         return mtt_count
     
     def get_mach_trap_table(self, table_ptr, table_count):
-        print self.osversion
         mach_trap_table_list = []
         if self.arch == 32:
             if self.osversion == 10:

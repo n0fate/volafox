@@ -177,7 +177,6 @@ class volafox():
     def mtt(self):
         mtt_ptr = self.symbol_list['_mach_trap_table']
 	mtt_count = self.symbol_list['_mach_trap_count']
-	print mtt_ptr, mtt_count
         mtt_list = get_mach_trap_table_list(self.x86_mem_pae, mtt_ptr, mtt_count, self.arch, self.os_version, self.build)
         print_mach_trap_table(mtt_list, self.symbol_list, self.os_version)
 
