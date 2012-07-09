@@ -39,7 +39,7 @@ from plugins.lsof import getfilelist, printfilelist
 from plugins.imageinfo import get_imageinfo # user defined class > CL
 from plugins.system_profiler import get_system_profile
 from plugins.ps import get_proc_list, get_proc_dump
-from plugins.kextstat import get_kext_list, kext_dump, print_kext_list
+from plugins.kextstat import get_kext_list, kext_dump, print_kext_list, get_kext_scan, print_kext_scan
 from plugins.systab import get_system_call_table_list, print_syscall_table
 from plugins.mach_trap import get_mach_trap_table_list, print_mach_trap_table
 from plugins.mount import get_mount_list, print_mount_list
@@ -137,6 +137,11 @@ class volafox():
 	sym_addr2 = self.symbol_list['_g_kernel_kmod_info']
         kext_list = get_kext_list(self.x86_mem_pae, sym_addr, sym_addr2, self.arch, self.os_version, self.build)
 	print_kext_list(kext_list)
+
+    def kextscan(self): # 11.11.23 64bit suppport
+	sym_addr = self.symbol_list['_g_kernel_kmod_info']
+	kext_list = get_kext_scan(self.x86_mem_pae, sym_addr, self.arch, self.os_version, self.build)
+	print_kext_scan(kext_list)
 
     def kextdump(self, KID):
         sym_addr = self.symbol_list['_kmod']

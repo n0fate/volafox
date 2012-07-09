@@ -69,6 +69,86 @@ class kext_manager():
 		kext_offset = data[0]
 
         return kext_list
+    
+    def kext_scan(self, start_point, end_point):
+	kext_list = []
+	if self.arch == 32:
+	    find_kext_count = 0
+	    print '[+] KEXT Scanning Start'
+	    for i in range(0x00000000, 0x08000000, 0x10):
+		if (i % 0x01000000) == 0:
+		    print ' [-] Memory Offset: 0x%.8X, Find KEXT: %d'%(i, find_kext_count)
+
+		Kext = self.x86_mem_pae.base.read(i, DATA_KEXT_STRUCTURE[0]); # .data _kmod
+		data = struct.unpack(DATA_KEXT_STRUCTURE[1], Kext)
+		if (data[0] < 0xFFFFFF7F00000000) or (data[0] > 0xFFFFFF8100000000): # OFFSET(V)
+		    continue
+		if data[1] != 1: # INFO
+		    continue
+		if data[2] >= 0xFFFF0000: # KID
+		    continue
+		if (data[6] < 0xFFFFFF7F00000000) and (data[6] > 0x00000000) or  (data[6] > 0xFFFFFF8100000000): # REFER COUNT
+		    continue
+		if (data[7] < 0xFFFFFF7F00000000) and (data[7] > 0x00000000) or (data[7] > 0xFFFFFF8100000000): # ADDRESS
+		    continue
+		if (data[10] < 0xFFFFFF7F00000000) and (data[10] > 0x00000000) or (data[10] > 0xFFFFFF8100000000): # START_PTR
+		    continue
+		if (data[11] < 0xFFFFFF7F00000000) and (data[11] > 0x00000000) or (data[11] > 0xFFFFFF8100000000): # STOP_PTR
+		    continue
+		try:
+		    data[3].decode('ascii')
+		    data[4].decode('ascii')
+		except UnicodeDecodeError:
+		    continue
+		
+		if (data[3].split('\x00')[0] == '') or (data[4].split('\x00')[0] == ''):
+		    continue
+		kext_list.append(data)
+		find_kext_count += 1
+		i = i + 0xB0 - 0x10
+	    print ' [-] Memory Offset: 0x%.8X, Find KEXT: %d'%(i, find_kext_count)
+	    print '[+] KEXT Scanning Complete'
+	    
+	elif self.arch == 64: # 64
+	    find_kext_count = 0
+	    print '[+] KEXT Scanning Start'
+	    for i in range(0x00000000, 0x08000000, 0x10):
+		if (i % 0x01000000) == 0:
+		    print ' [-] Memory Offset: 0x%.8X, Find KEXT: %d'%(i, find_kext_count)
+		Kext = self.x86_mem_pae.base.read(i, DATA_KEXT_STRUCTURE[2]); # .data _kmod
+		data = struct.unpack(DATA_KEXT_STRUCTURE[3], Kext)
+		if (data[0] < 0xFFFFFF7F00000000) or (data[0] > 0xFFFFFF8100000000): # OFFSET(V)
+		    continue
+		if data[1] != 1: # INFO
+		    continue
+		if data[2] >= 0xFFFF0000: # KID
+		    continue
+		if (data[6] < 0xFFFFFF7F00000000) and (data[6] > 0x00000000) or  (data[6] > 0xFFFFFF8100000000): # REFER COUNT
+		    continue
+		if (data[7] < 0xFFFFFF7F00000000) and (data[7] > 0x00000000) or (data[7] > 0xFFFFFF8100000000): # ADDRESS
+		    continue
+		if (data[10] < 0xFFFFFF7F00000000) and (data[10] > 0x00000000) or (data[10] > 0xFFFFFF8100000000): # START_PTR
+		    continue
+		if (data[11] < 0xFFFFFF7F00000000) and (data[11] > 0x00000000) or (data[11] > 0xFFFFFF8100000000): # STOP_PTR
+		    continue
+		try:
+		    data[3].decode('ascii')
+		    data[4].decode('ascii')
+		except UnicodeDecodeError:
+		    continue
+		
+		if (data[3].split('\x00')[0] == '') or (data[4].split('\x00')[0] == ''):
+		    continue
+		
+		kext_list.append(data)
+		find_kext_count += 1
+		i = i + 0xD0 - 0x10
+	    print ' [-] Memory Offset: 0x%.8X, Find KEXT: %d'%(i, find_kext_count)
+	    print '[+] KEXT Scanning Complete'
+	# else
+	return kext_list
+
+
 
 
 #################################### PUBLIC FUNCTIONS ####################################
@@ -81,11 +161,45 @@ def get_kext_list(x86_mem_pae, sym_addr, sym_addr2, arch, os_version, build):
     kext_list.append(kern_kext)
     return kext_list
 
+def get_kext_scan(x86_mem_pae, sym_addr, arch, os_version, build):
+    kextlist = []
+    KEXTMan = kext_manager(x86_mem_pae, arch)
+    kern_kext = KEXTMan.kern_kextstat(sym_addr) # get kernel offset & size
+    start_point = kern_kext[7] - 0xFFFFFF8000000000 # kernel starting point
+    end_point = kern_kext[8] # kernel end point
+    
+    #print 'kernel start point: %x, size : %x'%(start_point, start_point + end_point)
+    
+    kext_list = KEXTMan.kext_scan(start_point, end_point)
+    return kext_list
+
+def print_kext_scan(kext_list):
+    print '[+] Kernel Extention List'
+
+    headerlist = ["OFFSET(V)", "INFO", "KID", "KEXT_NAME", "VERSION", "REFER_COUNT", "REFER_LIST", "ADDRESS", "SIZE", "HDRSIZE", "START_PTR" ,"STOP_PTR"]
+    contentlist = []
+    
+    print_kext(headerlist, contentlist, kext_list)
+
+    # use optional max size list here to match default lsof output, otherwise specify
+    # lsof +c 0 on the command line to print full name of commands
+    mszlist = [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1]
+    columnprint(headerlist, contentlist, mszlist)
+    
 def print_kext_list(kext_list):
     print '[+] Kernel Extention List'
 
     headerlist = ["OFFSET(P)", "INFO", "KID", "KEXT_NAME", "VERSION", "REFER_COUNT", "REFER_LIST", "ADDRESS", "SIZE", "HDRSIZE", "START_PTR" ,"STOP_PTR"]
     contentlist = []
+    
+    print_kext(headerlist, contentlist, kext_list)
+    
+    # use optional max size list here to match default lsof output, otherwise specify
+    # lsof +c 0 on the command line to print full name of commands
+    mszlist = [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1]
+    columnprint(headerlist, contentlist, mszlist)
+
+def print_kext(headerlist, contentlist, kext_list):
     
     for data in kext_list:
         line = ['0x%.8X'%data[0]]
@@ -101,11 +215,6 @@ def print_kext_list(kext_list):
         line.append('0x%.8X'%data[10])
         line.append('0x%.8X'%data[11])
         contentlist.append(line)
-
-    # use optional max size list here to match default lsof output, otherwise specify
-    # lsof +c 0 on the command line to print full name of commands
-    mszlist = [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1]
-    columnprint(headerlist, contentlist, mszlist)
 
 def kext_dump(x86_mem_pae, sym_addr, sym_addr2, arch, os_version, build, KID):
     kextlist = []

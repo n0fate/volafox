@@ -58,7 +58,7 @@ def main():
     try:
     	# LSOF: added -p flag for pid specification with lsof, -v no longer needs arg
         #option, args = getopt.getopt(sys.argv[1:], 'o:i:x:v:m:')
-        option, args = getopt.getopt(sys.argv[1:], 'o:i:s:x:vp:f')
+        option, args = getopt.getopt(sys.argv[1:], 'o:i:x:vfp:')
 
     except getopt.GetoptError, err:
         print str(err)
@@ -88,11 +88,6 @@ def main():
 		    pid = int(x[1], 10)
 		    debug += ' -x %d' %pid
 		    dflag = 1
-		    for i,x in enumerate(option):
-			if x[0] == '-f':
-			    fflag = 1;
-			    break
-			del option[i]
 		    break
 		
 		elif p == 'kextstat' and x[0] == '-x': # kext dump
@@ -102,7 +97,7 @@ def main():
 		    break
             
 	    del option[i]
-            debug += "\n"	# LSOF: replacing newline
+	    debug += "\n"	# LSOF: replacing newline
 
         elif op in '-i': # physical memory image file
         	
@@ -151,6 +146,7 @@ def main():
     	print debug[:-1]
 
     if mempath == "" and ( oflag == 0 or dflag == 0 or mflag == 0):
+	print mempath, oflag, dflag, mflag
         usage()
         sys.exit()
 
@@ -205,7 +201,7 @@ def main():
     if dflag == 1:
         m_volafox.proc_dump(pid, fflag)
         sys.exit()
-
+	
     # test
     if oflag == 'get_phy':
 	m_volafox.get_read_address(0xffffff8000b495a0)
@@ -260,6 +256,10 @@ def main():
     elif oflag == 'efiinfo':
         m_volafox.efi_system_table()
         sys.exit()
+    
+    elif oflag == 'kextscan':
+	m_volafox.kextscan()
+	sys.exit()
         
     else:
         print '[+] WARNING: -o Argument Error\n'
