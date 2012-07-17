@@ -31,6 +31,9 @@ DATA_PMAP_STRUCTURE = [[44, '=36xQ'],
     [16, '=8xQ'],
     [152, '=128xQQQ']]
 
+# 32bit, 64bit
+DATA_QUEUE_STRUCTURE = [[8, '=II'],
+    [16, '=QQ']]
 
 def unsigned8(n):
   return n & 0xFFL
@@ -109,9 +112,56 @@ class process_manager:
             
             except struct.error:
                 break
-        
-    def get_task(self, proc):
-        print '[+] Gathering Process Information'
+    
+    def get_queue(self, ptr):
+	if self.arch == 32:
+	    QUEUE_STRUCTURE = DATA_QUEUE_STRUCTURE[0]
+	elif self.arch == 64:
+	    QUEUE_STRUCTURE = DATA_QUEUE_STRUCTURE[1]
+	else:
+	    return queue
+	
+	queue_ptr = self.x86_mem_pae.read(ptr, QUEUE_STRUCTURE[0])
+	queue = struct.unpack(QUEUE_STRUCTURE[1], queue_ptr)
+	return queue # next, prev
+    
+    def get_task_queue(self, sym_addr, count, task_list):
+	queue = self.get_queue(sym_addr)
+	
+	print '[+] Task Count at Kernel Symbol: %d'%count
+	
+	#print 'Queue Next: %.8x, prev: %.8x'%(self.x86_mem_pae.vtop(queue[0]),self.x86_mem_pae.vtop(queue[1]))
+	
+	#print '[+] Get Task Queue'
+	
+	task_ptr = queue[0] # next
+	
+	i = 0
+	
+	while i < count:
+	    task = [] # temp
+            
+	    if task_ptr == 0:
+                break
+            if not(self.x86_mem_pae.is_valid_address(task_ptr)):
+                break
+	      
+	    task_struct = self.get_task("", task_ptr)
+	    
+	    task.append(i) # count
+	    task.append(self.x86_mem_pae.vtop(task_ptr)) # physical address
+	    task.append(task_ptr) # virtual address
+	    task.append(task_struct) # task structure
+	    
+	    task_list.append(task)
+	    task_ptr = task_struct[4] # task_queue_t
+	    i += 1
+	
+	return i
+	
+    
+    def get_task(self, proc, task_ptr):
+        #print '[+] Gathering Process Information'
         #print '====== task.h --> osfmk\\kern\\task.h'
         if self.arch == 32:
             if self.os_version == 11:
@@ -124,17 +174,18 @@ class process_manager:
             else:
                 TASK_STRUCTURE = DATA_TASK_STRUCTURE[3]
                 
-        task_info = self.x86_mem_pae.read(proc[2], TASK_STRUCTURE[0])
+        task_info = self.x86_mem_pae.read(task_ptr, TASK_STRUCTURE[0])
         task_struct = struct.unpack(TASK_STRUCTURE[1], task_info)
-
-        print ' [-] User Stack Address: 0x%.8X'%proc[5]
-        print ' [-] Vnode of Executable Address: 0x%.8X'%proc[6]
-        print ' [-] Offset in executable vnode: 0x%.8X'%proc[7]
+	
+	if proc:
+	  print ' [-] User Stack Address: 0x%.8X'%proc[5]
+	  print ' [-] Vnode of Executable Address: 0x%.8X'%proc[6]
+	  print ' [-] Offset in executable vnode: 0x%.8X'%proc[7]
         
         #print 'task_t'
-        print ' [-] Reference Count: %x'%task_struct[0]
-        print ' [-] Process Active: %x'%task_struct[1]
-        print ' [-] Process Halting: %x'%task_struct[2]
+        #print ' [-] Reference Count: %x'%task_struct[0]
+        #print ' [-] Process Active: %x'%task_struct[1]
+        #print ' [-] Process Halting: %x'%task_struct[2]
         #print 'uni and smp lock: %d'%task_struct[4]
         #print 'vm_map_t: %x'%self.x86_mem_pae.vtop(task_struct[3])
         #print 'tasks: %x'%task_struct[4]
@@ -268,49 +319,51 @@ class process_manager:
 
         return pm_cr3
 
-
-    def proc_print(self, data_list):
-        print '[+] Process List'
-
-        headerlist = ["OFFSET(P)", "PID", "PPID", "PRIORITY", "NICE", "PROCESS_NAME", "USERNAME", "CREATE_TIME (GMT +0)"]
-        contentlist = []
-
-        for data in data_list:
-            line = ["0x%.8X"%data[0]] # offset
-            line.append('%d'%data[1]) # pid
-            line.append('%d'%data[4]) # ppid
-            line.append('%d'%unsigned8(data[8])) # Priority
-            line.append('%d'%unsigned8(data[10])) # nice
-            line.append('%s'%data[12]) # Changed by CL to read null formatted strings
-            line.append('%s'%data[13])
-            line.append('%s'%time.strftime("%a %b %d %H:%M:%S %Y", time.gmtime(data[14])))
-            contentlist.append(line)
-
-	# use optional max size list here to match default lsof output, otherwise specify
-	# lsof +c 0 on the command line to print full name of commands
-	mszlist = [-1, -1, -1, -1, -1, -1, -1, -1]
-	columnprint(headerlist, contentlist, mszlist)
-        
 #################################### PUBLIC FUNCTIONS ####################################
+
+def proc_print(data_list):
+    print '[+] Process List'
+
+    headerlist = ["OFFSET(P)", "PID", "PPID", "PRIORITY", "NICE", "PROCESS_NAME", "USERNAME", "CREATE_TIME (GMT +0)"]
+    contentlist = []
+
+    for data in data_list:
+	line = ["0x%.8X"%data[0]] # offset
+	line.append('%d'%data[1]) # pid
+	line.append('%d'%data[4]) # ppid
+	line.append('%d'%unsigned8(data[8])) # Priority
+	line.append('%d'%unsigned8(data[10])) # nice
+	line.append('%s'%data[12]) # Changed by CL to read null formatted strings
+	line.append('%s'%data[13])
+	line.append('%s'%time.strftime("%a %b %d %H:%M:%S %Y", time.gmtime(data[14])))
+	contentlist.append(line)
+
+    # use optional max size list here to match default lsof output, otherwise specify
+    # lsof +c 0 on the command line to print full name of commands
+    mszlist = [-1, -1, -1, -1, -1, -1, -1, -1]
+    columnprint(headerlist, contentlist, mszlist)
+      
 def get_proc_list(x86_mem_pae, sym_addr, arch, os_version, build):
     proclist = []
     ProcMan = process_manager(x86_mem_pae, arch, os_version, build)
     ret = ProcMan.get_proc(sym_addr, proclist, -1)
-    if ret == 1:
-        return 1
-    else:
-        ProcMan.proc_print(proclist)
-        return 0
     
+    return proclist
+
+def print_proc_list(proc_list):
+    proc_print(proc_list)
+
+
 def get_proc_dump(x86_mem_pae, sym_addr, arch, os_version, build, pid, fflag):
     proclist = []
     ProcMan = process_manager(x86_mem_pae, arch, os_version, build)
     ret = ProcMan.get_proc(sym_addr, proclist, pid)
     if ret == 1:
         return 1
+    
     ProcMan.proc_print(proclist)
     
-    task_struct = ProcMan.get_task(proclist[0])
+    task_struct = ProcMan.get_task(proclist[0], proclist[0][2])
     
     retData = ProcMan.get_proc_region(task_struct[3], proclist[0][5], fflag)
     
@@ -325,3 +378,69 @@ def get_proc_dump(x86_mem_pae, sym_addr, arch, os_version, build, pid, fflag):
     pm_cr3 = ProcMan.get_proc_dump(vm_list, vm_struct)
     
     return pm_cr3, vm_list, proclist[0][12]
+
+def get_task_list(x86_mem_pae, sym_addr, count, arch, os_version, build):
+    ProcMan = process_manager(x86_mem_pae, arch, os_version, build)
+    
+    task_list = []
+    check_count = ProcMan.get_task_queue(sym_addr, count, task_list) # task queue ptr, task_count, task_list
+    
+    return task_list, check_count
+
+def proc_lookup(proc_list, task_list):
+    
+    print '[+] Task List Count at Queue: %d'%len(task_list)
+    print '[+] Process List Count: %d'%len(proc_list)
+    
+    # task list
+    unlinked_task = []
+    valid_task = []
+    
+    # comment: task = [task_ptr, [task structure]]
+    for task in task_list:
+	task_ptr = task[2]
+	
+	valid_flag = 0
+	
+	for proc in proc_list:
+	    task_ptr_in_proc = proc[2]
+	    if task_ptr_in_proc == task_ptr:
+		valid_flag = 1
+		
+		task.append(proc[12]) # process name
+		task.append(proc[13]) # username
+		
+		valid_task.append(task)
+		break
+	
+	if valid_flag == 0:
+	    task.append('UNKNOWN PROC')
+	    task.append('UNKNOWN USER')
+	    unlinked_task.append(task)
+    
+    return valid_task, unlinked_task
+
+
+def task_print(data_list):
+    #print '[+] Process List'
+
+    headerlist = ["TASK CNT", "OFFSET(P)", "REF_CNT", "Active", "Halt", "VM_MAP(V)", "PROCESS", "USERNAME"]
+    contentlist = []
+
+    for data in data_list:
+	line = ['%d'%data[0]] # count
+	line.append("0x%.8X"%data[1]) # offset
+	line.append('%d'%data[3][0]) # Number of references to me
+	line.append('%d'%data[3][1]) # task has not been terminated
+	line.append('%d'%data[3][2]) # task is being halted
+	line.append('0x%.8X'%data[3][3]) # VM_MAP
+	line.append('%s'%data[4]) # Process Name
+	line.append('%s'%data[5]) # User Name
+	
+	#line.append('%s'%time.strftime("%a %b %d %H:%M:%S %Y", time.gmtime(data[14])))
+	contentlist.append(line)
+
+    # use optional max size list here to match default lsof output, otherwise specify
+    # lsof +c 0 on the command line to print full name of commands
+    mszlist = [-1, -1, -1, -1, -1, -1, -1, -1]
+    columnprint(headerlist, contentlist, mszlist)

@@ -1,5 +1,6 @@
 import sys
 import struct
+import operator
 
 from tableprint import columnprint
 
@@ -30,7 +31,7 @@ class kext_manager():
         kext_list = []
         if self.arch == 32:
             Kext = self.x86_mem_pae.read(sym_addr, 4); # .data _kmod
-            kext_offset = struct.unpack('I', Kext)[0]
+            kext_offset = struct.unpack('=I', Kext)[0]
 	    while(1):
                 kext = []
 		if kext_offset == 0:
@@ -50,7 +51,7 @@ class kext_manager():
 		
         else: # 64
             Kext = self.x86_mem_pae.read(sym_addr, 8);
-            kext_offset = struct.unpack('Q', Kext)[0]
+            kext_offset = struct.unpack('=Q', Kext)[0]
 	    while(1):
                 kext = []
 		if kext_offset == 0:
@@ -75,7 +76,7 @@ class kext_manager():
 	if self.arch == 32:
 	    find_kext_count = 0
 	    print '[+] KEXT Scanning Start'
-	    for i in range(0x00000000, 0x08000000, 0x10):
+	    for i in range(0x00000000, 0x10000000, 0x10):
 		if (i % 0x01000000) == 0:
 		    print ' [-] Memory Offset: 0x%.8X, Find KEXT: %d'%(i, find_kext_count)
 
@@ -112,7 +113,7 @@ class kext_manager():
 	elif self.arch == 64: # 64
 	    find_kext_count = 0
 	    print '[+] KEXT Scanning Start'
-	    for i in range(0x00000000, 0x08000000, 0x10):
+	    for i in range(0x00000000, 0x10000000, 0x10):
 		if (i % 0x01000000) == 0:
 		    print ' [-] Memory Offset: 0x%.8X, Find KEXT: %d'%(i, find_kext_count)
 		Kext = self.x86_mem_pae.base.read(i, DATA_KEXT_STRUCTURE[2]); # .data _kmod

@@ -23,7 +23,7 @@ def usage():
     print 'volafox: Mac OS X Memory Analysis Toolkit'
     print 'project: http://code.google.com/p/volafox'
     print 'support: 10.6-7; 32/64-bit kernel'
-    print '  input: *.vmem (VMWare memory file), *.mmr (Mac Memory Reader, flattened x86)'
+    print '  input: *.vmem (VMWare memory file), *.mmr (Mac Memory Reader, flattened x86, IA-32e)'
     print '  usage: python %s -i IMAGE [-o COMMAND [-vp PID][-fx PID][-x KEXT_ID]]\n' %sys.argv[0]
     
     print 'Options:'
@@ -31,12 +31,14 @@ def usage():
     print '-p PID     : List open files for PID (where CMD is "lsof")'
     print '-v         : Print all files, including unsupported types (where CMD is "lsof")'  
     print '-x PID/KID : Dump process/kernel extension address space for PID/KID (where CMD is "ps"/"kextstat")\n'
-    print '-f         : Full dump process address space for PID (where CMD is "ps" and -x PID) (experiment)\n'
+    #print '-f         : Full dump process address space for PID (where CMD is "ps" and -x PID) (experiment)\n'
     print 'COMMANDS:'
     print 'system_profiler : Kernel version, CPU, and memory spec, Boot/Sleep/Wakeup time'
     print 'mount           : Mounted filesystems'
     print 'kextstat        : KEXT (Kernel Extensions) listing'
+    print 'kextscan        : Scanning KEXT (Kernel Extensions) (experiment)'
     print 'ps              : Process listing'
+    print 'tasks           : Task listing (& Matching Process List) (experiment)'
     print 'systab          : Syscall table (Hooking Detection)'
     print 'mtt             : Mach trap table (Hooking Detection)'
     print 'netstat         : Network socket listing (Hash table)'
@@ -77,7 +79,8 @@ def main():
             oflag = p
             
             # LSOF: new pid flag
-            for i,x in enumerate(option):
+	    suboption = option
+            for i,x in enumerate(suboption):
             	if p == 'lsof' and x[0] == '-p':
 		    pid = int(x[1], 10)
 		    pflag = 1;
@@ -95,8 +98,7 @@ def main():
 		    debug += ' -x %d' %kext_num
 		    mflag = 1
 		    break
-            
-	    del option[i]
+            del suboption
 	    debug += "\n"	# LSOF: replacing newline
 
         elif op in '-i': # physical memory image file
@@ -111,30 +113,6 @@ def main():
         elif op == '-v': # verbose
             #print 'Verbose:', p
             vflag = 1
-       
-#        elif op =='-x':
-#        
-#            # LSOF: add to debug string
-#            #print '[+] Dump PID: %s'%p
-#            debug += '[+] Dump PID: %s\n' %p
-#            
-#            pid = int(p, 10)
-#            dflag = 1
-#	    
-#	    # full dump option
-#            for i,x in enumerate(option):
-#            	if x[0] == '-f':
-#		    fflag = 1;
-#		    del option[i]
-#        
-#        elif op =='-m':
-#        	
-#            # LSOF: add to debug string
-#            #print '[+] Dump KEXT: %s'%p
-#            debug += '[+] Dump KEXT: %s\n' %p
-#            
-#            kext_num = int(p, 10)
-#            mflag = 1
            
         else:
             #print '[+] Command error:', op	# LSOF: not printed, getopt catches this
@@ -145,8 +123,7 @@ def main():
     if vflag:
     	print debug[:-1]
 
-    if mempath == "" and ( oflag == 0 or dflag == 0 or mflag == 0):
-	print mempath, oflag, dflag, mflag
+    if mempath == "" and ( oflag == "" or dflag == 0 or mflag == 0):
         usage()
         sys.exit()
 
@@ -204,7 +181,7 @@ def main():
 	
     # test
     if oflag == 'get_phy':
-	m_volafox.get_read_address(0xffffff8000b495a0)
+	m_volafox.get_read_address(18446743521828375264)
 	sys.exit()
 	
     if oflag == 'system_profiler':
@@ -221,6 +198,10 @@ def main():
 
     elif oflag == 'ps':
         m_volafox.get_ps()
+        sys.exit()
+    
+    elif oflag == 'tasks':
+        m_volafox.get_tasks()
         sys.exit()
         
     # LSOF: lsof command branch

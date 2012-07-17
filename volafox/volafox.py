@@ -38,7 +38,7 @@ import os
 from plugins.lsof import getfilelist, printfilelist
 from plugins.imageinfo import get_imageinfo # user defined class > CL
 from plugins.system_profiler import get_system_profile
-from plugins.ps import get_proc_list, get_proc_dump
+from plugins.ps import get_proc_list, get_proc_dump, get_task_list, proc_lookup, proc_print, task_print
 from plugins.kextstat import get_kext_list, kext_dump, print_kext_list, get_kext_scan, print_kext_scan
 from plugins.systab import get_system_call_table_list, print_syscall_table
 from plugins.mach_trap import get_mach_trap_table_list, print_mach_trap_table
@@ -155,9 +155,33 @@ class volafox():
 
     def get_ps(self): # 11.11.23 64bit suppport
         sym_addr = self.symbol_list['_kernproc']
-        get_proc_list(self.x86_mem_pae, sym_addr, self.arch, self.os_version, self.build)
+        proc_list = get_proc_list(self.x86_mem_pae, sym_addr, self.arch, self.os_version, self.build)
+	proc_print(proc_list)
 
-
+    def get_tasks(self): # comparing proc with task
+	proc_addr = self.symbol_list['_kernproc']
+	task_addr = self.symbol_list['_tasks']
+	task_count_addr = self.symbol_list['_tasks_count']
+	task_count_ptr = self.x86_mem_pae.read(task_count_addr, 4);
+	task_count = struct.unpack('=I', task_count_ptr)[0]
+	
+	proc_list = get_proc_list(self.x86_mem_pae, proc_addr, self.arch, self.os_version, self.build)
+	task_list, check_count = get_task_list(self.x86_mem_pae, task_addr, task_count, self.arch, self.os_version, self.build)
+	
+	#if check_count != task_count:
+	#    print '[+] check_count: %d, task_count: %d'%(check_count, task_count)
+	
+	
+	valid_task_list, hide_task_list = proc_lookup(proc_list, task_list)
+	
+	print '[+] Linked task list'
+	task_print(valid_task_list)
+	
+	if len(hide_task_list) != 0:
+	    print ''
+	    print '[+] Unlinked task list'
+	    task_print(hide_task_list)
+	    
     # LSOF: new lsof module (stub)
     def lsof(self, pid, vflag):
 	sym_addr = self.symbol_list['_kernproc']
