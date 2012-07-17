@@ -79,8 +79,8 @@ def main():
             oflag = p
             
             # LSOF: new pid flag
-	    suboption = option
-            for i,x in enumerate(suboption):
+	    #suboption = option
+            for i,x in enumerate(option):
             	if p == 'lsof' and x[0] == '-p':
 		    pid = int(x[1], 10)
 		    pflag = 1;
@@ -98,7 +98,7 @@ def main():
 		    debug += ' -x %d' %kext_num
 		    mflag = 1
 		    break
-            del suboption
+            del option[i]
 	    debug += "\n"	# LSOF: replacing newline
 
         elif op in '-i': # physical memory image file

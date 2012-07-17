@@ -328,7 +328,8 @@ def proc_print(data_list):
     contentlist = []
 
     for data in data_list:
-	line = ["0x%.8X"%data[0]] # offset
+	line = []
+	line.append("0x%.8X"%data[0]) # offset
 	line.append('%d'%data[1]) # pid
 	line.append('%d'%data[4]) # ppid
 	line.append('%d'%unsigned8(data[8])) # Priority
@@ -361,11 +362,13 @@ def get_proc_dump(x86_mem_pae, sym_addr, arch, os_version, build, pid, fflag):
     if ret == 1:
         return 1
     
-    ProcMan.proc_print(proclist)
+    dumped_proc = proclist
     
-    task_struct = ProcMan.get_task(proclist[0], proclist[0][2])
+    proc_print(dumped_proc)
     
-    retData = ProcMan.get_proc_region(task_struct[3], proclist[0][5], fflag)
+    task_struct = ProcMan.get_task(dumped_proc[0], dumped_proc[0][2])
+    
+    retData = ProcMan.get_proc_region(task_struct[3], dumped_proc[0][5], fflag)
     
     vm_list = retData[0]
     vm_struct = retData[1]
@@ -377,7 +380,7 @@ def get_proc_dump(x86_mem_pae, sym_addr, arch, os_version, build, pid, fflag):
     
     pm_cr3 = ProcMan.get_proc_dump(vm_list, vm_struct)
     
-    return pm_cr3, vm_list, proclist[0][12]
+    return pm_cr3, vm_list, dumped_proc[0][12]
 
 def get_task_list(x86_mem_pae, sym_addr, count, arch, os_version, build):
     ProcMan = process_manager(x86_mem_pae, arch, os_version, build)
