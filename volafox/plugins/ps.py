@@ -1,4 +1,4 @@
-# -*- coding: cp949 -*-
+# -*- coding: utf-8 -*-
 import sys
 import struct
 import time
@@ -12,10 +12,10 @@ DATA_PROC_STRUCTURE = [[476+24+168, '=4xIIIII380xQII20xbbbb52sI164xI', 16, '=III
     [1028, '=8xQQQQI612xQQQ16xbbbb52sQ264xI', 32, '=QQQQ', 303, '=IQQIQQQ255s']]
 
 # Lion 32bit, SN 32bit, Lion64bit, SN 64bit
-DATA_TASK_STRUCTURE = [[32, '=8xIIIIII'],
-    [36, '=12xIIIIII'],
-    [56, '=16xIII4xQQQ'],
-    [64, '=24xIII4xQQQ']]
+DATA_TASK_STRUCTURE = [[32+460+4, '=8xIIIIII460xI'],
+    [36+428+4, '=12xIIIIII428xI'],
+    [736, '=16xIII4xQQQ672xQ'],
+    [712, '=24xIII4xQQQ640xQ']]
 
 # Lion 32bit, SN 32bit, Lion64bit, SN 64bit
 DATA_VME_STRUCTURE = [[162+12, '=12xIIQQII8x4xIQ16xIII42xIIIIIIIII', 52, '=IIQQ24xI'],
@@ -77,7 +77,6 @@ class process_manager:
                 proc = []
                 proclist = self.x86_mem_pae.read(proc_sym_addr, PROC_STRUCTURE[0])
                 data = struct.unpack(PROC_STRUCTURE[1], proclist)
-                proc_sym_addr = data[0]
             
                 pgrp_t = self.x86_mem_pae.read(data[13], PROC_STRUCTURE[2]); # pgrp structure
                 m_pgrp = struct.unpack(PROC_STRUCTURE[3], pgrp_t)
@@ -152,6 +151,7 @@ class process_manager:
 	    task.append(self.x86_mem_pae.vtop(task_ptr)) # physical address
 	    task.append(task_ptr) # virtual address
 	    task.append(task_struct) # task structure
+	    task.append(self.x86_mem_pae.vtop(task_struct[6])) # task.bsd_info physical address
 	    
 	    task_list.append(task)
 	    task_ptr = task_struct[4] # task_queue_t
@@ -399,7 +399,7 @@ def proc_lookup(proc_list, task_list):
     unlinked_task = []
     valid_task = []
     
-    # comment: task = [task_ptr, [task structure]]
+    # comment: task = [count, task_ptr(Physical), task_ptr(Virtual), [task structure], task.bsd_info]
     for task in task_list:
 	task_ptr = task[2]
 	
@@ -409,16 +409,32 @@ def proc_lookup(proc_list, task_list):
 	    task_ptr_in_proc = proc[2]
 	    if task_ptr_in_proc == task_ptr:
 		valid_flag = 1
-		
+		task.append(proc[1]) # PID
 		task.append(proc[12]) # process name
 		task.append(proc[13]) # username
+		task.append('O')
+		if task[4] == proc[0]:
+		  task.append('O')
+		else:
+		  task.append('X')
 		
 		valid_task.append(task)
 		break
 	
 	if valid_flag == 0:
-	    task.append('UNKNOWN PROC')
-	    task.append('UNKNOWN USER')
+	    for proc in proc_list:
+	      if task[4] == proc[0]:
+		task.append(proc[1])
+		task.append(proc[12])
+		task.append(proc[13])
+		task.append('X') # PROC->TASK
+		task.append('O') # TASK->PROC
+	      else:
+		task.append(0)
+		task.append('UNKNOWN')
+		task.append('UNKNOWN')
+		task.append('X') # PROC->TASK
+		task.append('X') # TASK->PROC
 	    unlinked_task.append(task)
     
     return valid_task, unlinked_task
@@ -427,7 +443,7 @@ def proc_lookup(proc_list, task_list):
 def task_print(data_list):
     #print '[+] Process List'
 
-    headerlist = ["TASK CNT", "OFFSET(P)", "REF_CNT", "Active", "Halt", "VM_MAP(V)", "PROCESS", "USERNAME"]
+    headerlist = ["TASK CNT", "OFFSET(P)", "REF_CNT", "Active", "Halt", "VM_MAP(V)", "PID", "PROCESS", "USERNAME", "PROC->TASK", "TASK->PROC"]
     contentlist = []
 
     for data in data_list:
@@ -437,13 +453,16 @@ def task_print(data_list):
 	line.append('%d'%data[3][1]) # task has not been terminated
 	line.append('%d'%data[3][2]) # task is being halted
 	line.append('0x%.8X'%data[3][3]) # VM_MAP
-	line.append('%s'%data[4]) # Process Name
-	line.append('%s'%data[5]) # User Name
+	line.append('%d'%data[5]) # PID
+	line.append('%s'%data[6]) # Process Name
+	line.append('%s'%data[7]) # User Name
+	line.append('%s'%data[8]) # proc.tasks -> Task ptr
+	line.append('%s'%data[9]) # task.bsd_info -> proc ptr
 	
 	#line.append('%s'%time.strftime("%a %b %d %H:%M:%S %Y", time.gmtime(data[14])))
 	contentlist.append(line)
 
     # use optional max size list here to match default lsof output, otherwise specify
     # lsof +c 0 on the command line to print full name of commands
-    mszlist = [-1, -1, -1, -1, -1, -1, -1, -1]
+    mszlist = [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1]
     columnprint(headerlist, contentlist, mszlist)
