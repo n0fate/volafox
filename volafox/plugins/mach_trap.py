@@ -4,7 +4,7 @@ import struct
 from tableprint import columnprint
 
 # SN 32bit, SN 64bit, LION 32bit, LION 64bit
-DATA_MACH_TRAP_TABLE_STRUCTURE = [[16, '=IIII'], [40, '=QQQQQ'], [8, '=II'], [16, '=QQ']]
+DATA_MACH_TRAP_TABLE_STRUCTURE = [[16, '=IIII'], [40, '=QQQQQ'], [12, '=III'], [16, '=QQ']]
 
 
 class Mach_Trap_Table():

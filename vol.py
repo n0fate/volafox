@@ -10,15 +10,6 @@ from volafox.volafox import volafox
 
 def usage():
     
-    '''
-    TODO
-    1. Replace existing commands with their CLI equivalents (e.g. proc_info --> ps) - complete - 11/04/24 - n0fate
-    2. Use more conventional usage format
-    3. Make -m/x/p/v suboptions of their respective commands - working
-    4. Print all tables using new lsof print function - complete
-    5. kern_kext_info appears to be broken... - complete
-    '''
-    
     print ''
     print 'volafox: Mac OS X Memory Analysis Toolkit'
     print 'project: http://code.google.com/p/volafox'
@@ -129,28 +120,6 @@ def main():
 
     # Auto switching code for using overlays or original mach-o files.  We should autopickle
     # using the original file.
-##    if is_universal_binary(file_image):
-##        macho_file = macho_an.macho_an(file_image)
-##        arch_count = macho_file.load()
-##
-##        ## 11.11.22 n0fate
-##        if arch_num is not 32 and arch_num is not 64:
-##            macho_file.close()
-##            sys.exit()
-##        elif arch_num is 32:
-##            header = macho_file.get_header(arch_count, macho_file.ARCH_I386)
-##            symbol_list = macho_file.macho_getsymbol_x86(header[2], header[3])
-##            macho_file.close()
-##        elif arch_num is 64:
-##            header = macho_file.get_header(arch_count, macho_file.ARCH_X86_64)
-##            symbol_list = macho_file.macho_getsymbol_x64(header[2], header[3])
-##            macho_file.close()
-##    else:
-##        #Added by CL
-##        f = open(file_image, 'rb')
-##        symbol_list = pickle.load(f)
-##        f.close()
-##
     m_volafox = volafox(mempath)
 
     ## get kernel version, architecture ##
