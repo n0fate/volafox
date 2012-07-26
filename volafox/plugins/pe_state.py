@@ -53,14 +53,15 @@ ROTATE_MODE = ['normal', 'right 90', 'left 180', 'left 90']
 #===============================================================================
 
 class PE_State:
-    def __init__(self, x86_mem_pae, arch, os_version, build):
+    def __init__(self, x86_mem_pae, arch, os_version, build, base_address):
         self.x86_mem_pae = x86_mem_pae
         self.arch = arch
         self.os_version = os_version
         self.build = build
+        self.base_address = base_address
         
     def get_info(self, sym_addr):
-        if not(self.x86_mem_pae.is_valid_address(sym_addr)):
+        if not(self.x86_mem_pae.is_valid_address(sym_addr+self.base_address)):
             return 1
         
         if self.arch == 32:
@@ -68,7 +69,7 @@ class PE_State:
         elif self.arch == 64:
             PE_STATE_STRUCTURE = DATA_PE_STATE_STRUCTURE[1]
             
-        ps_state_info = self.x86_mem_pae.read(sym_addr, PE_STATE_STRUCTURE[0]) # pe_state
+        ps_state_info = self.x86_mem_pae.read(sym_addr+self.base_address, PE_STATE_STRUCTURE[0]) # pe_state
         pe_state = struct.unpack(PE_STATE_STRUCTURE[1], ps_state_info)
         return pe_state
 
@@ -163,8 +164,8 @@ class boot_args:
 
 ## PUBLIC FUNCTIOn ##
 
-def get_pe_state(x86_mem_pae, sym_addr, arch, os_version, build):
-    PESTATE_CLASS = PE_State(x86_mem_pae, arch, os_version, build)
+def get_pe_state(x86_mem_pae, sym_addr, arch, os_version, build, base_address):
+    PESTATE_CLASS = PE_State(x86_mem_pae, arch, os_version, build, base_address)
     state_info = PESTATE_CLASS.get_info(sym_addr)
     return state_info
 

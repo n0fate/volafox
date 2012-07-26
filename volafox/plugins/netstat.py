@@ -10,9 +10,10 @@ DATA_NETWORK_STRUCTURE = [[40, '=IIIIII12xI', 16, 112, '>HH48xI36xI12xI'],
 
 
 class network_manager():
-    def __init__(self, net_pae, arch):
+    def __init__(self, net_pae, arch, base_address):
         self.net_pae = net_pae
         self.arch = arch
+        self.base_address = base_address
 
     # http://snipplr.com/view.php?codeview&id=14807
     def IntToDottedIP(self, intip):
@@ -26,7 +27,7 @@ class network_manager():
         network_list = []
         if sym_addr == 0:
             return
-        if not(self.net_pae.is_valid_address(sym_addr)):
+        if not(self.net_pae.is_valid_address(sym_addr + self.base_address)):
             return
         
         if self.arch == 32:
@@ -37,7 +38,7 @@ class network_manager():
             NETWORK_STRUCTURE = DATA_NETWORK_STRUCTURE[1]
         
         #print 'Real Address (inpcbinfo): %x'%net_pae.vtop(sym_addr)
-        inpcbinfo_t = self.net_pae.read(sym_addr, NETWORK_STRUCTURE[0])
+        inpcbinfo_t = self.net_pae.read(sym_addr + self.base_address, NETWORK_STRUCTURE[0])
         inpcbinfo = struct.unpack(NETWORK_STRUCTURE[1], inpcbinfo_t)
 
         if not(self.net_pae.is_valid_address(inpcbinfo[0])):
@@ -113,7 +114,7 @@ class network_manager():
 
         if sym_addr == 0:
             return
-        if not(self.net_pae.is_valid_address(sym_addr)):
+        if not(self.net_pae.is_valid_address(sym_addr+self.base_address)):
             return
 
         if self.arch == 32:
@@ -123,7 +124,7 @@ class network_manager():
             PTR_SIZE = DATA_PTR_SIZE[1]
             NETWORK_STRUCTURE = DATA_NETWORK_STRUCTURE[1]
 
-        inpcbinfo_t = self.net_pae.read(sym_addr, NETWORK_STRUCTURE[0])
+        inpcbinfo_t = self.net_pae.read(sym_addr+self.base_address, NETWORK_STRUCTURE[0])
         inpcbinfo = struct.unpack(NETWORK_STRUCTURE[1], inpcbinfo_t)
 
         if not(self.net_pae.is_valid_address(inpcbinfo[5])):
@@ -158,14 +159,14 @@ class network_manager():
         return network_list
 #################################### PUBLIC FUNCTIONS ####################################
 
-def get_network_hash(net_pae, tcb_symbol_addr, udb_symbol_addr, arch, os_version, build):
-    NetMan = network_manager(net_pae, arch)
+def get_network_hash(net_pae, tcb_symbol_addr, udb_symbol_addr, arch, os_version, build, base_address):
+    NetMan = network_manager(net_pae, arch, base_address)
     tcp_network_list = NetMan.network_status_hash(tcb_symbol_addr)
     udp_network_list = NetMan.network_status_hash(udb_symbol_addr)
     return tcp_network_list, udp_network_list
 
-def get_network_list(net_pae, tcb_symbol_addr, udb_symbol_addr, arch, os_version, build):
-    NetMan = network_manager(net_pae, arch)
+def get_network_list(net_pae, tcb_symbol_addr, udb_symbol_addr, arch, os_version, build, base_address):
+    NetMan = network_manager(net_pae, arch, base_address)
     tcp_network_list = NetMan.network_status_list(tcb_symbol_addr)
     udp_network_list = NetMan.network_status_list(udb_symbol_addr)
     return tcp_network_list, udp_network_list

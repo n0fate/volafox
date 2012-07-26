@@ -27,9 +27,9 @@ def usage():
     print 'system_profiler : Kernel version, CPU, and memory spec, Boot/Sleep/Wakeup time'
     print 'mount           : Mounted filesystems'
     print 'kextstat        : KEXT (Kernel Extensions) listing'
-    print 'kextscan        : Scanning KEXT (Kernel Extensions) (experiment)'
+    #print 'kextscan        : Scanning KEXT (Kernel Extensions) (experiment)'
     print 'ps              : Process listing'
-    print 'tasks           : Task listing (& Matching Process List) (experiment)'
+    print 'tasks           : Task listing (& Matching Process List)'
     print 'systab          : Syscall table (Hooking Detection)'
     print 'mtt             : Mach trap table (Hooking Detection)'
     print 'netstat         : Network socket listing (Hash table)'
@@ -150,7 +150,7 @@ def main():
 	
     # test
     if oflag == 'get_phy':
-	m_volafox.get_read_address(0xFFFFFF8024485300)
+	m_volafox.get_read_address(0xffffff803a72a008)
 	sys.exit()
 	
     if oflag == 'system_profiler':

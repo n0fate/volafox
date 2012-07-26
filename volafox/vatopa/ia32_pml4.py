@@ -135,7 +135,7 @@ class IA32PML4MemoryPae:
         return self.pte_pfn(pte) | (vaddr & ((1 << page_shift) - 1))
 
     def get_large_paddr(self, vaddr, pgd_entry):
-        return (pgd_entry & 0x0000FFFFFFE00000) | (vaddr & ~((ptrs_page-1) << 21))
+        return (pgd_entry & 0x0000FFFFFFE00000) | (vaddr & 0x00000000001FFFFF)
 
     def vtop(self, vaddr):
         retVal = None

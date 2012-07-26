@@ -73,24 +73,25 @@ DATA_EFI_CONF_TABLE = [
                        ]
 
 class EFISystemTable:
-    def __init__(self, x86_mem_pae, arch, os_version, build):
+    def __init__(self, x86_mem_pae, arch, os_version, build, base_address):
         self.x86_mem_pae = x86_mem_pae
         self.arch = arch
         self.os_version = os_version
         self.build = build
+        self.base_address = base_address
         
     def get_info(self, sym_addr):
-        if not(self.x86_mem_pae.is_valid_address(sym_addr)):
+        if not(self.x86_mem_pae.is_valid_address(sym_addr+self.base_address)):
             return 1
         
         if self.arch == 32:
-            sym_addr_ptr = self.x86_mem_pae.read(sym_addr, 4)
+            sym_addr_ptr = self.x86_mem_pae.read(sym_addr+self.base_address, 4)
             sym_addr = struct.unpack('=I', sym_addr_ptr)[0]
             
             EFI_SYSTEM_TABLE = DATA_EFI_SYSTEM_TABLE[0]
             EFI_CONF_TABLE = DATA_EFI_CONF_TABLE[0]
         elif self.arch == 64:
-            sym_addr_ptr = self.x86_mem_pae.read(sym_addr, 8)
+            sym_addr_ptr = self.x86_mem_pae.read(sym_addr+self.base_address, 8)
             sym_addr = struct.unpack('=Q', sym_addr_ptr)[0]
             
             EFI_SYSTEM_TABLE = DATA_EFI_SYSTEM_TABLE[1]
@@ -136,8 +137,8 @@ class EFISystemTable:
         return ret_table, configuration_table
 
 
-def get_efi_system_table(x86_mem_pae, efi_system_ptr, arch, os_version, build):
-    EFISYSTEMCLASS = EFISystemTable(x86_mem_pae, arch, os_version, build)
+def get_efi_system_table(x86_mem_pae, efi_system_ptr, arch, os_version, build, base_address):
+    EFISYSTEMCLASS = EFISystemTable(x86_mem_pae, arch, os_version, build, base_address)
     efi_system_info, configuration_table = EFISYSTEMCLASS.get_info(efi_system_ptr)
     
     if efi_system_info == 1:
@@ -289,23 +290,24 @@ DATA_EFI_RUNTIME_SERVICES = [
                          ]    
 
 class EFIRuntimeServices:
-    def __init__(self, x86_mem_pae, arch, os_version, build):
+    def __init__(self, x86_mem_pae, arch, os_version, build, base_address):
         self.x86_mem_pae = x86_mem_pae
         self.arch = arch
         self.os_version = os_version
         self.build = build
+        self.base_address = base_address
         
     def get_info(self, sym_addr):
-        if not(self.x86_mem_pae.is_valid_address(sym_addr)):
+        if not(self.x86_mem_pae.is_valid_address(sym_addr+self.base_address)):
             return 1
         
         if self.arch == 32:
-            sym_addr_ptr = self.x86_mem_pae.read(sym_addr, 4)
+            sym_addr_ptr = self.x86_mem_pae.read(sym_addr+self.base_address, 4)
             sym_addr = struct.unpack('=I', sym_addr_ptr)[0]
             
             EFI_RUNTIME_SERVICES = DATA_EFI_RUNTIME_SERVICES[0]
         elif self.arch == 64:
-            sym_addr_ptr = self.x86_mem_pae.read(sym_addr, 8)
+            sym_addr_ptr = self.x86_mem_pae.read(sym_addr+self.base_address, 8)
             sym_addr = struct.unpack('=Q', sym_addr_ptr)[0]
             
             EFI_RUNTIME_SERVICES = DATA_EFI_RUNTIME_SERVICES[1]
@@ -320,8 +322,8 @@ class EFIRuntimeServices:
         return efi_runtime_services
 
 
-def get_efi_runtime_services(x86_mem_pae, efi_runtime_ptr, arch, os_version, build):
-    EFIRUNTIMECLASS = EFIRuntimeServices(x86_mem_pae, arch, os_version, build)
+def get_efi_runtime_services(x86_mem_pae, efi_runtime_ptr, arch, os_version, build, base_address):
+    EFIRUNTIMECLASS = EFIRuntimeServices(x86_mem_pae, arch, os_version, build, base_address)
     efi_runtime_info = EFIRUNTIMECLASS.get_info(efi_runtime_ptr)
     
     return efi_runtime_info

@@ -66,6 +66,10 @@ class volafox():
         self.os_version = 0
         self.build = ''# psdump -> cr3
 	self.symbol_list = []# symbol list
+	
+	
+	self.catfishlocation = 0 # low_vector position at memory
+	self.base_address = 0 # find dynamic kernel location (Mountain Lion only)
 
     def get_read_address(self, address):
 	print '%x'%self.x86_mem_pae.vtop(address)
@@ -89,6 +93,7 @@ class volafox():
 	self.arch = ret_data[1]
 	self.build = ret_data[2]
 	self.os_version = ret_data[3]
+	self.catfishlocation = ret_data[4] # for Mountain Lion
 	
 	## open overlay file
 	return 'overlays/%sx%d.overlay'%(self.build, self.arch)
@@ -96,9 +101,13 @@ class volafox():
     def init_vatopa_x86_pae(self, vflag): # 11.11.23 64bit suppport
         if self.mempath == '':
             return 1
-
-        self.idlepdpt = self.symbol_list['_IdlePDPT']
-        self.idlepml4 = self.symbol_list['_IdlePML4']
+	if self.build[0:2] == '12': # Mountain Lion
+	    self.base_address = self.catfishlocation - (self.symbol_list['_lowGlo'] % 0xFFFFFF80) # find table base address
+	    self.idlepdpt = (self.symbol_list['_BootPDPT'] % 0xFFFFFF80) + self.base_address
+	    self.idlepml4 = (self.symbol_list['_BootPML4'] % 0xFFFFFF80) + self.base_address
+	else:
+	    self.idlepdpt = self.symbol_list['_IdlePDPT']
+	    self.idlepml4 = self.symbol_list['_IdlePML4']
         
         if self.arch is 32:
             if vflag:
@@ -127,7 +136,7 @@ class volafox():
 	    boottime = 0
 	sleeptime = self.symbol_list['_gIOLastSleepTime']
 	waketime = self.symbol_list['_gIOLastWakeTime']
-        get_system_profile(self.x86_mem_pae, os_version, machine_info, boottime, sleeptime, waketime)
+        get_system_profile(self.x86_mem_pae, os_version, machine_info, boottime, sleeptime, waketime, self.base_address)
 	
 	return
 	#return data
@@ -135,38 +144,38 @@ class volafox():
     def kextstat(self): # 11.11.23 64bit suppport
         sym_addr = self.symbol_list['_kmod']
 	sym_addr2 = self.symbol_list['_g_kernel_kmod_info']
-        kext_list = get_kext_list(self.x86_mem_pae, sym_addr, sym_addr2, self.arch, self.os_version, self.build)
+        kext_list = get_kext_list(self.x86_mem_pae, sym_addr, sym_addr2, self.arch, self.os_version, self.build, self.base_address)
 	print_kext_list(kext_list)
 
     def kextscan(self): # 11.11.23 64bit suppport
 	sym_addr = self.symbol_list['_g_kernel_kmod_info']
-	kext_list = get_kext_scan(self.x86_mem_pae, sym_addr, self.arch, self.os_version, self.build)
+	kext_list = get_kext_scan(self.x86_mem_pae, sym_addr, self.arch, self.os_version, self.build, self.base_address)
 	print_kext_scan(kext_list)
 
     def kextdump(self, KID):
         sym_addr = self.symbol_list['_kmod']
         sym_addr2 = self.symbol_list['_g_kernel_kmod_info']
-        kext_dump(self.x86_mem_pae, sym_addr, sym_addr2, self.arch, self.os_version, self.build, KID)
+        kext_dump(self.x86_mem_pae, sym_addr, sym_addr2, self.arch, self.os_version, self.build, KID, self.base_address)
     
     def mount(self): # 11.11.23 64bit suppport(Lion)
         sym_addr = self.symbol_list['_mountlist']
-        mount_list = get_mount_list(self.x86_mem_pae, sym_addr, self.arch, self.os_version, self.build)
+        mount_list = get_mount_list(self.x86_mem_pae, sym_addr, self.arch, self.os_version, self.build, self.base_address)
         print_mount_list(mount_list)
 
     def get_ps(self): # 11.11.23 64bit suppport
         sym_addr = self.symbol_list['_kernproc']
-        proc_list = get_proc_list(self.x86_mem_pae, sym_addr, self.arch, self.os_version, self.build)
+        proc_list = get_proc_list(self.x86_mem_pae, sym_addr, self.arch, self.os_version, self.build, self.base_address)
 	proc_print(proc_list)
 
     def get_tasks(self): # comparing proc with task
 	proc_addr = self.symbol_list['_kernproc']
 	task_addr = self.symbol_list['_tasks']
 	task_count_addr = self.symbol_list['_tasks_count']
-	task_count_ptr = self.x86_mem_pae.read(task_count_addr, 4);
+	task_count_ptr = self.x86_mem_pae.read(task_count_addr+self.base_address, 4);
 	task_count = struct.unpack('=I', task_count_ptr)[0]
 	
-	proc_list = get_proc_list(self.x86_mem_pae, proc_addr, self.arch, self.os_version, self.build)
-	task_list, check_count = get_task_list(self.x86_mem_pae, task_addr, task_count, self.arch, self.os_version, self.build)
+	proc_list = get_proc_list(self.x86_mem_pae, proc_addr, self.arch, self.os_version, self.build, self.base_address)
+	task_list, check_count = get_task_list(self.x86_mem_pae, task_addr, task_count, self.arch, self.os_version, self.build, self.base_address)
 	
 	#if check_count != task_count:
 	#    print '[+] check_count: %d, task_count: %d'%(check_count, task_count)
@@ -187,7 +196,7 @@ class volafox():
 	sym_addr = self.symbol_list['_kernproc']
 	if self.arch == 32:
 	    # read 4 bytes from kernel executable or overlay starting at symbol _kernproc
-	    kernproc = self.x86_mem_pae.read(sym_addr, 4);
+	    kernproc = self.x86_mem_pae.read(sym_addr+self.base_address, 4);
 
 	    # unpack pointer to the process list, only need the first member returned
 	    proc_head = struct.unpack('I', kernproc)[0]
@@ -200,19 +209,19 @@ class volafox():
 
     def systab(self): # 11.11.23 64bit suppport
         sym_addr = self.symbol_list['_nsysent']
-        syscall_list = get_system_call_table_list(self.x86_mem_pae, sym_addr, self.arch, self.os_version, self.build)
-        print_syscall_table(syscall_list, self.symbol_list)
+        syscall_list = get_system_call_table_list(self.x86_mem_pae, sym_addr, self.arch, self.os_version, self.build, self.base_address)
+        print_syscall_table(syscall_list, self.symbol_list, self.base_address)
 
     def mtt(self):
         mtt_ptr = self.symbol_list['_mach_trap_table']
 	mtt_count = self.symbol_list['_mach_trap_count']
-        mtt_list = get_mach_trap_table_list(self.x86_mem_pae, mtt_ptr, mtt_count, self.arch, self.os_version, self.build)
-        print_mach_trap_table(mtt_list, self.symbol_list, self.os_version)
+        mtt_list = get_mach_trap_table_list(self.x86_mem_pae, mtt_ptr, mtt_count, self.arch, self.os_version, self.build, self.base_address)
+        print_mach_trap_table(mtt_list, self.symbol_list, self.os_version, self.base_address)
 
     def proc_dump(self, pid, fflag):
         sym_addr = self.symbol_list['_kernproc']
         
-        dump_param = get_proc_dump(self.x86_mem_pae, sym_addr, self.arch, self.os_version, self.build, pid, fflag)
+        dump_param = get_proc_dump(self.x86_mem_pae, sym_addr, self.arch, self.os_version, self.build, pid, fflag, self.base_address)
         
         pm_cr3 = dump_param[0]
         vm_list = dump_param[1]
@@ -276,7 +285,7 @@ class volafox():
             net_pae = IA32PML4MemoryPae(MachoAddressSpace(self.mempath), self.idlepml4) 
         else:
             net_pae = IA32PML4MemoryPae(FileAddressSpace(self.mempath), self.idlepml4)
-        network_list = get_network_hash(net_pae, tcb_symbol_addr, udb_symbol_addr, self.arch, self.os_version, self.build)
+        network_list = get_network_hash(net_pae, tcb_symbol_addr, udb_symbol_addr, self.arch, self.os_version, self.build, self.base_address)
         print_network_list(network_list[0], network_list[1])
 
     # 2011.08.30 test code(plist chain)
@@ -298,7 +307,7 @@ class volafox():
     def pe_state(self):
         pe_state_symbol_addr = self.symbol_list['_PE_state']
         #print '0x%.8x'%self.x86_mem_pae.vtop(pe_state_symbol_addr)
-        pe_state_info = get_pe_state(self.x86_mem_pae, pe_state_symbol_addr, self.arch, self.os_version, self.build)
+        pe_state_info = get_pe_state(self.x86_mem_pae, pe_state_symbol_addr, self.arch, self.os_version, self.build, self.base_address)
         print_pe_state(pe_state_info, self.arch, self.os_version, self.build)
         
         boot_args_ptr = pe_state_info[13]
@@ -311,10 +320,10 @@ class volafox():
     def efi_system_table(self):
         efi_system_symbol_addr = self.symbol_list['_gPEEFISystemTable']
         #print '0x%.8x'%self.x86_mem_pae.vtop(efi_system_symbol_addr)
-        efi_system_table_info, configuration_table = get_efi_system_table(self.x86_mem_pae, efi_system_symbol_addr, self.arch, self.os_version, self.build)
+        efi_system_table_info, configuration_table = get_efi_system_table(self.x86_mem_pae, efi_system_symbol_addr, self.arch, self.os_version, self.build, self.base_address)
         print_efi_system_table(efi_system_table_info, configuration_table, self.arch, self.os_version, self.build)
 
         efi_runtime_symbol_addr = self.symbol_list['_gPEEFIRuntimeServices']
-        efi_runtime_info = get_efi_runtime_services(self.x86_mem_pae, efi_runtime_symbol_addr, self.arch, self.os_version, self.build)
+        efi_runtime_info = get_efi_runtime_services(self.x86_mem_pae, efi_runtime_symbol_addr, self.arch, self.os_version, self.build, self.base_address)
         print_efi_runtime_services(efi_runtime_info, self.arch, self.os_version, self.build)
         

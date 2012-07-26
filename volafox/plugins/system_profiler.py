@@ -2,30 +2,31 @@ import struct
 import time
 
 class system_profiler:
-    def __init__(self, x86_mem_pae):
+    def __init__(self, x86_mem_pae, base_address):
         self.x86_mem_pae = x86_mem_pae
+	self.base_address = base_address
 
     def machine_info(self, sym_addr):
-        machine_info = self.x86_mem_pae.read(sym_addr, 40); # __DATA.__common _machine_info
+        machine_info = self.x86_mem_pae.read(sym_addr+self.base_address, 40); # __DATA.__common _machine_info
         data = struct.unpack('IIIIQIIII', machine_info)
         return data
     
     def sw_vers(self, sym_addr): # 11.11.23 64bit suppport
-        os_version = self.x86_mem_pae.read(sym_addr, 10) # __DATA.__common _osversion
+        os_version = self.x86_mem_pae.read(sym_addr+self.base_address, 10) # __DATA.__common _osversion
         data = struct.unpack('10s', os_version)
         return data
     
     def get_gmtime(self, sym_addr):
-        time_val = self.x86_mem_pae.read(sym_addr, 4);
+        time_val = self.x86_mem_pae.read(sym_addr+self.base_address, 4);
         data = struct.unpack('i', time_val)
         strtime = time.strftime("%a %b %d %H:%M:%S %Y", time.gmtime(data[0]))
         return strtime  
 
 
 #################################### PUBLIC FUNCTIONS ####################################
-def get_system_profile(x86_mem_pae, sw_vers, machine_info, boottime, sleeptime, waketime):
+def get_system_profile(x86_mem_pae, sw_vers, machine_info, boottime, sleeptime, waketime, base_address):
     
-    Sys_Profile = system_profiler(x86_mem_pae)
+    Sys_Profile = system_profiler(x86_mem_pae, base_address)
     
     print '[+] Mac OS X Basic Information'
 	

@@ -8,21 +8,22 @@ from tableprint import columnprint
 DATA_KEXT_STRUCTURE = [168, '=III64s64sIIIIIII', 196, '=QII64s64sIQQQQQQ']
 
 class kext_manager():
-    def __init__(self, x86_mem_pae, arch):
+    def __init__(self, x86_mem_pae, arch, base_address):
         self.x86_mem_pae = x86_mem_pae
         self.arch = arch
+	self.base_address = base_address
         
     def kern_kextstat(self, sym_addr): # 11.11.23 64bit suppport
         kext = []
         if self.arch == 32:
-            Kext = self.x86_mem_pae.read(sym_addr, DATA_KEXT_STRUCTURE[0]); # .data _g_kernel_kmod_info
+            Kext = self.x86_mem_pae.read(sym_addr+self.base_address, DATA_KEXT_STRUCTURE[0]); # .data _g_kernel_kmod_info
             data = struct.unpack(DATA_KEXT_STRUCTURE[1], Kext)
             
         else: # self.arch == 64
-            Kext = self.x86_mem_pae.read(sym_addr, DATA_KEXT_STRUCTURE[2]); # .data _g_kernel_kmod_info
+            Kext = self.x86_mem_pae.read(sym_addr+self.base_address, DATA_KEXT_STRUCTURE[2]); # .data _g_kernel_kmod_info
             data = struct.unpack(DATA_KEXT_STRUCTURE[3], Kext)
 
-        kext.append(self.x86_mem_pae.vtop(sym_addr))
+        kext.append(self.x86_mem_pae.vtop(sym_addr+self.base_address))
         for element in data[1:]:
             kext.append(element)
         return kext
@@ -30,7 +31,7 @@ class kext_manager():
     def get_kextstat(self, sym_addr): # 11.11.23 64bit suppport
         kext_list = []
         if self.arch == 32:
-            Kext = self.x86_mem_pae.read(sym_addr, 4); # .data _kmod
+            Kext = self.x86_mem_pae.read(sym_addr+self.base_address, 4); # .data _kmod
             kext_offset = struct.unpack('=I', Kext)[0]
 	    while(1):
                 kext = []
@@ -50,7 +51,7 @@ class kext_manager():
 		kext_offset = data[0]
 		
         else: # 64
-            Kext = self.x86_mem_pae.read(sym_addr, 8);
+            Kext = self.x86_mem_pae.read(sym_addr+self.base_address, 8);
             kext_offset = struct.unpack('=Q', Kext)[0]
 	    while(1):
                 kext = []
@@ -154,17 +155,17 @@ class kext_manager():
 
 #################################### PUBLIC FUNCTIONS ####################################
 
-def get_kext_list(x86_mem_pae, sym_addr, sym_addr2, arch, os_version, build):
+def get_kext_list(x86_mem_pae, sym_addr, sym_addr2, arch, os_version, build, base_address):
     kextlist = []
-    KEXTMan = kext_manager(x86_mem_pae, arch)
+    KEXTMan = kext_manager(x86_mem_pae, arch, base_address)
     kext_list = KEXTMan.get_kextstat(sym_addr)
     kern_kext = KEXTMan.kern_kextstat(sym_addr2)
     kext_list.append(kern_kext)
     return kext_list
 
-def get_kext_scan(x86_mem_pae, sym_addr, arch, os_version, build):
+def get_kext_scan(x86_mem_pae, sym_addr, arch, os_version, build, base_address):
     kextlist = []
-    KEXTMan = kext_manager(x86_mem_pae, arch)
+    KEXTMan = kext_manager(x86_mem_pae, arch, base_address)
     kern_kext = KEXTMan.kern_kextstat(sym_addr) # get kernel offset & size
     start_point = kern_kext[7] - 0xFFFFFF8000000000 # kernel starting point
     end_point = kern_kext[8] # kernel end point
@@ -217,9 +218,9 @@ def print_kext(headerlist, contentlist, kext_list):
         line.append('0x%.8X'%data[11])
         contentlist.append(line)
 
-def kext_dump(x86_mem_pae, sym_addr, sym_addr2, arch, os_version, build, KID):
+def kext_dump(x86_mem_pae, sym_addr, sym_addr2, arch, os_version, build, KID, base_address):
     kextlist = []
-    kext_list = get_kext_list(x86_mem_pae, sym_addr, sym_addr2, arch, os_version, build)
+    kext_list = get_kext_list(x86_mem_pae, sym_addr, sym_addr2, arch, os_version, build, base_address)
 
     kextname = ''
     offset = 0
