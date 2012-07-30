@@ -13,7 +13,7 @@ def usage():
     print ''
     print 'volafox: Mac OS X Memory Analysis Toolkit'
     print 'project: http://code.google.com/p/volafox'
-    print 'support: 10.6-7; 32/64-bit kernel'
+    print 'support: 10.6-8; 32/64-bit kernel'
     print '  input: *.vmem (VMWare memory file), *.mmr (Mac Memory Reader, flattened x86, IA-32e)'
     print '  usage: python %s -i IMAGE [-o COMMAND [-vp PID][-fx PID][-x KEXT_ID]]\n' %sys.argv[0]
     
@@ -150,7 +150,7 @@ def main():
 	
     # test
     if oflag == 'get_phy':
-	m_volafox.get_read_address(0xffffff803a72a008)
+	m_volafox.get_read_address(0x2AC0AC8)
 	sys.exit()
 	
     if oflag == 'system_profiler':

@@ -104,7 +104,12 @@ class volafox():
 	if self.build[0:2] == '12': # Mountain Lion
 	    self.base_address = self.catfishlocation - (self.symbol_list['_lowGlo'] % 0xFFFFFF80) # find table base address
 	    self.idlepdpt = (self.symbol_list['_BootPDPT'] % 0xFFFFFF80) + self.base_address
-	    self.idlepml4 = (self.symbol_list['_BootPML4'] % 0xFFFFFF80) + self.base_address
+	    self.bootpml4 = (self.symbol_list['_BootPML4'] % 0xFFFFFF80) + self.base_address
+	    self.boot_pml4_pt = IA32PML4MemoryPae(FileAddressSpace(self.mempath), self.bootpml4)
+	    
+	    idlepml4_ptr = self.boot_pml4_pt.read(self.symbol_list['_IdlePML4']+self.base_address, 8)
+	    self.idlepml4 = struct.unpack('=Q', idlepml4_ptr)[0]
+	    
 	else:
 	    self.idlepdpt = self.symbol_list['_IdlePDPT']
 	    self.idlepml4 = self.symbol_list['_IdlePML4']
@@ -193,10 +198,10 @@ class volafox():
 	    
     # LSOF: new lsof module (stub)
     def lsof(self, pid, vflag):
-	sym_addr = self.symbol_list['_kernproc']
+	sym_addr = self.symbol_list['_kernproc'] + self.base_address
 	if self.arch == 32:
 	    # read 4 bytes from kernel executable or overlay starting at symbol _kernproc
-	    kernproc = self.x86_mem_pae.read(sym_addr+self.base_address, 4);
+	    kernproc = self.x86_mem_pae.read(sym_addr, 4);
 
 	    # unpack pointer to the process list, only need the first member returned
 	    proc_head = struct.unpack('I', kernproc)[0]

@@ -302,14 +302,14 @@ class process_manager:
         if self.arch == 32:
             if self.build == '11D50': # temporary 12.04.24 n0fate
                 PMAP_STRUCTURE = DATA_PMAP_STRUCTURE[0]       
-            elif self.os_version == 11:   # Lion xnu-1699, build version 11D50 has some bug (36xQ)
+            elif self.os_version >= 11:   # Lion xnu-1699, build version 11D50 has some bug (36xQ)
                 PMAP_STRUCTURE = DATA_PMAP_STRUCTURE[1]
             else: # Leopard or Snow Leopard xnu-1456
                 PMAP_STRUCTURE = DATA_PMAP_STRUCTURE[2]
         else:
             if self.build == '11D50': # temporary 12.04.24 n0fate
                 PMAP_STRUCTURE = DATA_PMAP_STRUCTURE[3]   
-            elif self.os_version == 11:   # Lion xnu-1699, build version 11D50 has some bug (36xQ)
+            elif self.os_version >= 11:   # Lion xnu-1699, build version 11D50 has some bug (36xQ)
                 PMAP_STRUCTURE = DATA_PMAP_STRUCTURE[4]
             else: # Leopard or Snow Leopard xnu-1456
                 PMAP_STRUCTURE = DATA_PMAP_STRUCTURE[5]

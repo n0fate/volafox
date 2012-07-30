@@ -21,9 +21,9 @@ class mount_manager():
 	    while 1:
 		if data[0] == 0:
 		    break
-		if not(self.x86_mem_pae.is_valid_address(data[0]+self.base_address)):
+		if not(self.x86_mem_pae.is_valid_address(data[0])):
 		    break
-		mount_info = self.x86_mem_pae.read(data[0]+self.base_address, DATA_MOUNT_STRUCTURE[0]);
+		mount_info = self.x86_mem_pae.read(data[0], DATA_MOUNT_STRUCTURE[0]);
 		data = struct.unpack(DATA_MOUNT_STRUCTURE[1], mount_info)
 		mount_list.append(data)
 	else: #64bit
@@ -33,9 +33,9 @@ class mount_manager():
 	    while 1:
 		if data[0] == 0:
 		    break
-		if not(self.x86_mem_pae.is_valid_address(data[0]+self.base_address)):
+		if not(self.x86_mem_pae.is_valid_address(data[0])):
 		    break
-		mount_info = self.x86_mem_pae.read(data[0]+self.base_address, DATA_MOUNT_STRUCTURE[2]);
+		mount_info = self.x86_mem_pae.read(data[0], DATA_MOUNT_STRUCTURE[2]);
 		data = struct.unpack(DATA_MOUNT_STRUCTURE[3], mount_info)
 		mount_list.append(data)
 
