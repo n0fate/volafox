@@ -5,17 +5,19 @@ import time
 
 from tableprint import columnprint
 
-# Lion 32bit, SN 32bit, Lion64bit, SN 64bit
+# Lion 32bit, SN 32bit, Lion64bit, SN 64bit, Mountain Lion 64bit
 DATA_PROC_STRUCTURE = [[476+24+168, '=4xIIIII380xQII20xbbbb52sI164xI', 16, '=IIII', 283, '=IIIIIII255s'],
     [476+168, '=4xIIIII356xQII20xbbbb52sI164xI', 16, '=IIII', 283, '=IIIIIII255s'],
     [752+24+268, '=8xQQQQI628xQQQ16xbbbb52sQ264xI', 32, '=QQQQ', 303, '=IQQIQQQ255s'],
-    [1028, '=8xQQQQI612xQQQ16xbbbb52sQ264xI', 32, '=QQQQ', 303, '=IQQIQQQ255s']]
+    [1028, '=8xQQQQI612xQQQ16xbbbb52sQ264xI', 32, '=QQQQ', 303, '=IQQIQQQ255s'],
+    [752+24+276, '=8xQQQQI628xQQQ16xbbbb52sQ272xI', 32, '=QQQQ', 303, '=IQQIQQQ255s']]
 
-# Lion 32bit, SN 32bit, Lion64bit, SN 64bit
+# Lion 32bit, SN 32bit, Lion64bit, SN 64bit, Mountain Lion 64bit
 DATA_TASK_STRUCTURE = [[32+460+4, '=8xIIIIII460xI'],
     [36+428+4, '=12xIIIIII428xI'],
     [736, '=16xIII4xQQQ672xQ'],
-    [712, '=24xIII4xQQQ640xQ']]
+    [712, '=24xIII4xQQQ640xQ'],
+    [720, '=16xIII4xQQQ656xQ']]
 
 # Lion 32bit, SN 32bit, Lion64bit, SN 64bit
 DATA_VME_STRUCTURE = [[162+12, '=12xIIQQII8x4xIQ16xIII42xIIIIIIIII', 52, '=IIQQ24xI'],
@@ -51,13 +53,15 @@ class process_manager:
             return 1
         
 	if self.arch == 32:
-            if self.os_version >= 11:
+            if self.os_version == 11:
                 PROC_STRUCTURE = DATA_PROC_STRUCTURE[0] # Lion 32bit
             else:
                 PROC_STRUCTURE = DATA_PROC_STRUCTURE[1] # Snow Leopard 32bit
         else:
-            if self.os_version >= 11:
+            if self.os_version == 11:
                 PROC_STRUCTURE = DATA_PROC_STRUCTURE[2] # Lion 64bit
+	    elif self.os_version == 12:
+		PROC_STRUCTURE = DATA_PROC_STRUCTURE[4]
             else:
                 PROC_STRUCTURE = DATA_PROC_STRUCTURE[3] # Snow Leopard 64bit
         
@@ -165,13 +169,15 @@ class process_manager:
         #print '[+] Gathering Process Information'
         #print '====== task.h --> osfmk\\kern\\task.h'
         if self.arch == 32:
-            if self.os_version >= 11:
+            if self.os_version == 11:
                 TASK_STRUCTURE = DATA_TASK_STRUCTURE[0]
             else:
                 TASK_STRUCTURE = DATA_TASK_STRUCTURE[1]
         else:
-            if self.os_version >= 11:
+            if self.os_version == 11:
                 TASK_STRUCTURE = DATA_TASK_STRUCTURE[2]
+	    elif self.os_version == 12:
+		TASK_STRUCTURE = DATA_TASK_STRUCTURE[4]
             else:
                 TASK_STRUCTURE = DATA_TASK_STRUCTURE[3]
                 
