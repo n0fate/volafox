@@ -206,6 +206,10 @@ def main():
     elif oflag == 'efiinfo':
         m_volafox.efi_system_table()
         sys.exit()
+        
+    elif oflag == 'keychaindump':
+        m_volafox.keychaindump()
+        sys.exit()
     
     elif oflag == 'kextscan':
 	m_volafox.kextscan()

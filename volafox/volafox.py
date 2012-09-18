@@ -46,6 +46,9 @@ from plugins.mount import get_mount_list, print_mount_list
 from plugins.netstat import get_network_hash, print_network_list, get_network_list
 from plugins.pe_state import get_pe_state, print_pe_state, get_boot_args, print_boot_args
 from plugins.efiinfo import get_efi_system_table, print_efi_system_table, get_efi_runtime_services, print_efi_runtime_services
+
+from plugins.keychaindump import dump_master_key, print_master_key
+
 from vatopa.machaddrspace import MachoAddressSpace, isMachoVolafoxCompatible, is_universal_binary
 
 from vatopa.x86 import *
@@ -331,4 +334,11 @@ class volafox():
         efi_runtime_symbol_addr = self.symbol_list['_gPEEFIRuntimeServices']
         efi_runtime_info = get_efi_runtime_services(self.x86_mem_pae, efi_runtime_symbol_addr, self.arch, self.os_version, self.build, self.base_address)
         print_efi_runtime_services(efi_runtime_info, self.arch, self.os_version, self.build)
+    
+    def keychaindump(self):
+        sym_addr = self.symbol_list['_kernproc']
         
+        candidate_key_list = dump_master_key(self.x86_mem_pae, sym_addr, self.arch, self.os_version, self.build, self.base_address, self.mempath)
+        if candidate_key_list == 1:
+	    return
+        print_master_key(candidate_key_list)

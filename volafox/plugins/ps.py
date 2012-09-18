@@ -184,10 +184,10 @@ class process_manager:
         task_info = self.x86_mem_pae.read(task_ptr, TASK_STRUCTURE[0])
         task_struct = struct.unpack(TASK_STRUCTURE[1], task_info)
 	
-	if proc:
-	  print ' [-] User Stack Address: 0x%.8X'%proc[5]
-	  print ' [-] Vnode of Executable Address: 0x%.8X'%proc[6]
-	  print ' [-] Offset in executable vnode: 0x%.8X'%proc[7]
+	#if proc:
+	#  print ' [-] User Stack Address: 0x%.8X'%proc[5]
+	#  print ' [-] Vnode of Executable Address: 0x%.8X'%proc[6]
+	#  print ' [-] Offset in executable vnode: 0x%.8X'%proc[7]
         
         #print 'task_t'
         #print ' [-] Reference Count: %x'%task_struct[0]
@@ -228,6 +228,7 @@ class process_manager:
         #print '======= vm_map_t --> osfmk\\vm\\vm_map.h ========'
         #print 'prev: %x'%vm_struct[0]
         #print 'next: %x'%self.x86_mem_pae.vtop(vm_struct[1])
+	print ''
         print '[+] Virtual Memory Map Information'
         print ' [-] Virtual Address Start Point: 0x%x'%vm_struct[2]
         print ' [-] Virtual Address End Point: 0x%x'%vm_struct[3]
@@ -245,7 +246,8 @@ class process_manager:
 	  vm_temp_list.append(vm_struct[3])
 	  vm_list.append(vm_temp_list)
 	  return vm_list, vm_struct
-
+	
+	print ''
         print '[+] Generating Process Virtual Memory Maps'
         entry_next_ptr = vm_struct[1]
         for data in range(0, vm_struct[4]): # number of entries
