@@ -36,6 +36,7 @@ def usage():
     print 'lsof            : Open files listing by process (research, osxmem@gmail.com)'	# LSOF: new lsof command
     print 'pestate         : Show Boot information (experiment)'
     print 'efiinfo         : EFI System Table, EFI Runtime Services(experiment)'
+    print 'keychaindump    : Dump master key candidates for decrypting keychain(Lion, ML)'
 #    print 'net_info_test\t network information(plist), (experiment)'
 
 def main():
