@@ -2,8 +2,12 @@
 import sys
 import struct
 import time
+import os
 
 from tableprint import columnprint
+
+from volafox.vatopa.addrspace import FileAddressSpace
+from volafox.vatopa.ia32_pml4 import IA32PML4MemoryPae
 
 # Lion 32bit, SN 32bit, Lion64bit, SN 64bit, Mountain Lion 64bit
 DATA_PROC_STRUCTURE = [[476+24+168, '=4xIIIII380xQII20xbbbb52sI164xI', 16, '=IIII', 283, '=IIIIIII255s'],
@@ -305,7 +309,7 @@ class process_manager:
         
         return vm_list, vm_struct
         
-    def get_proc_dump(self, vm_list, vm_struct):
+    def get_proc_dump(self, vm_list, vm_struct, process_name, mempath):
         
         if self.arch == 32:
             if self.build == '11D50': # temporary 12.04.24 n0fate
@@ -325,8 +329,49 @@ class process_manager:
         #print '%x'%self.x86_mem_pae.vtop(vm_struct[6])
         pmap_info = self.x86_mem_pae.read(vm_struct[6], PMAP_STRUCTURE[0])
         pm_cr3 = struct.unpack(PMAP_STRUCTURE[1], pmap_info)[0]
-
-        return pm_cr3
+        
+        proc_pae = 0
+        
+        print '[+] Resetting the Page Mapping Table: 0x%x'%pm_cr3
+        
+        proc_pae = IA32PML4MemoryPae(FileAddressSpace(mempath), pm_cr3)
+        
+        print '[+] Process Dump Start'
+        
+        for vme_info in  vm_list:
+            #print vme_info[0]
+            #print vme_info[1]
+            
+            nop_code = 0x00 # 11.10.11 n0fate test
+            pk_nop_code = struct.pack('=B', nop_code) # 11.10.11 n0fate test
+            nop = pk_nop_code*0x1000
+            
+            file = open('%s-%x-%x'%(process_name, vme_info[0], vme_info[1]), mode="wb")
+            
+            nop_flag = 0 # 11.10.11 n0fate test
+            for i in range(vme_info[0], vme_info[1], 0x1000):
+                raw_data = 0x00
+                if not(proc_pae.is_valid_address(i)):
+                    if nop_flag == 1:
+                        raw_data = nop
+                        file.write(raw_data)
+                    continue
+                raw_data = proc_pae.read(i, 0x1000)
+                if raw_data is None:
+                    if nop_flag == 1:
+                        raw_data = nop
+                        file.write(raw_data)
+                    continue
+                file.write(raw_data)
+                nop_flag = 1
+            file.close()
+            size = os.path.getsize('%s-%x-%x'%(process_name, vme_info[0], vme_info[1]))
+            if size == 0:
+               os.remove('%s-%x-%x'%(process_name, vme_info[0], vme_info[1]))
+            else:
+                print ' [-] [DUMP] Image Name: %s-%x-%x'%(process_name, vme_info[0], vme_info[1])
+        print '[+] Process Dump End'
+        return
 
 #################################### PUBLIC FUNCTIONS ####################################
 
@@ -364,7 +409,7 @@ def print_proc_list(proc_list):
     proc_print(proc_list)
 
 
-def get_proc_dump(x86_mem_pae, sym_addr, arch, os_version, build, pid, fflag, base_address):
+def get_proc_dump(x86_mem_pae, sym_addr, arch, os_version, build, pid, base_address, mempath):
     proclist = []
     ProcMan = process_manager(x86_mem_pae, arch, os_version, build, base_address)
     ret = ProcMan.get_proc(sym_addr, proclist, pid)
@@ -377,20 +422,42 @@ def get_proc_dump(x86_mem_pae, sym_addr, arch, os_version, build, pid, fflag, ba
     
     task_struct = ProcMan.get_task(dumped_proc[0], dumped_proc[0][2])
     
-    retData = ProcMan.get_proc_region(task_struct[3], dumped_proc[0][5], fflag)
+    retData = ProcMan.get_proc_region(task_struct[3], dumped_proc[0][5], 0)
     
     vm_list = retData[0]
     vm_struct = retData[1]
     
-    continue_flag = 0
+    ProcMan.get_proc_dump(vm_list, vm_struct, dumped_proc[0][12], mempath)
     
-    if fflag == 1:
-      print'[+] full dump size is %d bytes'%(vm_list[0][1] - vm_list[0][0])
+    return
+  
+def get_task_dump(x86_mem_pae, sym_addr, count, arch, os_version, build, task_id, base_address, mempath):
+    ProcMan = process_manager(x86_mem_pae, arch, os_version, build, base_address)
+    task_list = []
+    check_count = ProcMan.get_task_queue(sym_addr, count, task_list) # task queue ptr, task_count, task_list
     
-    pm_cr3 = ProcMan.get_proc_dump(vm_list, vm_struct)
+    dumped_task = []
     
-    return pm_cr3, vm_list, dumped_proc[0][12]
-
+    for task in task_list:
+	if task[0] == task_id:
+	  task_struct = task
+	  break
+    
+    if len(task_struct) == 0:
+      '[+] Could not found TASK ID'
+      return
+    
+    retData = ProcMan.get_proc_region(task_struct[3][3], 0x00, 0) # 
+    
+    vm_list = retData[0]
+    vm_struct = retData[1]
+    
+    ProcMan.get_proc_dump(vm_list, vm_struct, 'unlinked task', mempath)
+    
+    return
+    
+    
+    
 def get_task_list(x86_mem_pae, sym_addr, count, arch, os_version, build, base_address):
     ProcMan = process_manager(x86_mem_pae, arch, os_version, build, base_address)
     

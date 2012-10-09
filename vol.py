@@ -15,13 +15,13 @@ def usage():
     print 'project: http://code.google.com/p/volafox'
     print 'support: 10.6-8; 32/64-bit kernel'
     print '  input: *.vmem (VMWare memory file), *.mmr (Mac Memory Reader, flattened x86, IA-32e)'
-    print '  usage: python %s -i IMAGE [-o COMMAND [-vp PID][-fx PID][-x KEXT_ID]]\n' %sys.argv[0]
+    print '  usage: python %s -i IMAGE [-o COMMAND [-vp PID][-x PID][-x KEXT_ID][-x TASKID]]\n' %sys.argv[0]
     
     print 'Options:'
-    print '-o CMD     : Print kernel information for CMD (below)'
-    print '-p PID     : List open files for PID (where CMD is "lsof")'
-    print '-v         : Print all files, including unsupported types (where CMD is "lsof")'  
-    print '-x PID/KID : Dump process/kernel extension address space for PID/KID (where CMD is "ps"/"kextstat")\n'
+    print '-o CMD            : Print kernel information for CMD (below)'
+    print '-p PID            : List open files for PID (where CMD is "lsof")'
+    print '-v                : Print all files, including unsupported types (where CMD is "lsof")'  
+    print '-x PID/KID/TASKID : Dump process/task/kernel extension address space for PID/KID/Task ID (where CMD is "ps"/"kextstat"/"tasks")\n'
     #print '-f         : Full dump process address space for PID (where CMD is "ps" and -x PID) (experiment)\n'
     print 'COMMANDS:'
     print 'system_profiler : Kernel version, CPU, and memory spec, Boot/Sleep/Wakeup time'
@@ -46,7 +46,7 @@ def main():
     vflag = 0			# LSOF: show debugging output and experimental options for lsof
     dflag = 0
     mflag = 0   
-    fflag = 0			# process full dump option  
+    tflag = 0			# task dump option
     pid = -1			# LSOF: relocated this definition
 
     try:
@@ -90,6 +90,13 @@ def main():
 		    debug += ' -x %d' %kext_num
 		    mflag = 1
 		    break
+		
+		elif p == 'tasks' and x[0] == '-x': # task dump
+		    task_id = int(x[1], 10)
+		    debug += ' -x %d' %task_id
+		    tflag = 1
+		    break
+		
             del option[i]
 	    debug += "\n"	# LSOF: replacing newline
 
@@ -146,8 +153,12 @@ def main():
 	sys.exit()
         
     if dflag == 1:
-        m_volafox.proc_dump(pid, fflag)
+        m_volafox.proc_dump(pid)
         sys.exit()
+    
+    if tflag == 1:
+	m_volafox.task_dump(task_id)
+	sys.exit()
 	
     # test
     if oflag == 'get_phy':

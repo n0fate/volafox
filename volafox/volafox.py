@@ -38,7 +38,7 @@ import os
 from plugins.lsof import getfilelist, printfilelist
 from plugins.imageinfo import get_imageinfo # user defined class > CL
 from plugins.system_profiler import get_system_profile
-from plugins.ps import get_proc_list, get_proc_dump, get_task_list, proc_lookup, proc_print, task_print
+from plugins.ps import get_proc_list, get_proc_dump, get_task_list, proc_lookup, proc_print, task_print, get_task_dump
 from plugins.kextstat import get_kext_list, kext_dump, print_kext_list, get_kext_scan, print_kext_scan
 from plugins.systab import get_system_call_table_list, print_syscall_table
 from plugins.mach_trap import get_mach_trap_table_list, print_mach_trap_table
@@ -175,6 +175,13 @@ class volafox():
         proc_list = get_proc_list(self.x86_mem_pae, sym_addr, self.arch, self.os_version, self.build, self.base_address)
 	proc_print(proc_list)
 
+    def task_dump(self, task_id):
+	task_addr = self.symbol_list['_tasks']
+	task_count_addr = self.symbol_list['_tasks_count']
+	task_count_ptr = self.x86_mem_pae.read(task_count_addr+self.base_address, 4);
+	task_count = struct.unpack('=I', task_count_ptr)[0]
+	get_task_dump(self.x86_mem_pae, task_addr, task_count, self.arch, self.os_version, self.build, task_id, self.base_address, self.mempath)
+	
     def get_tasks(self): # comparing proc with task
 	proc_addr = self.symbol_list['_kernproc']
 	task_addr = self.symbol_list['_tasks']
@@ -226,60 +233,10 @@ class volafox():
         mtt_list = get_mach_trap_table_list(self.x86_mem_pae, mtt_ptr, mtt_count, self.arch, self.os_version, self.build, self.base_address)
         print_mach_trap_table(mtt_list, self.symbol_list, self.os_version, self.base_address)
 
-    def proc_dump(self, pid, fflag):
+    def proc_dump(self, pid):
         sym_addr = self.symbol_list['_kernproc']
         
-        dump_param = get_proc_dump(self.x86_mem_pae, sym_addr, self.arch, self.os_version, self.build, pid, fflag, self.base_address)
-        
-        pm_cr3 = dump_param[0]
-        vm_list = dump_param[1]
-        process_name = dump_param[2]
-        
-        proc_pae = 0
-        
-        print '[+] Resetting the Page Mapping Table: 0x%x'%pm_cr3
-        
-        if isMachoVolafoxCompatible(self.mempath):
-            proc_pae = IA32PML4MemoryPae(MachoAddressSpace(self.mempath), pm_cr3)
-        else:
-            proc_pae = IA32PML4MemoryPae(FileAddressSpace(self.mempath), pm_cr3)
-        
-        print '[+] Process Dump Start'
-        
-        for vme_info in  vm_list:
-            #print vme_info[0]
-            #print vme_info[1]
-            
-            nop_code = 0x00 # 11.10.11 n0fate test
-            pk_nop_code = struct.pack('=B', nop_code) # 11.10.11 n0fate test
-            nop = pk_nop_code*0x1000
-            
-            file = open('%s-%x-%x'%(process_name, vme_info[0], vme_info[1]), mode="wb")
-            
-            nop_flag = 0 # 11.10.11 n0fate test
-            for i in range(vme_info[0], vme_info[1], 0x1000):
-                raw_data = 0x00
-                if not(proc_pae.is_valid_address(i)):
-                    if nop_flag == 1:
-                        raw_data = nop
-                        file.write(raw_data)
-                    continue
-                raw_data = proc_pae.read(i, 0x1000)
-                if raw_data is None:
-                    if nop_flag == 1:
-                        raw_data = nop
-                        file.write(raw_data)
-                    continue
-                file.write(raw_data)
-                nop_flag = 1
-            file.close()
-            size = os.path.getsize('%s-%x-%x'%(process_name, vme_info[0], vme_info[1]))
-            if size == 0:
-               os.remove('%s-%x-%x'%(process_name, vme_info[0], vme_info[1]))
-            else:
-                print ' [-] [DUMP] Image Name: %s-%x-%x'%(process_name, vme_info[0], vme_info[1])
-        print '[+] Process Dump End'
-        return
+        get_proc_dump(self.x86_mem_pae, sym_addr, self.arch, self.os_version, self.build, pid, self.base_address, self.mempath)
 	
     # 2011.08.08
     # network information (inpcbinfo.hashbase, test code)
