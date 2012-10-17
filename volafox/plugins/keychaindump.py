@@ -81,7 +81,7 @@ class keychaindump:
 			print ' [-] range 0x%.8x-0x%.8x'%(vm_address[0], vm_address[1])
 			malloc_tiny_list.append(vm_address)
 		
-		pm_cr3 = self.processmanager.get_proc_dump(vm_list, vm_struct)
+		pm_cr3 = self.processmanager.get_proc_cr3(vm_list, vm_struct)
 		
 		return malloc_tiny_list, pm_cr3
 	

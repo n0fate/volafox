@@ -308,10 +308,9 @@ class process_manager:
             entry_next_ptr = vme_list[1]
         
         return vm_list, vm_struct
-        
-    def get_proc_dump(self, vm_list, vm_struct, process_name, mempath):
-        
-        if self.arch == 32:
+    
+    def get_proc_cr3(self,  vm_list, vm_struct):
+	if self.arch == 32:
             if self.build == '11D50': # temporary 12.04.24 n0fate
                 PMAP_STRUCTURE = DATA_PMAP_STRUCTURE[0]       
             elif self.os_version >= 11:   # Lion xnu-1699, build version 11D50 has some bug (36xQ)
@@ -329,6 +328,11 @@ class process_manager:
         #print '%x'%self.x86_mem_pae.vtop(vm_struct[6])
         pmap_info = self.x86_mem_pae.read(vm_struct[6], PMAP_STRUCTURE[0])
         pm_cr3 = struct.unpack(PMAP_STRUCTURE[1], pmap_info)[0]
+	return pm_cr3
+        
+    def get_proc_dump(self, vm_list, vm_struct, process_name, mempath):
+        
+	pm_cr3 = self.get_proc_cr3(vm_list, vm_struct)
         
         proc_pae = 0
         
