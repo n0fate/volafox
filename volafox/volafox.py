@@ -196,7 +196,7 @@ class volafox():
 	#    print '[+] check_count: %d, task_count: %d'%(check_count, task_count)
 	
 	
-	valid_task_list, hide_task_list = proc_lookup(proc_list, task_list)
+	valid_task_list, hide_task_list = proc_lookup(proc_list, task_list, self.x86_mem_pae, self.arch, self.os_version, self.build, self.base_address)
 	
 	print '[+] Linked task list'
 	task_print(valid_task_list)

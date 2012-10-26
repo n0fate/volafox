@@ -51,12 +51,38 @@ class process_manager:
         self.os_version = os_version
         self.build = build
 	self.base_address = base_address
+
+    def get_proc(self, proc_sym_addr, PROC_STRUCTURE):
+        proc = []
+        proclist = self.x86_mem_pae.read(proc_sym_addr, PROC_STRUCTURE[0])
+        data = struct.unpack(PROC_STRUCTURE[1], proclist)
         
-    def get_proc(self, sym_addr, proc_list, pid):
-        if not(self.x86_mem_pae.is_valid_address(sym_addr+self.base_address)):
-            return 1
-        
-	if self.arch == 32:
+        pgrp_t = self.x86_mem_pae.read(data[13], PROC_STRUCTURE[2]); # pgrp structure
+        m_pgrp = struct.unpack(PROC_STRUCTURE[3], pgrp_t)
+
+        session_t = self.x86_mem_pae.read(m_pgrp[3], PROC_STRUCTURE[4]); # session structure
+        m_session = struct.unpack(PROC_STRUCTURE[5], session_t)
+
+        proc.append(self.x86_mem_pae.vtop(proc_sym_addr))
+        proc.append(data[1])
+        proc.append(data[2])
+        proc.append(data[3])
+        proc.append(data[4])
+        proc.append(data[5]) # user_stack
+        proc.append(data[6]) # vnode of executable
+        proc.append(data[7]) # offset in executable vnode
+        proc.append(data[8]) # Process Priority
+        proc.append(data[9]) # User-Priority based on p_cpu and p_nice
+        proc.append(data[10]) # Process 'nice' value
+        proc.append(data[11]) # User-Priority based on p_cpu and p_nice
+        proc.append(data[12].split('\x00', 1)[0])
+        proc.append(str(m_session[7]).strip('\x00'))
+        proc.append(data[14])
+
+        return proc, data[0], data[1]
+
+    def get_proc_struct(self):
+        if self.arch == 32:
             if self.os_version == 11:
                 PROC_STRUCTURE = DATA_PROC_STRUCTURE[0] # Lion 32bit
             else:
@@ -68,13 +94,26 @@ class process_manager:
 		PROC_STRUCTURE = DATA_PROC_STRUCTURE[4]
             else:
                 PROC_STRUCTURE = DATA_PROC_STRUCTURE[3] # Snow Leopard 64bit
-        
+
+        return PROC_STRUCTURE
+
+    def get_kernel_task_addr(self, sym_addr):
         if self.arch == 32:
     	    kernproc = self.x86_mem_pae.read(sym_addr+self.base_address, 4); # __DATA.__common _kernproc
     	    proc_sym_addr = struct.unpack('I', kernproc)[0]
         else:
             kernproc = self.x86_mem_pae.read(sym_addr+self.base_address, 8); # __DATA.__common _kernproc
             proc_sym_addr = struct.unpack('Q', kernproc)[0]
+
+        return proc_sym_addr
+    
+    def get_proc_list(self, sym_addr, proc_list, pid):
+        if not(self.x86_mem_pae.is_valid_address(sym_addr+self.base_address)):
+            return 1
+
+        PROC_STRUCTURE = self.get_proc_struct()
+
+        proc_sym_addr = self.get_kernel_task_addr(sym_addr)
 	    
         while 1:
             #break
@@ -84,37 +123,14 @@ class process_manager:
                 break
             try:
                 proc = []
-                proclist = self.x86_mem_pae.read(proc_sym_addr, PROC_STRUCTURE[0])
-                data = struct.unpack(PROC_STRUCTURE[1], proclist)
-            
-                pgrp_t = self.x86_mem_pae.read(data[13], PROC_STRUCTURE[2]); # pgrp structure
-                m_pgrp = struct.unpack(PROC_STRUCTURE[3], pgrp_t)
-    
-                session_t = self.x86_mem_pae.read(m_pgrp[3], PROC_STRUCTURE[4]); # session structure
-                m_session = struct.unpack(PROC_STRUCTURE[5], session_t)
 
-                proc.append(self.x86_mem_pae.vtop(proc_sym_addr))
-                proc.append(data[1])
-                proc.append(data[2])
-                proc.append(data[3])
-                proc.append(data[4])
-                proc.append(data[5]) # user_stack
-                proc.append(data[6]) # vnode of executable
-                proc.append(data[7]) # offset in executable vnode
-                proc.append(data[8]) # Process Priority
-                proc.append(data[9]) # User-Priority based on p_cpu and p_nice
-                proc.append(data[10]) # Process 'nice' value
-                proc.append(data[11]) # User-Priority based on p_cpu and p_nice
-                proc.append(data[12].split('\x00', 1)[0])
-                proc.append(str(m_session[7]).strip('\x00'))
-                proc.append(data[14])
-                #proc.append(data[8])
+                proc, next_proc_addr, pid_in_proc = self.get_proc(proc_sym_addr, PROC_STRUCTURE)
                 
-                proc_sym_addr = data[0]
+                proc_sym_addr = next_proc_addr
                 if pid == -1: # All Process
                     proc_list.append(proc)
                 else: # Process Dump or filtering
-                    if data[1] == pid:
+                    if pid_in_proc == pid:
                         proc_list.append(proc)
                         return 0
             
@@ -160,7 +176,7 @@ class process_manager:
 	    task.append(self.x86_mem_pae.vtop(task_ptr)) # physical address
 	    task.append(task_ptr) # virtual address
 	    task.append(task_struct) # task structure
-	    task.append(self.x86_mem_pae.vtop(task_struct[6])) # task.bsd_info physical address
+	    task.append(task_struct[6]) # task.bsd_info physical address
 	    
 	    task_list.append(task)
 	    task_ptr = task_struct[4] # task_queue_t
@@ -405,7 +421,7 @@ def proc_print(data_list):
 def get_proc_list(x86_mem_pae, sym_addr, arch, os_version, build, base_address):
     proclist = []
     ProcMan = process_manager(x86_mem_pae, arch, os_version, build, base_address)
-    ret = ProcMan.get_proc(sym_addr, proclist, -1)
+    ret = ProcMan.get_proc_list(sym_addr, proclist, -1)
     
     return proclist
 
@@ -416,7 +432,7 @@ def print_proc_list(proc_list):
 def get_proc_dump(x86_mem_pae, sym_addr, arch, os_version, build, pid, base_address, mempath):
     proclist = []
     ProcMan = process_manager(x86_mem_pae, arch, os_version, build, base_address)
-    ret = ProcMan.get_proc(sym_addr, proclist, pid)
+    ret = ProcMan.get_proc_list(sym_addr, proclist, pid)
     if ret == 1:
         return 1
     
@@ -431,7 +447,7 @@ def get_proc_dump(x86_mem_pae, sym_addr, arch, os_version, build, pid, base_addr
     vm_list = retData[0]
     vm_struct = retData[1]
     
-    ProcMan.get_proc_dump(vm_list, vm_struct, dumped_proc[0][12], mempath)
+    ProcMan.get_proc_dump(vm_list, vm_struct, str(dumped_proc[0][1])+'-'+dumped_proc[0][12], mempath)
     
     return
   
@@ -439,8 +455,6 @@ def get_task_dump(x86_mem_pae, sym_addr, count, arch, os_version, build, task_id
     ProcMan = process_manager(x86_mem_pae, arch, os_version, build, base_address)
     task_list = []
     check_count = ProcMan.get_task_queue(sym_addr, count, task_list) # task queue ptr, task_count, task_list
-    
-    dumped_task = []
     
     for task in task_list:
 	if task[0] == task_id:
@@ -450,13 +464,16 @@ def get_task_dump(x86_mem_pae, sym_addr, count, arch, os_version, build, task_id
     if len(task_struct) == 0:
       '[+] Could not found TASK ID'
       return
+
+    PROC_STRUCTURE = ProcMan.get_proc_struct()
+    proc_matched = ProcMan.get_proc(task[4], PROC_STRUCTURE)[0]
     
     retData = ProcMan.get_proc_region(task_struct[3][3], 0x00, 0) # 
     
     vm_list = retData[0]
     vm_struct = retData[1]
     
-    ProcMan.get_proc_dump(vm_list, vm_struct, 'unlinked task', mempath)
+    ProcMan.get_proc_dump(vm_list, vm_struct, str(proc_matched[1])+'-'+proc_matched[12], mempath)
     
     return
     
@@ -470,7 +487,11 @@ def get_task_list(x86_mem_pae, sym_addr, count, arch, os_version, build, base_ad
     
     return task_list, check_count
 
-def proc_lookup(proc_list, task_list):
+def proc_lookup(proc_list, task_list, x86_mem_pae, arch, os_version, build, base_address):
+
+
+    ProcMan = process_manager(x86_mem_pae, arch, os_version, build, base_address)
+    PROC_STRUCTURE = ProcMan.get_proc_struct()
     
     print '[+] Task List Count at Queue: %d'%len(task_list)
     print '[+] Process List Count: %d'%len(proc_list)
@@ -492,11 +513,11 @@ def proc_lookup(proc_list, task_list):
 		task.append(proc[1]) # PID
 		task.append(proc[12]) # process name
 		task.append(proc[13]) # username
-		task.append('O')
-		if task[4] == proc[0]:
-		  task.append('O')
-		else:
-		  task.append('X')
+		#task.append('O')
+		#if task[4] == proc[0]:
+		#  task.append('O')
+		#else:
+		#  task.append('X')
 		
 		valid_task.append(task)
 		break
@@ -507,14 +528,11 @@ def proc_lookup(proc_list, task_list):
 		task.append(proc[1])
 		task.append(proc[12])
 		task.append(proc[13])
-		task.append('X') # PROC->TASK
-		task.append('O') # TASK->PROC
 	      else:
-		task.append(0)
-		task.append('UNKNOWN')
-		task.append('UNKNOWN')
-		task.append('X') # PROC->TASK
-		task.append('X') # TASK->PROC
+                proc_matched = ProcMan.get_proc(task[4], PROC_STRUCTURE)[0]
+		task.append(proc_matched[1])
+		task.append(proc_matched[12])
+		task.append(proc_matched[13])
 	    unlinked_task.append(task)
     
     return valid_task, unlinked_task
@@ -523,7 +541,7 @@ def proc_lookup(proc_list, task_list):
 def task_print(data_list):
     #print '[+] Process List'
 
-    headerlist = ["TASK CNT", "OFFSET(P)", "REF_CNT", "Active", "Halt", "VM_MAP(V)", "PID", "PROCESS", "USERNAME", "PROC->TASK", "TASK->PROC"]
+    headerlist = ["TASK CNT", "OFFSET(P)", "REF_CNT", "Active", "Halt", "VM_MAP(V)", "PID", "PROCESS", "USERNAME"]
     contentlist = []
 
     for data in data_list:
@@ -536,13 +554,13 @@ def task_print(data_list):
 	line.append('%d'%data[5]) # PID
 	line.append('%s'%data[6]) # Process Name
 	line.append('%s'%data[7]) # User Name
-	line.append('%s'%data[8]) # proc.tasks -> Task ptr
-	line.append('%s'%data[9]) # task.bsd_info -> proc ptr
+	#line.append('%s'%data[8]) # proc.tasks -> Task ptr
+	#line.append('%s'%data[9]) # task.bsd_info -> proc ptr
 	
 	#line.append('%s'%time.strftime("%a %b %d %H:%M:%S %Y", time.gmtime(data[14])))
 	contentlist.append(line)
 
     # use optional max size list here to match default lsof output, otherwise specify
     # lsof +c 0 on the command line to print full name of commands
-    mszlist = [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1]
+    mszlist = [-1, -1, -1, -1, -1, -1, -1, -1, -1]
     columnprint(headerlist, contentlist, mszlist)
