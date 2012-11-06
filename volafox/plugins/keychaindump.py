@@ -87,7 +87,7 @@ class keychaindump:
 	
 	def search_for_keys_in_process(self, sym_addr):
 	    proclist = []
-	    ret = self.processmanager.get_proc(sym_addr, proclist, -1)
+	    ret = self.processmanager.get_proc_list(sym_addr, proclist, -1)
 	    if ret == 1:
 		return 1
 	    
