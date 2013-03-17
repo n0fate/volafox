@@ -1,3 +1,6 @@
+#!/usr/bin/env python # path
+
+
 import sys
 from volafox.binan.macho_an import *
 import pickle
