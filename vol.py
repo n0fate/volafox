@@ -37,6 +37,7 @@ def usage():
     print 'pestate         : Show Boot information (experiment)'
     print 'efiinfo         : EFI System Table, EFI Runtime Services(experiment)'
     print 'keychaindump    : Dump master key candidates for decrypting keychain(Lion, ML)'
+    print 'dmesg           : Debug Message at Boot Time (experiment).'
 #    print 'net_info_test\t network information(plist), (experiment)'
 
 def main():
@@ -162,7 +163,7 @@ def main():
 	
     # test
     if oflag == 'get_phy':
-	m_volafox.get_read_address(0x2AC0AC8)
+	m_volafox.get_read_address(0xffffff8000711a30)
 	sys.exit()
 	
     if oflag == 'system_profiler':
@@ -225,6 +226,10 @@ def main():
     
     elif oflag == 'kextscan':
 	m_volafox.kextscan()
+	sys.exit()
+    
+    elif oflag == 'dmesg':
+	m_volafox.dmesg()
 	sys.exit()
         
     else:

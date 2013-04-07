@@ -1,12 +1,28 @@
 import sys
 import struct
 
+from tableprint import columnprint
 
 DATA_PTR_SIZE = [[4, '=I'], [8, '=Q']]
 
 # Lion 32bit, SN 32bit, Lion64bit, SN 64bit
 DATA_NETWORK_STRUCTURE = [[40, '=IIIIII12xI', 16, 112, '>HH48xI36xI12xI'],
     [72, '=QQQQQQ16xQ', 24, 156, '>HH80xQ36xI20xI']]
+
+
+NETWORK_STATES = {
+    0:        'CLOSED',
+    1:        'LISTEN',
+    2:        'SYN_SENT',
+    3:        'SYN_RCVD',
+    4:        'ESTABLISHED',
+    5:        'CLOSE_WAIT',
+    6:        'FIN_WAIT_1',
+    7:        'CLOSING',
+    8:        'LAST_ACK',
+    9:        'FIN_WAIT_2',
+    10:        'TIME_WAIT'
+}
 
 
 class network_manager():
@@ -62,6 +78,8 @@ class network_manager():
             #print 'Real Address (inpcb): %x'%net_pae.vtop(inpcb[0])
             inpcb = self.net_pae.read(loop_addr+NETWORK_STRUCTURE[2], NETWORK_STRUCTURE[3])
             in_network = struct.unpack(NETWORK_STRUCTURE[4], inpcb) # fport, lport, flag, fhost, lhost
+            
+            print self.net_pae.vtop(loop_addr+NETWORK_STRUCTURE[2])
       #123 struct inpcb {
       #124         LIST_ENTRY(inpcb) inp_hash;     /* hash list */
       #125         int             inp_wantcnt;            /* pcb wanted count. protected by pcb list lock */
@@ -173,8 +191,25 @@ def get_network_list(net_pae, tcb_symbol_addr, udb_symbol_addr, arch, os_version
 
 def print_network_list(tcp_network_list, udp_network_list):
     print '[+] NETWORK INFORMATION (hashbase)'
+    headerlist = ["Proto", "Local Address", "Foreign Address", "(state)"]
+    contentlist = []
     for network in tcp_network_list:
-        print '[TCP] Local Address: %s:%d, Foreign Address: %s:%d, flag: %x'%(network[1], network[3], network[2], network[4], network[0])
+        data = ['tcp']
+        data.append('%s:%d'%(network[1], network[3]))
+        data.append('%s:%d'%(network[2], network[4]))
+        data.append('%x'%network[0])
+        #print '[TCP] Local Address: %s:%d, Foreign Address: %s:%d, flag: %x'%(network[1], network[3], network[2], network[4], network[0])
+        
+        contentlist.append(data)
 
     for network in udp_network_list:
-        print '[UDP] Local Address: %s:%d, Foreign Address: %s:%d, flag: %x'%(network[1], network[3], network[2], network[4], network[0])
+        data = ['udp']
+        data.append('%s:%d'%(network[1], network[3]))
+        data.append('%s:%d'%(network[2], network[4]))
+        data.append('%x'%network[0])
+        #print '[UDP] Local Address: %s:%d, Foreign Address: %s:%d, flag: %x'%(network[1], network[3], network[2], network[4], network[0])
+        contentlist.append(data)
+        
+    mszlist = [-1, -1, -1, -1]
+    columnprint(headerlist, contentlist, mszlist)
+    

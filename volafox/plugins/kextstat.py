@@ -243,14 +243,14 @@ def kext_dump(x86_mem_pae, sym_addr, sym_addr2, arch, os_version, build, KID, ba
     if not(x86_mem_pae.is_valid_address(offset)) or not(offset) or not(size):
         print '[+] Invalid Virtual Address : 0x%.8X, Size: %d'%(offset, size)
         return 1
-    print '[DUMP] FILENAME: %s-%x-%x'%(kextname, offset, offset+size)
+    print '[DUMP] FILENAME: %s-%x-%x'%(kextname.replace('\x00', ''), offset, offset+size)
 
     padding_code = 0x00
     pk_padding = struct.pack('=B', padding_code)
     padding = pk_padding*0x1000
 
 
-    file = open('%s-%x-%x'%(kextname, offset, offset+size), 'wb')
+    file = open('%s-%x-%x'%(kextname.replace('\x00', ''), offset, offset+size), 'wb')
     for kext_offset in range(offset, offset+size, 0x1000):
         if not(x86_mem_pae.is_valid_address(kext_offset)):
             file.write(padding)

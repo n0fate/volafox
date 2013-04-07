@@ -49,6 +49,8 @@ from plugins.efiinfo import get_efi_system_table, print_efi_system_table, get_ef
 
 from plugins.keychaindump import dump_master_key, print_master_key
 
+from plugins.dmesg import get_dmesg
+
 from vatopa.machaddrspace import MachoAddressSpace, isMachoVolafoxCompatible, is_universal_binary
 
 from vatopa.x86 import *
@@ -75,7 +77,7 @@ class volafox():
 	self.base_address = 0 # find dynamic kernel location (Mountain Lion only)
 
     def get_read_address(self, address):
-	print '%x'%self.x86_mem_pae.vtop(address)
+	print '%x'%self.x86_mem_pae.vtop(address+self.base_address)
 	return
     
     def overlay_loader(self, overlay_path, vflag):
@@ -105,10 +107,19 @@ class volafox():
         if self.mempath == '':
             return 1
 	if self.build[0:2] == '12': # Mountain Lion
+	    if vflag:
+                print '[+] Finding Kernel Base Address (KASLR)'
+		
 	    self.base_address = self.catfishlocation - (self.symbol_list['_lowGlo'] % 0xFFFFFF80) # find table base address
+	    if vflag:
+                print ' [-] Kernel Base Address : 0x%.8x'%self.base_address
 	    self.idlepdpt = (self.symbol_list['_BootPDPT'] % 0xFFFFFF80) + self.base_address
 	    self.bootpml4 = (self.symbol_list['_BootPML4'] % 0xFFFFFF80) + self.base_address
-	    self.boot_pml4_pt = IA32PML4MemoryPae(FileAddressSpace(self.mempath), self.bootpml4)
+	    
+	    if isMachoVolafoxCompatible(self.mempath):
+		self.boot_pml4_pt = IA32PML4MemoryPae(MachoAddressSpace(self.mempath), self.bootpml4)
+	    else:
+		self.boot_pml4_pt = IA32PML4MemoryPae(FileAddressSpace(self.mempath), self.bootpml4)
 	    
 	    idlepml4_ptr = self.boot_pml4_pt.read(self.symbol_list['_IdlePML4']+self.base_address, 8)
 	    self.idlepml4 = struct.unpack('=Q', idlepml4_ptr)[0]
@@ -264,7 +275,7 @@ class volafox():
         else:
             net_pae = IA32PML4MemoryPae(FileAddressSpace(self.mempath), self.idlepml4)
         
-        network_list = get_network_list(net_pae, tcb_symbol_addr, udb_symbol_addr, self.arch, self.os_version, self.build)
+        network_list = get_network_list(net_pae, tcb_symbol_addr, udb_symbol_addr, self.arch, self.os_version, self.build, self.base_address)
         print_network_list(network_list[0], network_list[1])
 
     # 2012.06.22 test code(EFI Runtime & SystemTable Analysis)
@@ -299,3 +310,11 @@ class volafox():
         if candidate_key_list == 1:
 	    return
         print_master_key(candidate_key_list)
+
+    # 2013.04.05 dmesg
+    #################################################
+    
+    def dmesg(self):
+	dmesg_symbol_addr = self.symbol_list['_smsg_bufc']
+	dmesg_str = get_dmesg(self.x86_mem_pae, dmesg_symbol_addr, self.arch, self.os_version, self.build, self.base_address)
+	print dmesg_str

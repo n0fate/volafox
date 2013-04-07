@@ -46,7 +46,7 @@ def print_syscall_table(data_list, symbol_list, base_address):
     sym_name_list = symbol_list.keys()
     sym_addr_list = symbol_list.values()
     print '[+] Syscall List'
-    headerlist = ["NUM","ARG_COUNT", "RESV", "FLAGS", "CALL_PTR", "ARG_MUNGE32_PTR", "ARG_MUNGE64_PTR", "RET_TYPE", "ARG_BYTES", "HOOK_FINDER"]
+    headerlist = ["NUM","ARG_COUNT", "RESV", "FLAGS", "NAME", "CALL_PTR", "ARG_MUNGE32_PTR", "ARG_MUNGE64_PTR", "RET_TYPE", "ARG_BYTES", "HOOK_FINDER"]
     #print 'number\tsy_narg\tsy_resv\tsy_flags\tsy_call_ptr\tsy_arg_munge32_ptr\tsy_arg_munge64_ptr\tsy_ret_type\tsy_arg_bytes\tValid Function Address'
     contentlist = []
     
@@ -65,6 +65,7 @@ def print_syscall_table(data_list, symbol_list, base_address):
             i += 1
         if symflag != 1:
             line.append('0x%.8X'%data[3])
+        line.append('0x%.8X'%data[3])
         line.append('0x%.8X'%data[4])
         line.append('0x%.8X'%data[5])
         line.append('%d'%data[6])
@@ -76,7 +77,7 @@ def print_syscall_table(data_list, symbol_list, base_address):
         count += 1
         contentlist.append(line)
 
-    mszlist = [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1]
+    mszlist = [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1]
     columnprint(headerlist, contentlist, mszlist) 
 
 def get_system_call_table_list(x86_mem_pae, sym_addr, arch, os_version, build, base_address):
