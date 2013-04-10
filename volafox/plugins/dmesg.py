@@ -22,7 +22,7 @@ class dmesg:
         while 1:
             buf_raw = self.x86_mem_pae.read(sym_addr+self.base_address+bufcount, 1024)
             buf = struct.unpack('=1024s', buf_raw)[0]
-            print buf
+            #print buf
             dmesg_str = dmesg_str + buf
             if buf[-1] == '\x00':
                 break

@@ -27,7 +27,7 @@ def usage():
     print 'system_profiler : Kernel version, CPU, and memory spec, Boot/Sleep/Wakeup time'
     print 'mount           : Mounted filesystems'
     print 'kextstat        : KEXT (Kernel Extensions) listing'
-    #print 'kextscan        : Scanning KEXT (Kernel Extensions) (experiment)'
+    print 'kextscan        : Scanning KEXT (Kernel Extensions) (64bit OS only, experiment)'
     print 'ps              : Process listing'
     print 'tasks           : Task listing (& Matching Process List)'
     print 'systab          : Syscall table (Hooking Detection)'
@@ -38,6 +38,8 @@ def usage():
     print 'efiinfo         : EFI System Table, EFI Runtime Services(experiment)'
     print 'keychaindump    : Dump master key candidates for decrypting keychain(Lion, ML)'
     print 'dmesg           : Debug Message at Boot Time (experiment).'
+    print 'uname           : Print a short for unix name(uname) (experiment).'
+    print 'hostname        : Print a hostname (experiment).'
 #    print 'net_info_test\t network information(plist), (experiment)'
 
 def main():
@@ -231,7 +233,15 @@ def main():
     elif oflag == 'dmesg':
 	m_volafox.dmesg()
 	sys.exit()
-        
+    
+    elif oflag == 'uname':
+	m_volafox.uname()
+	sys.exit()
+    
+    elif oflag == 'hostname':
+	m_volafox.hostname()
+	sys.exit()
+	
     else:
         print '[+] WARNING: -o Argument Error\n'
         sys.exit()

@@ -50,6 +50,8 @@ from plugins.efiinfo import get_efi_system_table, print_efi_system_table, get_ef
 from plugins.keychaindump import dump_master_key, print_master_key
 
 from plugins.dmesg import get_dmesg
+from plugins.uname import get_uname
+from plugins.hostname import get_hostname
 
 from vatopa.machaddrspace import MachoAddressSpace, isMachoVolafoxCompatible, is_universal_binary
 
@@ -318,3 +320,14 @@ class volafox():
 	dmesg_symbol_addr = self.symbol_list['_smsg_bufc']
 	dmesg_str = get_dmesg(self.x86_mem_pae, dmesg_symbol_addr, self.arch, self.os_version, self.build, self.base_address)
 	print dmesg_str
+	
+    def uname(self):
+	uname_symbol_addr = self.symbol_list['_kdp_kernelversion_string']
+	uname_str = get_uname(self.x86_mem_pae, uname_symbol_addr, self.arch, self.os_version, self.build, self.base_address)
+	print uname_str
+
+    def hostname(self):
+	hostname_symbol_addr = self.symbol_list['_hostname']
+	hostnamelength = self.symbol_list['_hostnamelen']
+	hostname_str = get_hostname(self.x86_mem_pae, hostname_symbol_addr, hostnamelength, self.arch, self.os_version, self.build, self.base_address)
+	print hostname_str
