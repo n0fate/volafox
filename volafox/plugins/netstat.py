@@ -79,7 +79,7 @@ class network_manager():
             inpcb = self.net_pae.read(loop_addr+NETWORK_STRUCTURE[2], NETWORK_STRUCTURE[3])
             in_network = struct.unpack(NETWORK_STRUCTURE[4], inpcb) # fport, lport, flag, fhost, lhost
             
-            print self.net_pae.vtop(loop_addr+NETWORK_STRUCTURE[2])
+            #print self.net_pae.vtop(loop_addr+NETWORK_STRUCTURE[2])
       #123 struct inpcb {
       #124         LIST_ENTRY(inpcb) inp_hash;     /* hash list */
       #125         int             inp_wantcnt;            /* pcb wanted count. protected by pcb list lock */
