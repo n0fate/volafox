@@ -13,12 +13,12 @@ import sys
 class imageInfo:
 	def __init__(self, f):
 		self.f = f
-		self.Catfishmagic = binascii.unhexlify('4361746669736820')
+		self.Catfishmagic = binascii.unhexlify('43617466697368200000000000000000')
 		self.Darwinkernelmagic = binascii.unhexlify('44617277696E204B65726E656C2056657273696F6E')
 		self.OffsetedK = 1024
 		self.Offseted = 0
 		self.OffsetSegment = 0
-		self.chunk_size = 1024
+		self.chunk_size = 4096 # n0fate
 		
 		
 	def read_in_chunks(self, file_object):
@@ -31,7 +31,7 @@ class imageInfo:
 	def catfishSearch(self, f):
 		filename = open(f, 'rb')
 		for piece in self.read_in_chunks(filename):
-			if re.search(self.Catfishmagic, piece):
+			if self.Catfishmagic == piece[:16]:
 				page = self.Offseted
 				segment = piece.find(self.Catfishmagic)
 				CatfishLocation = page + segment
