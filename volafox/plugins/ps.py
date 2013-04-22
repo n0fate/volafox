@@ -10,11 +10,11 @@ from volafox.vatopa.addrspace import FileAddressSpace
 from volafox.vatopa.ia32_pml4 import IA32PML4MemoryPae
 
 # Lion 32bit, SN 32bit, Lion64bit, SN 64bit, Mountain Lion 64bit
-DATA_PROC_STRUCTURE = [[476+24+168, '=4xIIIII380xQII20xbbbb52sI164xI', 16, '=IIII', 283, '=IIIIIII255s'],
-    [476+168, '=4xIIIII356xQII20xbbbb52sI164xI', 16, '=IIII', 283, '=IIIIIII255s'],
-    [752+24+268, '=8xQQQQI628xQQQ16xbbbb52sQ264xI', 32, '=QQQQ', 303, '=IQQIQQQ255s'],
-    [1028, '=8xQQQQI612xQQQ16xbbbb52sQ264xI', 32, '=QQQQ', 303, '=IQQIQQQ255s'],
-    [752+24+276, '=8xQQQQI628xQQQ16xbbbb52sQ272xI', 32, '=QQQQ', 303, '=IQQIQQQ255s']]
+DATA_PROC_STRUCTURE = [[476+24+168, '=4xIIIII100xI276xQII20xbbbb52sI164xI', 16, '=IIII', 283, '=IIIIIII255s', 108, '=12xI4x8x64xI12x'],
+    [476+168, '=4xIIIII76xI276xQII20xbbbb52sI164xI', 16, '=IIII', 283, '=IIIIIII255s', 108, '=12xI4x8x64xI12x'], 
+    [752+24+268, '=8xQQQQI164xQ456xQQQ16xbbbb52sQ264xI', 32, '=QQQQ', 303, '=IQQIQQQ255s', 120, '=24xI4x8x64xI12x'],
+    [1028, '=8xQQQQI156xQ448xQQQ16xbbbb52sQ264xI', 32, '=QQQQ', 303, '=IQQIQQQ255s', 120, '=24xI4x8x64xI12x'], 
+    [752+24+276, '=8xQQQQI164xQ456xQQQ16xbbbb52sQ272xI', 32, '=QQQQ', 303, '=IQQIQQQ255s', 120, '=24xI4x8x64xI12x']]
 
 # Lion 32bit, SN 32bit, Lion64bit, SN 64bit, Mountain Lion 64bit
 DATA_TASK_STRUCTURE = [[32+460+4, '=8xIIIIII460xI'],
@@ -50,34 +50,40 @@ class process_manager:
         self.arch = arch
         self.os_version = os_version
         self.build = build
-	self.base_address = base_address
+        self.base_address = base_address
 
     def get_proc(self, proc_sym_addr, PROC_STRUCTURE):
         proc = []
         proclist = self.x86_mem_pae.read(proc_sym_addr, PROC_STRUCTURE[0])
         data = struct.unpack(PROC_STRUCTURE[1], proclist)
         
-        pgrp_t = self.x86_mem_pae.read(data[13], PROC_STRUCTURE[2]); # pgrp structure
+        pgrp_t = self.x86_mem_pae.read(data[14], PROC_STRUCTURE[2]) # pgrp structure
         m_pgrp = struct.unpack(PROC_STRUCTURE[3], pgrp_t)
 
-        session_t = self.x86_mem_pae.read(m_pgrp[3], PROC_STRUCTURE[4]); # session structure
+        session_t = self.x86_mem_pae.read(m_pgrp[3], PROC_STRUCTURE[4]) # session structure
         m_session = struct.unpack(PROC_STRUCTURE[5], session_t)
+
+        #print '%x'%self.x86_mem_pae.vtop(data[5])
+        p_ucred = self.x86_mem_pae.read(data[5], PROC_STRUCTURE[6])
+        ucred = struct.unpack(PROC_STRUCTURE[7], p_ucred)
 
         proc.append(self.x86_mem_pae.vtop(proc_sym_addr))
         proc.append(data[1])
         proc.append(data[2])
         proc.append(data[3])
         proc.append(data[4])
-        proc.append(data[5]) # user_stack
-        proc.append(data[6]) # vnode of executable
-        proc.append(data[7]) # offset in executable vnode
-        proc.append(data[8]) # Process Priority
-        proc.append(data[9]) # User-Priority based on p_cpu and p_nice
-        proc.append(data[10]) # Process 'nice' value
-        proc.append(data[11]) # User-Priority based on p_cpu and p_nice
-        proc.append(data[12].split('\x00', 1)[0])
+        proc.append(data[6]) # user_stack
+        proc.append(data[7]) # vnode of executable
+        proc.append(data[8]) # offset in executable vnode
+        proc.append(data[9]) # Process Priority
+        proc.append(data[10]) # User-Priority based on p_cpu and p_nice
+        proc.append(data[11]) # Process 'nice' value
+        proc.append(data[12]) # User-Priority based on p_cpu and p_nice
+        proc.append(data[13].split('\x00', 1)[0])
         proc.append(str(m_session[7]).strip('\x00'))
-        proc.append(data[14])
+        proc.append(data[15])
+        proc.append(ucred[0]) # ruid
+        proc.append(ucred[1]) # rgid
 
         return proc, data[0], data[1]
 
@@ -90,8 +96,8 @@ class process_manager:
         else:
             if self.os_version == 11:
                 PROC_STRUCTURE = DATA_PROC_STRUCTURE[2] # Lion 64bit
-	    elif self.os_version == 12:
-		PROC_STRUCTURE = DATA_PROC_STRUCTURE[4]
+            elif self.os_version == 12:
+                PROC_STRUCTURE = DATA_PROC_STRUCTURE[4]
             else:
                 PROC_STRUCTURE = DATA_PROC_STRUCTURE[3] # Snow Leopard 64bit
 
@@ -398,24 +404,25 @@ class process_manager:
 def proc_print(data_list):
     print '[+] Process List'
 
-    headerlist = ["OFFSET(P)", "PID", "PPID", "PRIORITY", "NICE", "PROCESS_NAME", "USERNAME", "CREATE_TIME (GMT +0)"]
+    headerlist = ["OFFSET(P)", "PID", "PPID", "PRIORITY", "NICE", "PROCESS_NAME", "USERNAME(UID,GID)", "CREATE_TIME (GMT +0)", ""]
     contentlist = []
 
     for data in data_list:
-	line = []
-	line.append("0x%.8X"%data[0]) # offset
-	line.append('%d'%data[1]) # pid
-	line.append('%d'%data[4]) # ppid
-	line.append('%d'%unsigned8(data[8])) # Priority
-	line.append('%d'%unsigned8(data[10])) # nice
-	line.append('%s'%data[12]) # Changed by CL to read null formatted strings
-	line.append('%s'%data[13])
-	line.append('%s'%time.strftime("%a %b %d %H:%M:%S %Y", time.gmtime(data[14])))
-	contentlist.append(line)
+        line = []
+        line.append("0x%.8X"%data[0]) # offset
+        line.append('%d'%data[1]) # pid
+        line.append('%d'%data[4]) # ppid
+        line.append('%d'%unsigned8(data[8])) # Priority
+        line.append('%d'%unsigned8(data[10])) # nice
+        line.append('%s'%data[12]) # Changed by CL to read null formatted strings
+        line.append('%s(%d,%d)'%(data[13], data[15], data[16]))
+        line.append('%s'%time.strftime("%a %b %d %H:%M:%S %Y", time.gmtime(data[14])))
+        line.append('')
+        contentlist.append(line)
 
     # use optional max size list here to match default lsof output, otherwise specify
     # lsof +c 0 on the command line to print full name of commands
-    mszlist = [-1, -1, -1, -1, -1, -1, -1, -1]
+    mszlist = [-1, -1, -1, -1, -1, -1, -1, -1, -1]
     columnprint(headerlist, contentlist, mszlist)
       
 def get_proc_list(x86_mem_pae, sym_addr, arch, os_version, build, base_address):
@@ -541,26 +548,27 @@ def proc_lookup(proc_list, task_list, x86_mem_pae, arch, os_version, build, base
 def task_print(data_list):
     #print '[+] Process List'
 
-    headerlist = ["TASK CNT", "OFFSET(P)", "REF_CNT", "Active", "Halt", "VM_MAP(V)", "PID", "PROCESS", "USERNAME"]
+    headerlist = ["TASK CNT", "OFFSET(P)", "REF_CNT", "Active", "Halt", "VM_MAP(V)", "PID", "PROCESS", "USERNAME", ""]
     contentlist = []
 
     for data in data_list:
-	line = ['%d'%data[0]] # count
-	line.append("0x%.8X"%data[1]) # offset
-	line.append('%d'%data[3][0]) # Number of references to me
-	line.append('%d'%data[3][1]) # task has not been terminated
-	line.append('%d'%data[3][2]) # task is being halted
-	line.append('0x%.8X'%data[3][3]) # VM_MAP
-	line.append('%d'%data[5]) # PID
-	line.append('%s'%data[6]) # Process Name
-	line.append('%s'%data[7]) # User Name
-	#line.append('%s'%data[8]) # proc.tasks -> Task ptr
-	#line.append('%s'%data[9]) # task.bsd_info -> proc ptr
-	
-	#line.append('%s'%time.strftime("%a %b %d %H:%M:%S %Y", time.gmtime(data[14])))
-	contentlist.append(line)
+        line = ['%d'%data[0]] # count
+        line.append("0x%.8X"%data[1]) # offset
+        line.append('%d'%data[3][0]) # Number of references to me
+        line.append('%d'%data[3][1]) # task has not been terminated
+        line.append('%d'%data[3][2]) # task is being halted
+        line.append('0x%.8X'%data[3][3]) # VM_MAP
+        line.append('%d'%data[5]) # PID
+        line.append('%s'%data[6]) # Process Name
+        line.append('%s'%data[7]) # User Name
+        #line.append('%s'%data[8]) # proc.tasks -> Task ptr
+        #line.append('%s'%data[9]) # task.bsd_info -> proc ptr
+        
+        #line.append('%s'%time.strftime("%a %b %d %H:%M:%S %Y", time.gmtime(data[14])))
+        line.append('')
+        contentlist.append(line)
 
     # use optional max size list here to match default lsof output, otherwise specify
     # lsof +c 0 on the command line to print full name of commands
-    mszlist = [-1, -1, -1, -1, -1, -1, -1, -1, -1]
+    mszlist = [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1]
     columnprint(headerlist, contentlist, mszlist)

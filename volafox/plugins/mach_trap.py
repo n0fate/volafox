@@ -65,15 +65,15 @@ def print_mach_trap_table(data_list, symbol_list, os_version, base_address):
                     break
                 i += 1
             if symflag != 1:
-                line.append('NO CALL FOUND')
+                line.append('0x%.8X'%data[1])
             
             line.append('0x%.8X'%data[1])
             line.append('0x%.8X'%data[2])
             line.append('0x%.8X'%data[3])
             if symflag == 1:
-                line.append('VALID MACH TRAP')
+                line.append('True')
             else:
-                line.append('MACH TRAP HOOKING')
+                line.append('Maybe hooked')
             count -= 1
             contentlist.append(line)
     
@@ -98,13 +98,13 @@ def print_mach_trap_table(data_list, symbol_list, os_version, base_address):
                     break
                 i += 1
             if symflag != 1:
-                line.append('NO CALL FOUND')
+                line.append('0x%.8X'%data[1])
             
             line.append('0x%.8X'%data[1])
             if symflag == 1:
-                line.append('VALID MACH TRAP')
+                line.append('True')
             else:
-                line.append('MACH TRAP HOOKING')
+                line.append('Maybe hooked')
             count -= 1
             contentlist.append(line)
     

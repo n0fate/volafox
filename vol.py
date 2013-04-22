@@ -29,17 +29,19 @@ def usage():
     print 'kextstat        : KEXT (Kernel Extensions) listing'
     print 'kextscan        : Scanning KEXT (Kernel Extensions) (64bit OS only, experiment)'
     print 'ps              : Process listing'
-    print 'tasks           : Task listing (& Matching Process List)'
-    print 'systab          : Syscall table (Hooking Detection)'
-    print 'mtt             : Mach trap table (Hooking Detection)'
+    print 'tasks           : Task listing (Finding process hiding)'
+    print 'systab          : Syscall table (Hooking detection)'
+    print 'mtt             : Mach trap table (Hooking detection)'
     print 'netstat         : Network socket listing (Hash table)'
     print 'lsof            : Open files listing by process (research, osxmem@gmail.com)'	# LSOF: new lsof command
-    print 'pestate         : Show Boot information (experiment)'
-    print 'efiinfo         : EFI System Table, EFI Runtime Services(experiment)'
+    print 'pestate         : Show Boot information'
+    print 'efiinfo         : EFI System Table, EFI Runtime Services'
     print 'keychaindump    : Dump master key candidates for decrypting keychain(Lion, ML)'
-    print 'dmesg           : Debug Message at Boot Time (experiment).'
-    print 'uname           : Print a short for unix name(uname) (experiment).'
-    print 'hostname        : Print a hostname (experiment).'
+    print 'dmesg           : Debug message at boot time'
+    print 'uname           : Print a short for unix name(uname)'
+    print 'hostname        : Print a hostname'
+    print 'notifiers       : Detects I/O Kit function hooking (experiment)'
+    print 'trustedbsd      : Show TrustedBSD MAC Framework (experiment)'
 #    print 'net_info_test\t network information(plist), (experiment)'
 
 def main():
@@ -165,8 +167,8 @@ def main():
 	
     # test
     if oflag == 'get_phy':
-	m_volafox.get_read_address(0xffffff8000711a30)
-	sys.exit()
+        m_volafox.get_read_address(0xffffff80008e0018)
+        sys.exit()
 	
     if oflag == 'system_profiler':
         m_volafox.get_system_profiler()
@@ -227,23 +229,31 @@ def main():
         sys.exit()
     
     elif oflag == 'kextscan':
-	m_volafox.kextscan()
-	sys.exit()
+        m_volafox.kextscan()
+        sys.exit()
     
     elif oflag == 'dmesg':
-	m_volafox.dmesg()
-	sys.exit()
+        m_volafox.dmesg()
+        sys.exit()
     
     elif oflag == 'uname':
-	m_volafox.uname()
-	sys.exit()
+        m_volafox.uname()
+        sys.exit()
     
     elif oflag == 'hostname':
-	m_volafox.hostname()
-	sys.exit()
+        m_volafox.hostname()
+        sys.exit()
+
+    elif oflag == 'notifiers':
+        m_volafox.notifier()
+        sys.exit()
+
+    elif oflag == 'trustedbsd':
+        m_volafox.trustedbsd()
+        sys.exit()
 	
     else:
-        print '[+] WARNING: -o Argument Error\n'
+        print '[+] WARNING: -o Argument Error: %s\n'%oflag
         sys.exit()
 
 if __name__ == "__main__":

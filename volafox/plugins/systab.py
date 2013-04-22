@@ -71,9 +71,9 @@ def print_syscall_table(data_list, symbol_list, base_address):
         line.append('%d'%data[6])
         line.append('%d'%data[7])
         if symflag == 1:
-            line.append('VALID SYSCALL')
+            line.append('True')
         else:
-            line.append('SYSCALL HOOKING')
+            line.append('Maybe hooked')
         count += 1
         contentlist.append(line)
 

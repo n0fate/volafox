@@ -6,9 +6,9 @@ BUILD = "1.0"	# LSOF: global to track research builds
 '''
 
 _______________________SUPPORT_________________________
-      OSX: Lion (10.7.x), Snow Leopard (10.6.x)
+      OSX: ML(10.8.x), Lion (10.7.x), Snow Leopard (10.6.x)
 	 Arch: i386, x86_64
-	Image: *.vmem (VMware), *.mmr (flattened, x86 ONLY)
+	Image: *.vmem (VMware), *.mmr (flattened)
 '''
 
 # volafox
@@ -52,6 +52,8 @@ from plugins.keychaindump import dump_master_key, print_master_key
 from plugins.dmesg import get_dmesg
 from plugins.uname import get_uname
 from plugins.hostname import get_hostname
+from plugins.notifier import get_notifier_table, print_notifier_list
+from plugins.trustedbsd import get_mac_policy_table, print_mac_policy_list
 
 from vatopa.machaddrspace import MachoAddressSpace, isMachoVolafoxCompatible, is_universal_binary
 
@@ -62,8 +64,6 @@ from vatopa.ia32_pml4 import * # user-defined class -> n0fate
 #
 # Class: volafox() - 2010-09-30 ~ now
 # Description: This analysis module can support Intel Architecture
-#
-#
 ###############################################################################
 class volafox():
     def __init__(self, mempath):
@@ -164,14 +164,14 @@ class volafox():
 
     def kextstat(self): # 11.11.23 64bit suppport
         sym_addr = self.symbol_list['_kmod']
-	sym_addr2 = self.symbol_list['_g_kernel_kmod_info']
+        sym_addr2 = self.symbol_list['_g_kernel_kmod_info']
         kext_list = get_kext_list(self.x86_mem_pae, sym_addr, sym_addr2, self.arch, self.os_version, self.build, self.base_address)
-	print_kext_list(kext_list)
+        print_kext_list(kext_list)
 
-    def kextscan(self): # 11.11.23 64bit suppport
-	sym_addr = self.symbol_list['_g_kernel_kmod_info']
-	kext_list = get_kext_scan(self.x86_mem_pae, sym_addr, self.arch, self.os_version, self.build, self.base_address)
-	print_kext_scan(kext_list)
+    def kextscan(self):
+    	sym_addr = self.symbol_list['_g_kernel_kmod_info']
+    	kext_list = get_kext_scan(self.x86_mem_pae, sym_addr, self.arch, self.os_version, self.build, self.base_address)
+    	print_kext_scan(kext_list)
 
     def kextdump(self, KID):
         sym_addr = self.symbol_list['_kmod']
@@ -317,17 +317,79 @@ class volafox():
     #################################################
     
     def dmesg(self):
-	dmesg_symbol_addr = self.symbol_list['_smsg_bufc']
-	dmesg_str = get_dmesg(self.x86_mem_pae, dmesg_symbol_addr, self.arch, self.os_version, self.build, self.base_address)
-	print dmesg_str
+    	dmesg_symbol_addr = self.symbol_list['_smsg_bufc']
+    	dmesg_str = get_dmesg(self.x86_mem_pae, dmesg_symbol_addr, self.arch, self.os_version, self.build, self.base_address)
+    	print dmesg_str
 	
     def uname(self):
-	uname_symbol_addr = self.symbol_list['_kdp_kernelversion_string']
-	uname_str = get_uname(self.x86_mem_pae, uname_symbol_addr, self.arch, self.os_version, self.build, self.base_address)
-	print uname_str
+    	uname_symbol_addr = self.symbol_list['_kdp_kernelversion_string']
+    	uname_str = get_uname(self.x86_mem_pae, uname_symbol_addr, self.arch, self.os_version, self.build, self.base_address)
+    	print uname_str
 
     def hostname(self):
-	hostname_symbol_addr = self.symbol_list['_hostname']
-	hostnamelength = self.symbol_list['_hostnamelen']
-	hostname_str = get_hostname(self.x86_mem_pae, hostname_symbol_addr, hostnamelength, self.arch, self.os_version, self.build, self.base_address)
-	print hostname_str
+    	hostname_symbol_addr = self.symbol_list['_hostname']
+    	hostnamelength = self.symbol_list['_hostnamelen']
+    	hostname_str = get_hostname(self.x86_mem_pae, hostname_symbol_addr, hostnamelength, self.arch, self.os_version, self.build, self.base_address)
+    	print hostname_str
+
+    def trustedbsd(self):
+    	policy_list = []
+
+    	mac_policy_symbol_addr = self.symbol_list['_mac_policy_list']
+    	mac_policy_list, mac_policy_structure =get_mac_policy_table(self.x86_mem_pae, mac_policy_symbol_addr, self.arch, self.os_version, self.build, self.base_address)
+
+    	sym_addr = self.symbol_list['_kmod']
+    	sym_addr2 = self.symbol_list['_g_kernel_kmod_info']
+    	kext_list = get_kext_list(self.x86_mem_pae, sym_addr, sym_addr2, self.arch, self.os_version, self.build, self.base_address)
+
+    	print_mac_policy_list(mac_policy_list, mac_policy_structure, kext_list)
+
+    def notifier(self):
+    	notifier_symbol_list = []
+
+    	symbol_structure = ['IONotifier', self.symbol_list['__ZTV10IONotifier']]
+    	notifier_symbol_list.append(symbol_structure)
+
+    	symbol_structure = ['IOServiceInterestNotifier', self.symbol_list['__ZTV26_IOServiceInterestNotifier']]
+    	notifier_symbol_list.append(symbol_structure)
+
+    	symbol_structure = ['IOServiceJob', self.symbol_list['__ZTV13_IOServiceJob']]
+    	notifier_symbol_list.append(symbol_structure)
+
+    	symbol_structure = ['IOConfigThread', self.symbol_list['__ZTV15_IOConfigThread']]
+    	notifier_symbol_list.append(symbol_structure)
+
+    	symbol_structure = ['IOServiceNotifier', self.symbol_list['__ZTV18_IOServiceNotifier']]
+    	notifier_symbol_list.append(symbol_structure)
+
+    	symbol_structure = ['IOOpenServiceIterator', self.symbol_list['__ZTV22_IOOpenServiceIterator']]
+    	notifier_symbol_list.append(symbol_structure)
+
+    	symbol_structure = ['IOOpenServiceIterator', self.symbol_list['__ZTV22_IOOpenServiceIterator']]
+    	notifier_symbol_list.append(symbol_structure)
+
+    	symbol_structure = ['PMEventDetails9MetaClassE', self.symbol_list['__ZTVN14PMEventDetails9MetaClassE']]
+    	notifier_symbol_list.append(symbol_structure)
+
+    	symbol_structure = ['IOPMRequest9MetaClassE', self.symbol_list['__ZTVN11IOPMRequest9MetaClassE']]
+    	notifier_symbol_list.append(symbol_structure)
+
+    	symbol_structure = ['IOPMRequestQueue9MetaClassE', self.symbol_list['__ZTVN16IOPMRequestQueue9MetaClassE']]
+    	notifier_symbol_list.append(symbol_structure)
+
+    	symbol_structure = ['IOPMWorkQueue9MetaClassE', self.symbol_list['__ZTVN13IOPMWorkQueue9MetaClassE']]
+    	notifier_symbol_list.append(symbol_structure)
+
+    	symbol_structure = ['IOPMCompletionQueue9MetaClassE', self.symbol_list['__ZTVN19IOPMCompletionQueue9MetaClassE']]
+    	notifier_symbol_list.append(symbol_structure)
+
+    	symbol_structure = ['IOServicePM9MetaClassE', self.symbol_list['__ZTVN11IOServicePM9MetaClassE']]
+    	notifier_symbol_list.append(symbol_structure)
+
+    	symbol_structure = ['IOServicePM', self.symbol_list['__ZTV11IOServicePM']]
+    	notifier_symbol_list.append(symbol_structure)
+
+    	for symbol_structure in notifier_symbol_list:
+    		notifier_list = get_notifier_table(self.x86_mem_pae, symbol_structure[1], self.arch, self.os_version, self.build, self.base_address)
+    		print_notifier_list(notifier_list, self.symbol_list, self.base_address, symbol_structure[0])
+
