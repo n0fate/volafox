@@ -10,18 +10,18 @@ from volafox.vatopa.addrspace import FileAddressSpace
 from volafox.vatopa.ia32_pml4 import IA32PML4MemoryPae
 
 # Lion 32bit, SN 32bit, Lion64bit, SN 64bit, Mountain Lion 64bit
-DATA_PROC_STRUCTURE = [[476+24+168, '=4xIIIII100xI276xQII20xbbbb52sI164xI', 16, '=IIII', 283, '=IIIIIII255s', 108, '=12xI4x8x64xI12x'],
-    [476+168, '=4xIIIII76xI276xQII20xbbbb52sI164xI', 16, '=IIII', 283, '=IIIIIII255s', 108, '=12xI4x8x64xI12x'], 
-    [752+24+268, '=8xQQQQI164xQ456xQQQ16xbbbb52sQ264xI', 32, '=QQQQ', 303, '=IQQIQQQ255s', 120, '=24xI4x8x64xI12x'],
-    [1028, '=8xQQQQI156xQ448xQQQ16xbbbb52sQ264xI', 32, '=QQQQ', 303, '=IQQIQQQ255s', 120, '=24xI4x8x64xI12x'], 
-    [752+24+276, '=8xQQQQI164xQ456xQQQ16xbbbb52sQ272xI', 32, '=QQQQ', 303, '=IQQIQQQ255s', 120, '=24xI4x8x64xI12x']]
+DATA_PROC_STRUCTURE = [[476+24+168, '=4xIIIII4xII88xI276xQII20xbbbb52sI164xI', 16, '=IIII', 283, '=IIIIIII255s', 108, '=12xI4x8x64xI12x'],
+    [476+168, '=4xIIIII4xII64xI276xQII20xbbbb52sI164xI', 16, '=IIII', 283, '=IIIIIII255s', 108, '=12xI4x8x64xI12x'], 
+    [752+24+268, '=8xQQQQI4xII152xQ456xQQQ16xbbbb52sQ264xI', 32, '=QQQQ', 303, '=IQQIQQQ255s', 120, '=24xI4x8x64xI12x'],
+    [1028, '=8xQQQQI4xII144xQ448xQQQ16xbbbb52sQ264xI', 32, '=QQQQ', 303, '=IQQIQQQ255s', 120, '=24xI4x8x64xI12x'], 
+    [752+24+276, '=8xQQQQI4xII152xQ456xQQQ16xbbbb52sQ272xI', 32, '=QQQQ', 303, '=IQQIQQQ255s', 120, '=24xI4x8x64xI12x']]
 
 # Lion 32bit, SN 32bit, Lion64bit, SN 64bit, Mountain Lion 64bit
 DATA_TASK_STRUCTURE = [[32+460+4, '=8xIIIIII460xI'],
     [36+428+4, '=12xIIIIII428xI'],
     [736, '=16xIII4xQQQ672xQ'],
     [712, '=24xIII4xQQQ640xQ'],
-    [720, '=16xIII4xQQQ656xQ']]
+    [744, '=16xIII4xQQQ656x24xQ']]
 
 # Lion 32bit, SN 32bit, Lion64bit, SN 64bit
 DATA_VME_STRUCTURE = [[162+12, '=12xIIQQII8x4xIQ16xIII42xIIIIIIIII', 52, '=IIQQ24xI'],
@@ -54,17 +54,20 @@ class process_manager:
 
     def get_proc(self, proc_sym_addr, PROC_STRUCTURE):
         proc = []
+        if not(self.x86_mem_pae.is_valid_address(proc_sym_addr)):
+            return proc, '', ''
+
         proclist = self.x86_mem_pae.read(proc_sym_addr, PROC_STRUCTURE[0])
         data = struct.unpack(PROC_STRUCTURE[1], proclist)
         
-        pgrp_t = self.x86_mem_pae.read(data[14], PROC_STRUCTURE[2]) # pgrp structure
+        pgrp_t = self.x86_mem_pae.read(data[16], PROC_STRUCTURE[2]) # pgrp structure
         m_pgrp = struct.unpack(PROC_STRUCTURE[3], pgrp_t)
 
         session_t = self.x86_mem_pae.read(m_pgrp[3], PROC_STRUCTURE[4]) # session structure
         m_session = struct.unpack(PROC_STRUCTURE[5], session_t)
 
         #print '%x'%self.x86_mem_pae.vtop(data[5])
-        p_ucred = self.x86_mem_pae.read(data[5], PROC_STRUCTURE[6])
+        p_ucred = self.x86_mem_pae.read(data[7], PROC_STRUCTURE[6])
         ucred = struct.unpack(PROC_STRUCTURE[7], p_ucred)
 
         proc.append(self.x86_mem_pae.vtop(proc_sym_addr))
@@ -72,16 +75,18 @@ class process_manager:
         proc.append(data[2])
         proc.append(data[3])
         proc.append(data[4])
-        proc.append(data[6]) # user_stack
-        proc.append(data[7]) # vnode of executable
-        proc.append(data[8]) # offset in executable vnode
-        proc.append(data[9]) # Process Priority
-        proc.append(data[10]) # User-Priority based on p_cpu and p_nice
-        proc.append(data[11]) # Process 'nice' value
+        proc.append(data[5])
+        proc.append(data[6])
+        proc.append(data[8]) # user_stack
+        proc.append(data[9]) # vnode of executable
+        proc.append(data[10]) # offset in executable vnode
+        proc.append(data[11]) # Process Priority
         proc.append(data[12]) # User-Priority based on p_cpu and p_nice
-        proc.append(data[13].split('\x00', 1)[0])
+        proc.append(data[13]) # Process 'nice' value
+        proc.append(data[14]) # User-Priority based on p_cpu and p_nice
+        proc.append(data[15].split('\x00', 1)[0])
         proc.append(str(m_session[7]).strip('\x00'))
-        proc.append(data[15])
+        proc.append(data[17])
         proc.append(ucred[0]) # ruid
         proc.append(ucred[1]) # rgid
 
@@ -105,8 +110,8 @@ class process_manager:
 
     def get_kernel_task_addr(self, sym_addr):
         if self.arch == 32:
-    	    kernproc = self.x86_mem_pae.read(sym_addr+self.base_address, 4); # __DATA.__common _kernproc
-    	    proc_sym_addr = struct.unpack('I', kernproc)[0]
+            kernproc = self.x86_mem_pae.read(sym_addr+self.base_address, 4); # __DATA.__common _kernproc
+            proc_sym_addr = struct.unpack('I', kernproc)[0]
         else:
             kernproc = self.x86_mem_pae.read(sym_addr+self.base_address, 8); # __DATA.__common _kernproc
             proc_sym_addr = struct.unpack('Q', kernproc)[0]
@@ -120,7 +125,7 @@ class process_manager:
         PROC_STRUCTURE = self.get_proc_struct()
 
         proc_sym_addr = self.get_kernel_task_addr(sym_addr)
-	    
+
         while 1:
             #break
             if proc_sym_addr == 0:
@@ -144,55 +149,54 @@ class process_manager:
                 break
     
     def get_queue(self, ptr):
-	if self.arch == 32:
-	    QUEUE_STRUCTURE = DATA_QUEUE_STRUCTURE[0]
-	elif self.arch == 64:
-	    QUEUE_STRUCTURE = DATA_QUEUE_STRUCTURE[1]
-	else:
-	    return queue
-	
-	queue_ptr = self.x86_mem_pae.read(ptr+self.base_address, QUEUE_STRUCTURE[0])
-	queue = struct.unpack(QUEUE_STRUCTURE[1], queue_ptr)
-	return queue # next, prev
+        if self.arch == 32:
+            QUEUE_STRUCTURE = DATA_QUEUE_STRUCTURE[0]
+        elif self.arch == 64:
+            QUEUE_STRUCTURE = DATA_QUEUE_STRUCTURE[1]
+        else:
+            return queue
+
+        queue_ptr = self.x86_mem_pae.read(ptr+self.base_address, QUEUE_STRUCTURE[0])
+        queue = struct.unpack(QUEUE_STRUCTURE[1], queue_ptr)
+        return queue # next, prev
     
     def get_task_queue(self, sym_addr, count, task_list):
-	queue = self.get_queue(sym_addr)
-	
-	print '[+] Task Count at Kernel Symbol: %d'%count
-	
-	#print 'Queue Next: %.8x, prev: %.8x'%(self.x86_mem_pae.vtop(queue[0]),self.x86_mem_pae.vtop(queue[1]))
-	
-	#print '[+] Get Task Queue'
-	
-	task_ptr = queue[0] # next
-	
-	i = 0
-	
-	while i < count:
-	    task = [] # temp
-            
-	    if task_ptr == 0:
+        queue = self.get_queue(sym_addr)
+
+        print '[+] Task Count at Kernel Symbol: %d'%count
+
+        #print 'Queue Next: %.8x, prev: %.8x'%(self.x86_mem_pae.vtop(queue[0]),self.x86_mem_pae.vtop(queue[1]))
+
+        #print '[+] Get Task Queue'
+
+        task_ptr = queue[0] # next
+
+        i = 0
+
+        while i < count:
+            task = [] # temp
+                
+            if task_ptr == 0:
                 break
             if not(self.x86_mem_pae.is_valid_address(task_ptr)):
                 break
-	      
-	    task_struct = self.get_task("", task_ptr)
-	    
-	    task.append(i) # count
-	    task.append(self.x86_mem_pae.vtop(task_ptr)) # physical address
-	    task.append(task_ptr) # virtual address
-	    task.append(task_struct) # task structure
-	    task.append(task_struct[6]) # task.bsd_info physical address
-	    
-	    task_list.append(task)
-	    task_ptr = task_struct[4] # task_queue_t
-	    i += 1
-	
-	return i
-	
+              
+            task_struct = self.get_task("", task_ptr)
+            
+            task.append(i) # count
+            task.append(self.x86_mem_pae.vtop(task_ptr)) # physical address
+            task.append(task_ptr) # virtual address
+            task.append(task_struct) # task structure
+            task.append(task_struct[6]) # task.bsd_info physical address
+            
+            task_list.append(task)
+            task_ptr = task_struct[4] # task_queue_t
+            i += 1
+
+        return i
+
     
     def get_task(self, proc, task_ptr):
-        #print '[+] Gathering Process Information'
         #print '====== task.h --> osfmk\\kern\\task.h'
         if self.arch == 32:
             if self.os_version == 11:
@@ -202,27 +206,13 @@ class process_manager:
         else:
             if self.os_version == 11:
                 TASK_STRUCTURE = DATA_TASK_STRUCTURE[2]
-	    elif self.os_version == 12:
-		TASK_STRUCTURE = DATA_TASK_STRUCTURE[4]
+            elif self.os_version == 12:
+                TASK_STRUCTURE = DATA_TASK_STRUCTURE[4]
             else:
                 TASK_STRUCTURE = DATA_TASK_STRUCTURE[3]
-                
         task_info = self.x86_mem_pae.read(task_ptr, TASK_STRUCTURE[0])
         task_struct = struct.unpack(TASK_STRUCTURE[1], task_info)
-	
-	#if proc:
-	#  print ' [-] User Stack Address: 0x%.8X'%proc[5]
-	#  print ' [-] Vnode of Executable Address: 0x%.8X'%proc[6]
-	#  print ' [-] Offset in executable vnode: 0x%.8X'%proc[7]
-        
-        #print 'task_t'
-        #print ' [-] Reference Count: %x'%task_struct[0]
-        #print ' [-] Process Active: %x'%task_struct[1]
-        #print ' [-] Process Halting: %x'%task_struct[2]
-        #print 'uni and smp lock: %d'%task_struct[4]
-        #print 'vm_map_t: %x'%self.x86_mem_pae.vtop(task_struct[3])
-        #print 'tasks: %x'%task_struct[4]
-        #print 'userdata: %x'%task_struct[5]
+
         return task_struct
     
     def get_proc_region(self, task_ptr, user_stack, fflag):
@@ -250,11 +240,11 @@ class process_manager:
         if not(self.x86_mem_pae.is_valid_address(vm_struct[6])):
             return vm_list, vm_struct
         
-### 11.09.28 end n0fate
+        ### 11.09.28 end n0fate
         #print '======= vm_map_t --> osfmk\\vm\\vm_map.h ========'
         #print 'prev: %x'%vm_struct[0]
         #print 'next: %x'%self.x86_mem_pae.vtop(vm_struct[1])
-	print ''
+        print ''
         print '[+] Virtual Memory Map Information'
         print ' [-] Virtual Address Start Point: 0x%x'%vm_struct[2]
         print ' [-] Virtual Address End Point: 0x%x'%vm_struct[3]
@@ -262,18 +252,18 @@ class process_manager:
         #print 'entries_pageable: %x'%vm_struct[5]
         #print 'pmap_t: %x'%self.x86_mem_pae.vtop(vm_struct[6])
         #print 'Virtual size: %x\n'%vm_struct[7]
-	
-	vm_list = []
-	
-	# process full dump
-	if fflag == 1:
-	  vm_temp_list = []
-	  vm_temp_list.append(vm_struct[2])
-	  vm_temp_list.append(vm_struct[3])
-	  vm_list.append(vm_temp_list)
-	  return vm_list, vm_struct
-	
-	print ''
+
+        vm_list = []
+
+        # process full dump
+        if fflag == 1:
+            vm_temp_list = []
+            vm_temp_list.append(vm_struct[2])
+            vm_temp_list.append(vm_struct[3])
+            vm_list.append(vm_temp_list)
+            return vm_list, vm_struct
+
+        print ''
         print '[+] Generating Process Virtual Memory Maps'
         entry_next_ptr = vm_struct[1]
         for data in range(0, vm_struct[4]): # number of entries
@@ -350,11 +340,11 @@ class process_manager:
         #print '%x'%self.x86_mem_pae.vtop(vm_struct[6])
         pmap_info = self.x86_mem_pae.read(vm_struct[6], PMAP_STRUCTURE[0])
         pm_cr3 = struct.unpack(PMAP_STRUCTURE[1], pmap_info)[0]
-	return pm_cr3
+        return pm_cr3
         
     def get_proc_dump(self, vm_list, vm_struct, process_name, mempath):
-        
-	pm_cr3 = self.get_proc_cr3(vm_list, vm_struct)
+
+        pm_cr3 = self.get_proc_cr3(vm_list, vm_struct)
         
         proc_pae = 0
         
@@ -401,10 +391,12 @@ class process_manager:
 
 #################################### PUBLIC FUNCTIONS ####################################
 
-def proc_print(data_list):
+def proc_print(data_list, os_version):
     print '[+] Process List'
-
-    headerlist = ["OFFSET(P)", "PID", "PPID", "PRIORITY", "NICE", "PROCESS_NAME", "USERNAME(UID,GID)", "CREATE_TIME (GMT +0)", ""]
+    if os_version >= 11:
+        headerlist = ["OFFSET(P)", "PID", "PPID", "PRIORITY", "NICE", "PROCESS_NAME", "USERNAME(UID,GID)", "CRED(UID,GID)", "CREATE_TIME (UTC+0)", ""]
+    else:
+        headerlist = ["OFFSET(P)", "PID", "PPID", "PRIORITY", "NICE", "PROCESS_NAME", "USERNAME", "CRED(UID,GID)", "CREATE_TIME (UTC+0)", ""]
     contentlist = []
 
     for data in data_list:
@@ -412,17 +404,19 @@ def proc_print(data_list):
         line.append("0x%.8X"%data[0]) # offset
         line.append('%d'%data[1]) # pid
         line.append('%d'%data[4]) # ppid
-        line.append('%d'%unsigned8(data[8])) # Priority
-        line.append('%d'%unsigned8(data[10])) # nice
-        line.append('%s'%data[12]) # Changed by CL to read null formatted strings
-        line.append('%s(%d,%d)'%(data[13], data[15], data[16]))
-        line.append('%s'%time.strftime("%a %b %d %H:%M:%S %Y", time.gmtime(data[14])))
+        line.append('%d'%unsigned8(data[10])) # Priority
+        line.append('%d'%unsigned8(data[12])) # nice
+        line.append('%s'%data[14]) # Changed by CL to read null formatted strings
+        if os_version >= 11:
+            line.append('%s(%d,%d)'%(data[15], data[5], data[6]))
+        else:
+            line.append('%s'%(data[15]))
+        line.append('(%d,%d)'%(data[17], data[18]))
+        line.append('%s'%time.strftime("%a %b %d %H:%M:%S %Y", time.gmtime(data[16])))
         line.append('')
         contentlist.append(line)
 
-    # use optional max size list here to match default lsof output, otherwise specify
-    # lsof +c 0 on the command line to print full name of commands
-    mszlist = [-1, -1, -1, -1, -1, -1, -1, -1, -1]
+    mszlist = [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1]
     columnprint(headerlist, contentlist, mszlist)
       
 def get_proc_list(x86_mem_pae, sym_addr, arch, os_version, build, base_address):
@@ -432,8 +426,8 @@ def get_proc_list(x86_mem_pae, sym_addr, arch, os_version, build, base_address):
     
     return proclist
 
-def print_proc_list(proc_list):
-    proc_print(proc_list)
+def print_proc_list(proc_list, os_version):
+    proc_print(proc_list, os_version)
 
 
 def get_proc_dump(x86_mem_pae, sym_addr, arch, os_version, build, pid, base_address, mempath):
@@ -454,7 +448,7 @@ def get_proc_dump(x86_mem_pae, sym_addr, arch, os_version, build, pid, base_addr
     vm_list = retData[0]
     vm_struct = retData[1]
     
-    ProcMan.get_proc_dump(vm_list, vm_struct, str(dumped_proc[0][1])+'-'+dumped_proc[0][12], mempath)
+    ProcMan.get_proc_dump(vm_list, vm_struct, str(dumped_proc[0][1])+'-'+dumped_proc[0][14], mempath)
     
     return
   
@@ -464,9 +458,9 @@ def get_task_dump(x86_mem_pae, sym_addr, count, arch, os_version, build, task_id
     check_count = ProcMan.get_task_queue(sym_addr, count, task_list) # task queue ptr, task_count, task_list
     
     for task in task_list:
-	if task[0] == task_id:
-	  task_struct = task
-	  break
+        if task[0] == task_id:
+            task_struct = task
+            break
     
     if len(task_struct) == 0:
       '[+] Could not found TASK ID'
@@ -475,12 +469,15 @@ def get_task_dump(x86_mem_pae, sym_addr, count, arch, os_version, build, task_id
     PROC_STRUCTURE = ProcMan.get_proc_struct()
     proc_matched = ProcMan.get_proc(task[4], PROC_STRUCTURE)[0]
     
+    if len(proc_matched) == 0:
+        print '[+] task dump failed'
+        return 
+
     retData = ProcMan.get_proc_region(task_struct[3][3], 0x00, 0) # 
     
     vm_list = retData[0]
     vm_struct = retData[1]
-    
-    ProcMan.get_proc_dump(vm_list, vm_struct, str(proc_matched[1])+'-'+proc_matched[12], mempath)
+    ProcMan.get_proc_dump(vm_list, vm_struct, str(proc_matched[1])+'-'+proc_matched[14], mempath)
     
     return
     
@@ -509,39 +506,27 @@ def proc_lookup(proc_list, task_list, x86_mem_pae, arch, os_version, build, base
     
     # comment: task = [count, task_ptr(Physical), task_ptr(Virtual), [task structure], task.bsd_info]
     for task in task_list:
-	task_ptr = task[2]
+        task_ptr = task[2]
+        valid_flag = 0
 	
-	valid_flag = 0
-	
-	for proc in proc_list:
-	    task_ptr_in_proc = proc[2]
-	    if task_ptr_in_proc == task_ptr:
-		valid_flag = 1
-		task.append(proc[1]) # PID
-		task.append(proc[12]) # process name
-		task.append(proc[13]) # username
-		#task.append('O')
-		#if task[4] == proc[0]:
-		#  task.append('O')
-		#else:
-		#  task.append('X')
-		
-		valid_task.append(task)
-		break
-	
-	if valid_flag == 0:
-	    for proc in proc_list:
-	      if task[4] == proc[0]:
-		task.append(proc[1])
-		task.append(proc[12])
-		task.append(proc[13])
-	      else:
-                proc_matched = ProcMan.get_proc(task[4], PROC_STRUCTURE)[0]
-		task.append(proc_matched[1])
-		task.append(proc_matched[12])
-		task.append(proc_matched[13])
-	    unlinked_task.append(task)
-    
+        for proc in proc_list:
+            task_ptr_in_proc = proc[2]
+            if task_ptr_in_proc == task_ptr:
+                valid_flag = 1
+                task.append(proc[1]) # PID
+                task.append(proc[14]) # process name
+                task.append(proc[15]) # username
+                valid_task.append(task)
+                break
+
+        if valid_flag == 0:
+            proc_matched = ProcMan.get_proc(task[4], PROC_STRUCTURE)[0]
+            if len(proc_matched) != 0:
+                task.append(proc_matched[1])
+                task.append(proc_matched[14])
+                task.append(proc_matched[15])
+                unlinked_task.append(task)
+
     return valid_task, unlinked_task
 
 

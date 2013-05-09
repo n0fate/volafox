@@ -186,54 +186,54 @@ class volafox():
     def get_ps(self): # 11.11.23 64bit suppport
         sym_addr = self.symbol_list['_kernproc']
         proc_list = get_proc_list(self.x86_mem_pae, sym_addr, self.arch, self.os_version, self.build, self.base_address)
-	proc_print(proc_list)
+        proc_print(proc_list, self.os_version)
 
     def task_dump(self, task_id):
-	task_addr = self.symbol_list['_tasks']
-	task_count_addr = self.symbol_list['_tasks_count']
-	task_count_ptr = self.x86_mem_pae.read(task_count_addr+self.base_address, 4);
-	task_count = struct.unpack('=I', task_count_ptr)[0]
-	get_task_dump(self.x86_mem_pae, task_addr, task_count, self.arch, self.os_version, self.build, task_id, self.base_address, self.mempath)
+        task_addr = self.symbol_list['_tasks']
+        task_count_addr = self.symbol_list['_tasks_count']
+        task_count_ptr = self.x86_mem_pae.read(task_count_addr+self.base_address, 4);
+        task_count = struct.unpack('=I', task_count_ptr)[0]
+        get_task_dump(self.x86_mem_pae, task_addr, task_count, self.arch, self.os_version, self.build, task_id, self.base_address, self.mempath)
 	
     def get_tasks(self): # comparing proc with task
-	proc_addr = self.symbol_list['_kernproc']
-	task_addr = self.symbol_list['_tasks']
-	task_count_addr = self.symbol_list['_tasks_count']
-	task_count_ptr = self.x86_mem_pae.read(task_count_addr+self.base_address, 4);
-	task_count = struct.unpack('=I', task_count_ptr)[0]
-	
-	proc_list = get_proc_list(self.x86_mem_pae, proc_addr, self.arch, self.os_version, self.build, self.base_address)
-	task_list, check_count = get_task_list(self.x86_mem_pae, task_addr, task_count, self.arch, self.os_version, self.build, self.base_address)
-	
-	#if check_count != task_count:
-	#    print '[+] check_count: %d, task_count: %d'%(check_count, task_count)
-	
-	
-	valid_task_list, hide_task_list = proc_lookup(proc_list, task_list, self.x86_mem_pae, self.arch, self.os_version, self.build, self.base_address)
-	
-	print '[+] Linked task list'
-	task_print(valid_task_list)
-	
-	if len(hide_task_list) != 0:
-	    print ''
-	    print '[+] Unlinked task list'
-	    task_print(hide_task_list)
-	    
+        proc_addr = self.symbol_list['_kernproc']
+        task_addr = self.symbol_list['_tasks']
+        task_count_addr = self.symbol_list['_tasks_count']
+        task_count_ptr = self.x86_mem_pae.read(task_count_addr+self.base_address, 4);
+        task_count = struct.unpack('=I', task_count_ptr)[0]
+
+        proc_list = get_proc_list(self.x86_mem_pae, proc_addr, self.arch, self.os_version, self.build, self.base_address)
+        task_list, check_count = get_task_list(self.x86_mem_pae, task_addr, task_count, self.arch, self.os_version, self.build, self.base_address)
+
+        #if check_count != task_count:
+        #    print '[+] check_count: %d, task_count: %d'%(check_count, task_count)
+
+
+        valid_task_list, hide_task_list = proc_lookup(proc_list, task_list, self.x86_mem_pae, self.arch, self.os_version, self.build, self.base_address)
+
+        print '[+] Linked task list'
+        task_print(valid_task_list)
+
+        if len(hide_task_list) != 0:
+            print ''
+            print '[+] Unlinked task list'
+            task_print(hide_task_list)
+ 
     # LSOF: new lsof module (stub)
     def lsof(self, pid, vflag):
-	sym_addr = self.symbol_list['_kernproc'] + self.base_address
-	if self.arch == 32:
-	    # read 4 bytes from kernel executable or overlay starting at symbol _kernproc
-	    kernproc = self.x86_mem_pae.read(sym_addr, 4);
+        sym_addr = self.symbol_list['_kernproc'] + self.base_address
+        if self.arch == 32:
+            # read 4 bytes from kernel executable or overlay starting at symbol _kernproc
+            kernproc = self.x86_mem_pae.read(sym_addr, 4);
 
-	    # unpack pointer to the process list, only need the first member returned
-	    proc_head = struct.unpack('I', kernproc)[0]
-	
-	else: # 64-bit
-	    kernproc = self.x86_mem_pae.read(sym_addr, 8);
-	    proc_head = struct.unpack('Q', kernproc)[0]
-	
-	printfilelist(getfilelist(self.x86_mem_pae, self.arch, self.os_version, proc_head, pid, vflag))
+            # unpack pointer to the process list, only need the first member returned
+            proc_head = struct.unpack('I', kernproc)[0]
+
+        else: # 64-bit
+            kernproc = self.x86_mem_pae.read(sym_addr, 8);
+            proc_head = struct.unpack('Q', kernproc)[0]
+
+        printfilelist(getfilelist(self.x86_mem_pae, self.arch, self.os_version, proc_head, pid, vflag))
 
     def systab(self): # 11.11.23 64bit suppport
         sym_addr = self.symbol_list['_nsysent']
@@ -242,7 +242,7 @@ class volafox():
 
     def mtt(self):
         mtt_ptr = self.symbol_list['_mach_trap_table']
-	mtt_count = self.symbol_list['_mach_trap_count']
+        mtt_count = self.symbol_list['_mach_trap_count']
         mtt_list = get_mach_trap_table_list(self.x86_mem_pae, mtt_ptr, mtt_count, self.arch, self.os_version, self.build, self.base_address)
         print_mach_trap_table(mtt_list, self.symbol_list, self.os_version, self.base_address)
 
@@ -250,7 +250,7 @@ class volafox():
         sym_addr = self.symbol_list['_kernproc']
         
         get_proc_dump(self.x86_mem_pae, sym_addr, self.arch, self.os_version, self.build, pid, self.base_address, self.mempath)
-	
+
     # 2011.08.08
     # network information (inpcbinfo.hashbase, test code)
     # it can dump real network information. if rootkit has hiding technique.
