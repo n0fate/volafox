@@ -92,11 +92,11 @@ class keychaindump:
 		return 1
 	    
 	    for proc in proclist:
-		if proc[12] == 'securityd':
+		if proc[14] == 'securityd':
 			securityd_proc = proc
 			break
 	    
-	    if securityd_proc[12] != 'securityd':
+	    if securityd_proc[14] != 'securityd':
 		    return 1
 	
 	    task_struct = self.processmanager.get_task(securityd_proc, securityd_proc[2])
@@ -109,7 +109,7 @@ class keychaindump:
 def dump_master_key(x86_mem_pae, sym_addr, arch, os_version, build, base_address, mempath):
 	dump_key = keychaindump(x86_mem_pae, arch, os_version, build, base_address)
 	if dump_key.build[0:2] < 11:
-		print 'keychaindump is compatible on more than Mac OS X Lion(12.0)'
+		print 'keychaindump is compatible on more than Mac OS X Lion(11.0)'
 		return 1
 	task_struct = dump_key.search_for_keys_in_process(sym_addr)
 	

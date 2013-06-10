@@ -439,7 +439,7 @@ def get_proc_dump(x86_mem_pae, sym_addr, arch, os_version, build, pid, base_addr
     
     dumped_proc = proclist
     
-    proc_print(dumped_proc)
+    proc_print(dumped_proc, os_version)
     
     task_struct = ProcMan.get_task(dumped_proc[0], dumped_proc[0][2])
     
