@@ -98,7 +98,7 @@ def get_imageinfo(mempath, vflag):
     if bool(difference):
 	# LSOF: verbose support
 	if vflag:
-	    print ' [-] Maybe Mac Memory Reader Format'
+	    print ' [-] Maybe KASLR or Mac Memory Reader Format'
 	valid_format = 0
 	
     else:

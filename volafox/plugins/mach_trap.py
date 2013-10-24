@@ -1,10 +1,12 @@
+## http://opensource.apple.com/source/xnu/xnu-xxxx.xx.xx/osfmk/kern/syscall_sw.h
+
 import sys
 import struct
 
 from tableprint import columnprint
 
 # SN 32bit, SN 64bit, LION 32bit, LION 64bit
-DATA_MACH_TRAP_TABLE_STRUCTURE = [[16, '=IIII'], [40, '=QQQQQ'], [8, '=II'], [16, '=QQ']]
+DATA_MACH_TRAP_TABLE_STRUCTURE = [[16, '=IIII'], [40, '=QQQQQ'], [8, '=II'], [16, '=QQ'], [32, '=QQQQ']]
 
 
 class Mach_Trap_Table():
@@ -31,6 +33,8 @@ class Mach_Trap_Table():
         else:
             if self.osversion == 10:
                 MACH_TRAP_TABLE = DATA_MACH_TRAP_TABLE_STRUCTURE[1]
+            elif self.osversion == 13:
+                MACH_TRAP_TABLE = DATA_MACH_TRAP_TABLE_STRUCTURE[4] # Mavericks
             else:
                 MACH_TRAP_TABLE = DATA_MACH_TRAP_TABLE_STRUCTURE[3]
             

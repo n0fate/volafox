@@ -9,12 +9,14 @@ from tableprint import columnprint
 from volafox.vatopa.addrspace import FileAddressSpace
 from volafox.vatopa.ia32_pml4 import IA32PML4MemoryPae
 
-# Lion 32bit, SN 32bit, Lion64bit, SN 64bit, Mountain Lion 64bit
+# Lion 32bit, SN 32bit, Lion64bit, SN 64bit, Mountain Lion 64bit, Mavericks
 DATA_PROC_STRUCTURE = [[476+24+168, '=4xIIIII4xII88xI276xQII20xbbbb52sI164xI', 16, '=IIII', 283, '=IIIIIII255s', 108, '=12xI4x8x64xI12x'],
     [476+168, '=4xIIIII4xII64xI276xQII20xbbbb52sI164xI', 16, '=IIII', 283, '=IIIIIII255s', 108, '=12xI4x8x64xI12x'], 
     [752+24+268, '=8xQQQQI4xII152xQ456xQQQ16xbbbb52sQ264xI', 32, '=QQQQ', 303, '=IQQIQQQ255s', 120, '=24xI4x8x64xI12x'],
     [1028, '=8xQQQQI4xII144xQ448xQQQ16xbbbb52sQ264xI', 32, '=QQQQ', 303, '=IQQIQQQ255s', 120, '=24xI4x8x64xI12x'], 
-    [752+24+276, '=8xQQQQI4xII152xQ456xQQQ16xbbbb52sQ272xI', 32, '=QQQQ', 303, '=IQQIQQQ255s', 120, '=24xI4x8x64xI12x']]
+    [752+24+276, '=8xQQQQI4xII152xQ456xQQQ16xbbbb52sQ272xI', 32, '=QQQQ', 303, '=IQQIQQQ255s', 120, '=24xI4x8x64xI12x'],
+    [760+24+268, '=8xQQQQI4xII160xQ456xQQQ16xbbbb52sQ264xI', 32, '=QQQQ', 303, '=IQQIQQQ255s', 120, '=24xI4x8x64xI12x']]
+    # Mavericks add new element in proc structure : uint64_t   p_puniqueid;        /* parent's unique ID - set on fork/spawn/vfork, doesn't change if reparented. */
 
 # Lion 32bit, SN 32bit, Lion64bit, SN 64bit, Mountain Lion 64bit
 DATA_TASK_STRUCTURE = [[32+460+4, '=8xIIIIII460xI'],
@@ -23,12 +25,15 @@ DATA_TASK_STRUCTURE = [[32+460+4, '=8xIIIIII460xI'],
     [712, '=24xIII4xQQQ640xQ'],
     [744, '=16xIII4xQQQ656x24xQ']]
 
-# Lion 32bit, SN 32bit, Lion64bit, SN 64bit
+# http://opensource.apple.com/source/xnu/xnu-xxxx.xx.xx/osfmk/vm/vm_map.h
+# Lion 32bit, SN 32bit, Lion64bit, SN 64bit, Mavericks
 DATA_VME_STRUCTURE = [[162+12, '=12xIIQQII8x4xIQ16xIII42xIIIIIIIII', 52, '=IIQQ24xI'],
     [162, '=12xIIQQIIIQ16xIII42xIIIIIIIII', 40, '=IIQQ12xI'],
     [194, '=16xQQQQII16xQQ16xIII42xIIIIIIIII', 80, '=QQQQ40xQ'],
-    [178, '=16xQQQQIIQQ16xIII42xIIIIIIIII', 56, '=QQQQ16xQ']]
+    [178, '=16xQQQQIIQQ16xIII42xIIIIIIIII', 56, '=QQQQ16xQ'],
+    [202, '=16xQQQQII16x8xQQ16xIII42xIIIIIIIII', 80, '=QQQQ40xQ']]
 
+# http://opensource.apple.com/source/xnu/xnu-xxxx.xx.xx/osfmk/i386/pmap.h
 # 11D50, Lion 32bit, SN 32bit, Lion64bit, SN 64bit
 DATA_PMAP_STRUCTURE = [[44, '=36xQ'],
     [12, '=4xQ'],
@@ -84,8 +89,8 @@ class process_manager:
         proc.append(data[12]) # User-Priority based on p_cpu and p_nice
         proc.append(data[13]) # Process 'nice' value
         proc.append(data[14]) # User-Priority based on p_cpu and p_nice
-        proc.append(data[15].split('\x00', 1)[0])
-        proc.append(str(m_session[7]).strip('\x00'))
+        proc.append(data[15].split('\x00', 1)[0]) # process name
+        proc.append(str(m_session[7]).strip('\x00')) # username
         proc.append(data[17])
         proc.append(ucred[0]) # ruid
         proc.append(ucred[1]) # rgid
@@ -103,6 +108,8 @@ class process_manager:
                 PROC_STRUCTURE = DATA_PROC_STRUCTURE[2] # Lion 64bit
             elif self.os_version == 12:
                 PROC_STRUCTURE = DATA_PROC_STRUCTURE[4]
+            elif self.os_version == 13:
+                PROC_STRUCTURE = DATA_PROC_STRUCTURE[5]
             else:
                 PROC_STRUCTURE = DATA_PROC_STRUCTURE[3] # Snow Leopard 64bit
 
@@ -206,7 +213,7 @@ class process_manager:
         else:
             if self.os_version == 11:
                 TASK_STRUCTURE = DATA_TASK_STRUCTURE[2]
-            elif self.os_version == 12:
+            elif self.os_version >= 12:
                 TASK_STRUCTURE = DATA_TASK_STRUCTURE[4]
             else:
                 TASK_STRUCTURE = DATA_TASK_STRUCTURE[3]
@@ -226,8 +233,12 @@ class process_manager:
             else:
                 VME_STRUCTURE = DATA_VME_STRUCTURE[1]
         else:
-            if self.os_version >= 11: # Lion
+            if self.os_version == 11: # Lion
                 VME_STRUCTURE = DATA_VME_STRUCTURE[2]
+            elif self.os_version == 12: # Mountain Lion
+                VME_STRUCTURE = DATA_VME_STRUCTURE[2]
+            elif self.os_version == 13: # Mavericks
+                VME_STRUCTURE = DATA_VME_STRUCTURE[4]
             else:
                 VME_STRUCTURE = DATA_VME_STRUCTURE[3]
                 
@@ -249,7 +260,7 @@ class process_manager:
         print ' [-] Virtual Address Start Point: 0x%x'%vm_struct[2]
         print ' [-] Virtual Address End Point: 0x%x'%vm_struct[3]
         print ' [-] Number of Entries: %d'%vm_struct[4] # number of entries
-        #print 'entries_pageable: %x'%vm_struct[5]
+        print ' [-] Pageable Entries: %x'%vm_struct[5]
         #print 'pmap_t: %x'%self.x86_mem_pae.vtop(vm_struct[6])
         #print 'Virtual size: %x\n'%vm_struct[7]
 
@@ -337,7 +348,6 @@ class process_manager:
             else: # Leopard or Snow Leopard xnu-1456
                 PMAP_STRUCTURE = DATA_PMAP_STRUCTURE[5]
         
-        #print '%x'%self.x86_mem_pae.vtop(vm_struct[6])
         pmap_info = self.x86_mem_pae.read(vm_struct[6], PMAP_STRUCTURE[0])
         pm_cr3 = struct.unpack(PMAP_STRUCTURE[1], pmap_info)[0]
         return pm_cr3

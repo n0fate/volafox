@@ -167,7 +167,7 @@ def main():
 	
     # test
     if oflag == 'get_phy':
-        m_volafox.get_read_address(0x3b7cdc0)
+        m_volafox.get_read_address(0xffffff800021d030)
         sys.exit()
 	
     if oflag == 'system_profiler':
