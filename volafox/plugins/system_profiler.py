@@ -4,7 +4,7 @@ import time
 class system_profiler:
     def __init__(self, x86_mem_pae, base_address):
         self.x86_mem_pae = x86_mem_pae
-	self.base_address = base_address
+        self.base_address = base_address
 
     def machine_info(self, sym_addr):
         machine_info = self.x86_mem_pae.read(sym_addr+self.base_address, 40); # __DATA.__common _machine_info
@@ -29,7 +29,7 @@ def get_system_profile(x86_mem_pae, sw_vers, machine_info, boottime, sleeptime, 
     Sys_Profile = system_profiler(x86_mem_pae, base_address)
     
     print '[+] Mac OS X Basic Information'
-	
+
     sw_ver_data = Sys_Profile.sw_vers(sw_vers)[0]
     print ' [-] Darwin kernel Build Number: %s'%sw_ver_data.strip('\x00')
     

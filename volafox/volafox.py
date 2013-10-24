@@ -6,7 +6,7 @@ BUILD = "1.0"	# LSOF: global to track research builds
 '''
 
 _______________________SUPPORT_________________________
-      OSX: ML(10.8.x), Lion (10.7.x), Snow Leopard (10.6.x)
+      OSX: Mavericks(10.9.x), ML(10.8.x), Lion (10.7.x), Snow Leopard (10.6.x)
 	 Arch: i386, x86_64
 	Image: *.vmem (VMware), *.mmr (flattened)
 '''
@@ -63,7 +63,7 @@ from vatopa.ia32_pml4 import * # user-defined class -> n0fate
 ###############################################################################
 #
 # Class: volafox() - 2010-09-30 ~ now
-# Description: This analysis module can support Intel Architecture
+# Target OS : Snow Leopard, Lion, Mountain Lion, Mavericks
 ###############################################################################
 class volafox():
     def __init__(self, mempath):
@@ -72,64 +72,58 @@ class volafox():
         self.data_list = []
         self.os_version = 0
         self.build = ''# psdump -> cr3
-	self.symbol_list = []# symbol list
-	
-	
-	self.catfishlocation = 0 # low_vector position at memory
-	self.base_address = 0 # find dynamic kernel location (Mountain Lion only)
+        self.symbol_list = []# symbol list
+        self.catfishlocation = 0 # low_vector position at memory
+        self.base_address = 0 # find dynamic kernel location (Mountain Lion only)
 
     def get_read_address(self, address):
-	print '%x'%self.x86_mem_pae.vtop(address+self.base_address)
-	return
+        print '%x'%self.x86_mem_pae.vtop(address+self.base_address)
+        return
     
     def overlay_loader(self, overlay_path, vflag):
-	try:
-	    if vflag:
-		print '[+] Open overlay file \'%s\''%overlay_path
-	    overlay_file = open(overlay_path, 'rb')
-	    self.symbol_list = pickle.load(overlay_file)
-	    overlay_file.close()
-	    return 0
-	except IOError:
-	    print '[+] WARNING: volafox can\'t open \'%s\''%overlay_path
-	    print '[+] WARNING: You can create overlay file running \'overlay_generator.py\''
-	    return 1
+        try:
+            if vflag:
+                print '[+] Open overlay file \'%s\''%overlay_path
+            overlay_file = open(overlay_path, 'rb')
+            self.symbol_list = pickle.load(overlay_file)
+            overlay_file.close()
+            return 0
+        except IOError:
+            print '[+] WARNING: volafox can\'t open \'%s\''%overlay_path
+            print '[+] WARNING: You can create overlay file running \'overlay_generator.py\''
+            return 1
     
     def get_kernel_version(self, vflag):
-	ret_data = get_imageinfo(self.mempath, vflag)
-	self.arch = ret_data[1]
-	self.build = ret_data[2]
-	self.os_version = ret_data[3]
-	self.catfishlocation = ret_data[4] # for Mountain Lion
-	
-	## open overlay file
-	return 'overlays/%sx%d.overlay'%(self.build, self.arch)
+        ret_data = get_imageinfo(self.mempath, vflag)
+        self.arch = ret_data[1]
+        self.build = ret_data[2]
+        self.os_version = ret_data[3]
+        self.catfishlocation = ret_data[4] # for KASLR
+
+        ## open overlay file
+        return 'overlays/%sx%d.overlay'%(self.build, self.arch)
     
-    def init_vatopa_x86_pae(self, vflag): # 11.11.23 64bit suppport
+    def init_vatopa_x86_pae(self, vflag):
         if self.mempath == '':
             return 1
-	if self.build[0:2] == '12': # Mountain Lion
-	    if vflag:
+        if self.build[0:2] >= '12': # for KSLR supported OS (Mountain Lion, Mavericks)
+            if vflag:
                 print '[+] Finding Kernel Base Address (KASLR)'
-		
-	    self.base_address = self.catfishlocation - (self.symbol_list['_lowGlo'] % 0xFFFFFF80) # find table base address
-	    if vflag:
+            self.base_address = self.catfishlocation - (self.symbol_list['_lowGlo'] % 0xFFFFFF80) # find table base address
+            if vflag:
                 print ' [-] Kernel Base Address : 0x%.8x'%self.base_address
-	    self.idlepdpt = (self.symbol_list['_BootPDPT'] % 0xFFFFFF80) + self.base_address
-	    self.bootpml4 = (self.symbol_list['_BootPML4'] % 0xFFFFFF80) + self.base_address
-	    
-	    if isMachoVolafoxCompatible(self.mempath):
-		self.boot_pml4_pt = IA32PML4MemoryPae(MachoAddressSpace(self.mempath), self.bootpml4)
-	    else:
-		self.boot_pml4_pt = IA32PML4MemoryPae(FileAddressSpace(self.mempath), self.bootpml4)
-	    
-	    idlepml4_ptr = self.boot_pml4_pt.read(self.symbol_list['_IdlePML4']+self.base_address, 8)
-	    self.idlepml4 = struct.unpack('=Q', idlepml4_ptr)[0]
-	    
-	else:
-	    self.idlepdpt = self.symbol_list['_IdlePDPT']
-	    self.idlepml4 = self.symbol_list['_IdlePML4']
-        
+            self.idlepdpt = (self.symbol_list['_BootPDPT'] % 0xFFFFFF80) + self.base_address
+            self.bootpml4 = (self.symbol_list['_BootPML4'] % 0xFFFFFF80) + self.base_address
+
+            if isMachoVolafoxCompatible(self.mempath):
+                self.boot_pml4_pt = IA32PML4MemoryPae(MachoAddressSpace(self.mempath), self.bootpml4)
+            else:
+                self.boot_pml4_pt = IA32PML4MemoryPae(FileAddressSpace(self.mempath), self.bootpml4)
+            idlepml4_ptr = self.boot_pml4_pt.read(self.symbol_list['_IdlePML4']+self.base_address, 8)
+            self.idlepml4 = struct.unpack('=Q', idlepml4_ptr)[0]
+        else:
+            self.idlepdpt = self.symbol_list['_IdlePDPT']
+            self.idlepml4 = self.symbol_list['_IdlePML4']
         if self.arch is 32:
             if vflag:
                 print '[+] Loading Intel 32bit(PAE Enabled) Paging Table'
@@ -147,20 +141,18 @@ class volafox():
         return 0
 
 
+
     def get_system_profiler(self): # 11.11.23 64bit suppport
-	
-	os_version = self.symbol_list['_osversion']
-	machine_info = self.symbol_list['_machine_info']
-	try:
-	    boottime = self.symbol_list['_clock_boottime']
-	except KeyError:
-	    boottime = 0
-	sleeptime = self.symbol_list['_gIOLastSleepTime']
-	waketime = self.symbol_list['_gIOLastWakeTime']
+        os_version = self.symbol_list['_osversion']
+        machine_info = self.symbol_list['_machine_info']
+        try:
+            boottime = self.symbol_list['_clock_boottime']
+        except KeyError:
+            boottime = 0
+        sleeptime = self.symbol_list['_gIOLastSleepTime']
+        waketime = self.symbol_list['_gIOLastWakeTime']
         get_system_profile(self.x86_mem_pae, os_version, machine_info, boottime, sleeptime, waketime, self.base_address)
-	
-	return
-	#return data
+        return
 
     def kextstat(self): # 11.11.23 64bit suppport
         sym_addr = self.symbol_list['_kmod']
@@ -169,9 +161,9 @@ class volafox():
         print_kext_list(kext_list)
 
     def kextscan(self):
-    	sym_addr = self.symbol_list['_g_kernel_kmod_info']
-    	kext_list = get_kext_scan(self.x86_mem_pae, sym_addr, self.arch, self.os_version, self.build, self.base_address)
-    	print_kext_scan(kext_list)
+        sym_addr = self.symbol_list['_g_kernel_kmod_info']
+        kext_list = get_kext_scan(self.x86_mem_pae, sym_addr, self.arch, self.os_version, self.build, self.base_address)
+        print_kext_scan(kext_list)
 
     def kextdump(self, KID):
         sym_addr = self.symbol_list['_kmod']
@@ -194,7 +186,7 @@ class volafox():
         task_count_ptr = self.x86_mem_pae.read(task_count_addr+self.base_address, 4);
         task_count = struct.unpack('=I', task_count_ptr)[0]
         get_task_dump(self.x86_mem_pae, task_addr, task_count, self.arch, self.os_version, self.build, task_id, self.base_address, self.mempath)
-	
+
     def get_tasks(self): # comparing proc with task
         proc_addr = self.symbol_list['_kernproc']
         task_addr = self.symbol_list['_tasks']
