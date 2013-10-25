@@ -91,7 +91,7 @@ class process_manager:
         proc.append(data[14]) # User-Priority based on p_cpu and p_nice
         proc.append(data[15].split('\x00', 1)[0]) # process name
         proc.append(str(m_session[7]).strip('\x00')) # username
-        proc.append(data[17])
+        proc.append(data[17]) # time
         proc.append(ucred[0]) # ruid
         proc.append(ucred[1]) # rgid
 
@@ -333,7 +333,7 @@ class process_manager:
         return vm_list, vm_struct
     
     def get_proc_cr3(self,  vm_list, vm_struct):
-	if self.arch == 32:
+        if self.arch == 32:
             if self.build == '11D50': # temporary 12.04.24 n0fate
                 PMAP_STRUCTURE = DATA_PMAP_STRUCTURE[0]       
             elif self.os_version >= 11:   # Lion xnu-1699, build version 11D50 has some bug (36xQ)
@@ -365,16 +365,16 @@ class process_manager:
         print '[+] Process Dump Start'
         
         for vme_info in  vm_list:
-            #print vme_info[0]
+            #print proc_pae.vtop(vme_info[0])
             #print vme_info[1]
             
-            nop_code = 0x00 # 11.10.11 n0fate test
-            pk_nop_code = struct.pack('=B', nop_code) # 11.10.11 n0fate test
+            nop_code = 0x00
+            pk_nop_code = struct.pack('=B', nop_code)
             nop = pk_nop_code*0x1000
             
             file = open('%s-%x-%x'%(process_name, vme_info[0], vme_info[1]), mode="wb")
             
-            nop_flag = 0 # 11.10.11 n0fate test
+            nop_flag = 0
             for i in range(vme_info[0], vme_info[1], 0x1000):
                 raw_data = 0x00
                 if not(proc_pae.is_valid_address(i)):
@@ -518,7 +518,7 @@ def proc_lookup(proc_list, task_list, x86_mem_pae, arch, os_version, build, base
     for task in task_list:
         task_ptr = task[2]
         valid_flag = 0
-	
+
         for proc in proc_list:
             task_ptr_in_proc = proc[2]
             if task_ptr_in_proc == task_ptr:

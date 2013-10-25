@@ -167,7 +167,7 @@ def main():
 	
     # test
     if oflag == 'get_phy':
-        m_volafox.get_read_address(0xffffff800021d030)
+        m_volafox.get_read_address(0xffffff801afd87e8)
         sys.exit()
 	
     if oflag == 'system_profiler':
@@ -212,9 +212,9 @@ def main():
         m_volafox.netstat()
         sys.exit()
 
-    elif oflag == 'netstat_test':
-        m_volafox.netstat_test()
-        sys.exit()
+    # elif oflag == 'netstat_test':
+    #     m_volafox.netstat_test()
+    #     sys.exit()
     
     elif oflag == 'pestate':
         m_volafox.pe_state()

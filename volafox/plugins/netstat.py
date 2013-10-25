@@ -1,3 +1,6 @@
+# reference
+# http://opensource.apple.com/source/xnu/xnu-2422.1.72/bsd/netinet/in_pcb.h
+
 import sys
 import struct
 
@@ -5,9 +8,10 @@ from tableprint import columnprint
 
 DATA_PTR_SIZE = [[4, '=I'], [8, '=Q']]
 
-# Lion 32bit, SN 32bit, Lion64bit, SN 64bit
+# Lion/SN 32bit, ML/Lion/SN 64bit, Mavericks
 DATA_NETWORK_STRUCTURE = [[40, '=IIIIII12xI', 16, 112, '>HH48xI36xI12xI'],
-    [72, '=QQQQQQ16xQ', 24, 156, '>HH80xQ36xI20xI']]
+    [72, '=Q8xQQQQ16xQ', 24, 156, '>HH80xQ36xI20xI'],
+    [120, '=104xQQ', 140, 104, '>HH15xb48xI28xI']]
 
 
 NETWORK_STATES = {
@@ -26,9 +30,10 @@ NETWORK_STATES = {
 
 
 class network_manager():
-    def __init__(self, net_pae, arch, base_address):
+    def __init__(self, net_pae, arch, os_version, base_address):
         self.net_pae = net_pae
         self.arch = arch
+        self.os_version = os_version
         self.base_address = base_address
 
     # http://snipplr.com/view.php?codeview&id=14807
@@ -50,10 +55,14 @@ class network_manager():
             PTR_SIZE = DATA_PTR_SIZE[0]
             NETWORK_STRUCTURE = DATA_NETWORK_STRUCTURE[0]
         else:
+          if self.os_version == 13:
+            PTR_SIZE = DATA_PTR_SIZE[1]
+            NETWORK_STRUCTURE = DATA_NETWORK_STRUCTURE[2]
+          else:
             PTR_SIZE = DATA_PTR_SIZE[1]
             NETWORK_STRUCTURE = DATA_NETWORK_STRUCTURE[1]
         
-        #print 'Real Address (inpcbinfo): %x'%net_pae.vtop(sym_addr)
+        #print 'Real Address (inpcbinfo): %x'%self.net_pae.vtop(sym_addr+self.base_address)
         inpcbinfo_t = self.net_pae.read(sym_addr + self.base_address, NETWORK_STRUCTURE[0])
         inpcbinfo = struct.unpack(NETWORK_STRUCTURE[1], inpcbinfo_t)
 
@@ -62,7 +71,7 @@ class network_manager():
 
         # print 'ipi_count: %d'%inpcbinfo[6]
         
-        loop_count = inpcbinfo[2]
+        loop_count = inpcbinfo[1]
 
         for offset_hashbase in range(0, loop_count):
             inpcb_t = self.net_pae.read(inpcbinfo[0]+(offset_hashbase*PTR_SIZE[0]), PTR_SIZE[0])
@@ -75,7 +84,7 @@ class network_manager():
             if not(self.net_pae.is_valid_address(loop_addr)):
                 break
             
-            #print 'Real Address (inpcb): %x'%net_pae.vtop(inpcb[0])
+            #print 'Real Address (inpcb): %x'%self.net_pae.vtop(inpcb[0])
             inpcb = self.net_pae.read(loop_addr+NETWORK_STRUCTURE[2], NETWORK_STRUCTURE[3])
             in_network = struct.unpack(NETWORK_STRUCTURE[4], inpcb) # fport, lport, flag, fhost, lhost
             
@@ -115,11 +124,11 @@ class network_manager():
       #155         } inp_dependladdr;
     
             network = []
-            network.append(in_network[2])
-            network.append(self.IntToDottedIP(in_network[3]))
-            network.append(self.IntToDottedIP(in_network[4]))
-            network.append(in_network[1])
-            network.append(in_network[0])
+            network.append(in_network[2]) # state
+            network.append(self.IntToDottedIP(in_network[3])) # local address
+            network.append(self.IntToDottedIP(in_network[4])) # remote address
+            network.append(in_network[1]) # local port
+            network.append(in_network[0]) # remote port
         
             #print 'Local Address: %s:%d, Foreign Address: %s:%d, flag:%x'%(self.IntToDottedIP(in_network[3]), in_network[1], self.IntToDottedIP(in_network[4]), in_network[0], in_network[2])
             network_list.append(network)
@@ -145,12 +154,12 @@ class network_manager():
         inpcbinfo_t = self.net_pae.read(sym_addr+self.base_address, NETWORK_STRUCTURE[0])
         inpcbinfo = struct.unpack(NETWORK_STRUCTURE[1], inpcbinfo_t)
 
-        if not(self.net_pae.is_valid_address(inpcbinfo[5])):
+        if not(self.net_pae.is_valid_address(inpcbinfo[4])):
             return
 
         #print 'Real Address (inpcbinfo): %x'%net_pae.vtop(inpcbinfo[5])
 
-        temp_ptr = inpcbinfo[5] # base address
+        temp_ptr = inpcbinfo[4] # base address
         #list_t = net_pae.read(inpcbinfo[5], 4)
         #temp_ptr = struct.unpack('=I', list_t)
 
@@ -178,13 +187,13 @@ class network_manager():
 #################################### PUBLIC FUNCTIONS ####################################
 
 def get_network_hash(net_pae, tcb_symbol_addr, udb_symbol_addr, arch, os_version, build, base_address):
-    NetMan = network_manager(net_pae, arch, base_address)
+    NetMan = network_manager(net_pae, arch, os_version, base_address)
     tcp_network_list = NetMan.network_status_hash(tcb_symbol_addr)
     udp_network_list = NetMan.network_status_hash(udb_symbol_addr)
     return tcp_network_list, udp_network_list
 
 def get_network_list(net_pae, tcb_symbol_addr, udb_symbol_addr, arch, os_version, build, base_address):
-    NetMan = network_manager(net_pae, arch, base_address)
+    NetMan = network_manager(net_pae, arch, os_version, base_address)
     tcp_network_list = NetMan.network_status_list(tcb_symbol_addr)
     udp_network_list = NetMan.network_status_list(udb_symbol_addr)
     return tcp_network_list, udp_network_list
@@ -197,7 +206,8 @@ def print_network_list(tcp_network_list, udp_network_list):
         data = ['tcp']
         data.append('%s:%d'%(network[1], network[3]))
         data.append('%s:%d'%(network[2], network[4]))
-        data.append('%x'%network[0])
+        data.append('')
+        #data.append('%s'%NETWORK_STATES[network[0]])
         #print '[TCP] Local Address: %s:%d, Foreign Address: %s:%d, flag: %x'%(network[1], network[3], network[2], network[4], network[0])
         
         contentlist.append(data)
@@ -206,7 +216,7 @@ def print_network_list(tcp_network_list, udp_network_list):
         data = ['udp']
         data.append('%s:%d'%(network[1], network[3]))
         data.append('%s:%d'%(network[2], network[4]))
-        data.append('%x'%network[0])
+        data.append('')
         #print '[UDP] Local Address: %s:%d, Foreign Address: %s:%d, flag: %x'%(network[1], network[3], network[2], network[4], network[0])
         contentlist.append(data)
         

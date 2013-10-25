@@ -61,7 +61,7 @@ pml4_shift = 39 ####
 class IA32PML4MemoryPae:
     def __init__(self, baseAddressSpace, pml4):
         self.base = baseAddressSpace
-	self.pml4_vaddr = pml4 # 32 bit address
+        self.pml4_vaddr = pml4 # 32 bit address
         #self.pgd_vaddr = pdbr
         self.pae = True
 
@@ -83,15 +83,15 @@ class IA32PML4MemoryPae:
 
     ###
     def get_pdpib(self, pml4):
-	return pml4 & 0xFFFFFFE0
-    ###
+        return pml4 & 0xFFFFFFFE0
+
     def pml4_index(self, pml4):
-	return ((pml4 & 0x0000FFFFFFFFFFFF) >> pml4_shift)
-	
+        return ((pml4 & 0x0000FFFFFFFFFFFF) >> pml4_shift)
+
     ### PML4 Entry
     def get_pml4(self, vaddr):
         pdpi_entry = self.get_pdpib(self.pml4_vaddr) + self.pml4_index(vaddr) * entry_size
-	return self.read_long_long_phys(pdpi_entry)
+        return self.read_long_long_phys(pdpi_entry)
     
     ###
     def pdpa_base(self, pml4e):
@@ -99,10 +99,10 @@ class IA32PML4MemoryPae:
 
     def pdpi_index(self, pdpi):
         return ((pdpi & 0x0000007FFFFFFFFF) >> pdpi_shift)
-	
+
     def get_pdpi(self, vaddr, pml4e):
         pdpi_entry = self.pdpa_base(pml4e) + self.pdpi_index(vaddr) * entry_size
-	return self.read_long_long_phys(pdpi_entry)
+        return self.read_long_long_phys(pdpi_entry)
 
     def pde_index(self, vaddr): 
         return (vaddr >> pde_shift) & (ptrs_per_pde - 1)
@@ -122,7 +122,7 @@ class IA32PML4MemoryPae:
 
     ###
     def pml4_base(self, pml4):
-	return pml4 & 0x0000FFFFFFFFF000
+        return pml4 & 0x0000FFFFFFFFF000
 
     def ptba_base(self, pde):
         return pde & 0xFFFFFFFFF000
@@ -139,24 +139,23 @@ class IA32PML4MemoryPae:
 
     def vtop(self, vaddr):
         retVal = None
-	pdpi = self.get_pml4(vaddr) ###
-	if not self.entry_present(pdpi): ###
-	    return retVal ###
-	
+        pdpi = self.get_pml4(vaddr) ###
+        if not self.entry_present(pdpi): ###
+            return retVal ###
+
         pdpe = self.get_pdpi(vaddr, pdpi)
+        if not self.entry_present(pdpe):
+            return retVal
 
-	if not self.entry_present(pdpe):
-	    return retVal
-
-	pgd = self.get_pgd(vaddr,pdpe)
+        pgd = self.get_pgd(vaddr,pdpe)
 
         if self.entry_present(pgd):
-		if self.page_size_flag(pgd):
-		    retVal = self.get_large_paddr(vaddr, pgd)
-		else:
-                    pte = self.get_pte(vaddr, pgd)
-                    if self.entry_present(pte):
-                        retVal =  self.get_paddr(vaddr, pte)
+            if self.page_size_flag(pgd):
+                retVal = self.get_large_paddr(vaddr, pgd)
+            else:
+                pte = self.get_pte(vaddr, pgd)
+                if self.entry_present(pte):
+                    retVal =  self.get_paddr(vaddr, pte)
         return retVal
 
     def read(self, vaddr, length):
@@ -169,14 +168,14 @@ class IA32PML4MemoryPae:
             return None
         
         if length < first_block:
-	    stuff_read = self.base.read(paddr, length)
-	    if stuff_read == None:
-	        return None
+            stuff_read = self.base.read(paddr, length)
+            if stuff_read == None:
+                return None
             return stuff_read
 
         stuff_read = self.base.read(paddr, first_block)
         if stuff_read == None:
-	    return None
+            return None
 
         new_vaddr = vaddr + first_block
         for i in range(0,full_blocks):
@@ -184,8 +183,8 @@ class IA32PML4MemoryPae:
             if paddr == None:
                 return None
             new_stuff = self.base.read(paddr, 0x1000)
-	    if new_stuff == None:
-	        return None
+            if new_stuff == None:
+                return None
             stuff_read = stuff_read + new_stuff
             new_vaddr = new_vaddr + 0x1000
 
@@ -194,7 +193,7 @@ class IA32PML4MemoryPae:
             if paddr == None:
                 return None
             new_stuff = self.base.read(paddr, left_over)
-	    if new_stuff == None:
+            if new_stuff == None:
                 return None
             stuff_read = stuff_read + new_stuff
         return stuff_read
@@ -229,34 +228,34 @@ class IA32PML4MemoryPae:
             paddr = self.vtop(new_vaddr)
             if paddr == None:
                 stuff_read = stuff_read + ('\0' * left_over)
-	    else:
+            else:
                 stuff_read = stuff_read + self.base.zread(paddr, left_over)
         return stuff_read
         
     def read_long_phys(self, addr):
         string = self.base.read(addr, 4)
-	if string == None:
-	    return None
+        if string == None:
+            return None
         (longval, ) =  struct.unpack('=L', string)
         return longval
 
     def read_long_long_phys(self, addr):
         string = self.base.read(addr,8)
-	if string == None:
-	    return None
-	(longlongval, ) = struct.unpack('=Q', string)
-	return longlongval
+        if string == None:
+            return None
+        (longlongval, ) = struct.unpack('=Q', string)
+        return longlongval
 
     def is_valid_address(self, addr):
         if addr == None:
-	    return False
-	try:    
+            return False
+        try:    
             phyaddr = self.vtop(addr)
-	except:
-	    return False
+        except:
+            return False
         if phyaddr == None:
             return False
-	if not self.base.is_valid_address(phyaddr):
+        if not self.base.is_valid_address(phyaddr):
             return False
         return True
 
