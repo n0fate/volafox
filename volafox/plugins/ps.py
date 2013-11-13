@@ -255,12 +255,12 @@ class process_manager:
         #print '======= vm_map_t --> osfmk\\vm\\vm_map.h ========'
         #print 'prev: %x'%vm_struct[0]
         #print 'next: %x'%self.x86_mem_pae.vtop(vm_struct[1])
-        print ''
-        print '[+] Virtual Memory Map Information'
-        print ' [-] Virtual Address Start Point: 0x%x'%vm_struct[2]
-        print ' [-] Virtual Address End Point: 0x%x'%vm_struct[3]
-        print ' [-] Number of Entries: %d'%vm_struct[4] # number of entries
-        print ' [-] Pageable Entries: %x'%vm_struct[5]
+        #print ''
+        #print '[+] Virtual Memory Map Information'
+        #print ' [-] Virtual Address Start Point: 0x%x'%vm_struct[2]
+        #print ' [-] Virtual Address End Point: 0x%x'%vm_struct[3]
+        #print ' [-] Number of Entries: %d'%vm_struct[4] # number of entries
+        #print ' [-] Pageable Entries: %x'%vm_struct[5]
         #print 'pmap_t: %x'%self.x86_mem_pae.vtop(vm_struct[6])
         #print 'Virtual size: %x\n'%vm_struct[7]
 
@@ -274,8 +274,8 @@ class process_manager:
             vm_list.append(vm_temp_list)
             return vm_list, vm_struct
 
-        print ''
-        print '[+] Generating Process Virtual Memory Maps'
+        #print ''
+        #print '[+] Generating Process Virtual Memory Maps'
         entry_next_ptr = vm_struct[1]
         for data in range(0, vm_struct[4]): # number of entries
             vm_list_ptr = self.x86_mem_pae.read(entry_next_ptr, VME_STRUCTURE[2])
@@ -323,12 +323,13 @@ class process_manager:
             else:
                 max_permission += '-'
             ##########################################
-            if vme_list[3] == user_stack:
-              print ' [-] Region from 0x%x to 0x%x (%s, max %s;), %s'%(vme_list[2], vme_list[3], permission, max_permission, "<UserStack>")
-            else:
-              print ' [-] Region from 0x%x to 0x%x (%s, max %s;)'%(vme_list[2], vme_list[3], permission, max_permission)
+            #if vme_list[3] == user_stack:
+              #print ' [-] Region from 0x%x to 0x%x (%s, max %s;), %s'%(vme_list[2], vme_list[3], permission, max_permission, "<UserStack>")
+            #else:
+              #print ' [-] Region from 0x%x to 0x%x (%s, max %s;)'%(vme_list[2], vme_list[3], permission, max_permission)
             #print 'next[data]: %x'%self.x86_mem_pae.vtop(vme_list[1])
             entry_next_ptr = vme_list[1]
+            #print '%x'%self.x86_mem_pae.vtop(vme_list[1])
         
         return vm_list, vm_struct
     

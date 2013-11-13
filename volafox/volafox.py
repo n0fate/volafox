@@ -48,6 +48,7 @@ from plugins.pe_state import get_pe_state, print_pe_state, get_boot_args, print_
 from plugins.efiinfo import get_efi_system_table, print_efi_system_table, get_efi_runtime_services, print_efi_runtime_services
 
 from plugins.keychaindump import dump_master_key, print_master_key
+from plugins.bash_history import dump_bash_history, print_bash_history
 
 from plugins.dmesg import get_dmesg
 from plugins.uname import get_uname
@@ -302,9 +303,14 @@ class volafox():
         
         candidate_key_list = dump_master_key(self.x86_mem_pae, sym_addr, self.arch, self.os_version, self.build, self.base_address, self.mempath)
         if candidate_key_list == 1:
-	    return
+            return
         print_master_key(candidate_key_list)
 
+    def bash_history(self):
+        sym_addr = self.symbol_list['_kernproc']
+        
+        bash_history_list = dump_bash_history(self.x86_mem_pae, sym_addr, self.arch, self.os_version, self.build, self.base_address, self.mempath)
+        print_bash_history(bash_history_list)
     # 2013.04.05 dmesg
     #################################################
     

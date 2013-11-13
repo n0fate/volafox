@@ -42,6 +42,7 @@ def usage():
     print 'hostname        : Print a hostname'
     print 'notifiers       : Detects I/O Kit function hooking (experiment)'
     print 'trustedbsd      : Show TrustedBSD MAC Framework (experiment)'
+    print 'bash_history    : Show history in bash process'
 #    print 'net_info_test\t network information(plist), (experiment)'
 
 def main():
@@ -227,6 +228,10 @@ def main():
     elif oflag == 'keychaindump':
         m_volafox.keychaindump()
         sys.exit()
+
+    elif oflag == 'bash_history':
+        m_volafox.bash_history()
+        sys.exit()        
     
     elif oflag == 'kextscan':
         m_volafox.kextscan()
