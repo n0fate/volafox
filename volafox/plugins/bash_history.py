@@ -43,7 +43,11 @@ class bash_history:
 					# value[0] = line pointer, value[1] = timestamp pointer
 					if ((value[0] & value[1]) >= vm_address[0]) and ((value[0] & value[1]) < vm_address[1]):
 						#print 'timestamp: %x, line: %x'%(value[1], value[0])
-						if '#' == struct.unpack('c', proc_pae.read(value[1], 1))[0]: # timestamp signature
+						try:
+							csharp = struct.unpack('c', proc_pae.read(value[1], 1))[0]
+						except struct.error:
+							continue
+						if '#' == csharp: # timestamp signature
 							#print 'got it'
 							# get timestamp
 							timebuf = ''
@@ -137,7 +141,7 @@ def print_bash_history(bash_history_list):
 	contentlist = []
 
 	for bash_history in bash_history_list:
-		if len(bash_history[2]) == 0:
+		if len(bash_history_list) == 0:
 			print '[*] Can not found bash history'
 			return
 
