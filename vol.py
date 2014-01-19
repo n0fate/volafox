@@ -21,7 +21,7 @@ def usage():
     print '-o CMD            : Print kernel information for CMD (below)'
     print '-p PID            : List open files for PID (where CMD is "lsof")'
     print '-v                : Print all files, including unsupported types (where CMD is "lsof")'  
-    print '-x PID/KID/TASKID : Dump process/task/kernel extension address space for PID/KID/Task ID (where CMD is "ps"/"kextstat"/"tasks")\n'
+    print '-x PID/KID/TASKID : Dump process/task/kernel extension address space for PID/KID/Task ID (where CMD is "ps"/"kextstat"/"tasks"/"machdump")\n'
     #print '-f         : Full dump process address space for PID (where CMD is "ps" and -x PID) (experiment)\n'
     print 'COMMANDS:'
     print 'system_profiler : Kernel version, CPU, and memory spec, Boot/Sleep/Wakeup time'
@@ -30,6 +30,7 @@ def usage():
     print 'kextscan        : Scanning KEXT (Kernel Extensions) (64bit OS only, experiment)'
     print 'ps              : Process listing'
     print 'tasks           : Task listing (Finding process hiding)'
+    print 'machdump        : Dump macho binary (experiment)'
     print 'systab          : Syscall table (Hooking detection)'
     print 'mtt             : Mach trap table (Hooking detection)'
     print 'netstat         : Network socket listing (Hash table)'
@@ -41,7 +42,7 @@ def usage():
     print 'uname           : Print a short for unix name(uname)'
     print 'hostname        : Print a hostname'
     print 'notifiers       : Detects I/O Kit function hooking (experiment)'
-    print 'trustedbsd      : Show TrustedBSD MAC Framework (experiment)'
+    print 'trustedbsd      : Show TrustedBSD MAC Framework'
     print 'bash_history    : Show history in bash process'
 #    print 'net_info_test\t network information(plist), (experiment)'
 
@@ -77,37 +78,43 @@ def main():
             oflag = p
             
             # LSOF: new pid flag
-	    #suboption = option
+            #suboption = option
             for i,x in enumerate(option):
-            	if p == 'lsof' and x[0] == '-p':
-		    pid = int(x[1], 10)
-		    pflag = 1;
-		    debug += " -p %d" %pid
-		    break
+                if p == 'lsof' and x[0] == '-p':
+                    pid = int(x[1], 10)
+                    pflag = 1;
+                    debug += " -p %d" %pid
+                    break
 
-		elif p == 'ps' and x[0] == '-x': # process dump
-		    pid = int(x[1], 10)
-		    debug += ' -x %d' %pid
-		    dflag = 1
-		    break
-		
-		elif p == 'kextstat' and x[0] == '-x': # kext dump
-		    kext_num = int(x[1], 10)
-		    debug += ' -x %d' %kext_num
-		    mflag = 1
-		    break
-		
-		elif p == 'tasks' and x[0] == '-x': # task dump
-		    task_id = int(x[1], 10)
-		    debug += ' -x %d' %task_id
-		    tflag = 1
-		    break
-		
-            del option[i]
-	    debug += "\n"	# LSOF: replacing newline
+                elif p == 'ps' and x[0] == '-x': # process dump
+                    pid = int(x[1], 10)
+                    debug += ' -x %d' %pid
+                    dflag = 1
+                    break
+        
+                elif p == 'machdump' and x[0] == '-x': # process dump
+                    pid = int(x[1], 10)
+                    debug += ' -x %d' %pid
+                    break
+
+                elif p == 'kextstat' and x[0] == '-x': # kext dump
+                    kext_num = int(x[1], 10)
+                    debug += ' -x %d' %kext_num
+                    mflag = 1
+                    break
+
+                elif p == 'tasks' and x[0] == '-x': # task dump
+                    task_id = int(x[1], 10)
+                    debug += ' -x %d' %task_id
+                    tflag = 1
+                    break
+
+                    del option[i]
+                    del option[x]
+                    debug += "\n"	# LSOF: replacing newline
 
         elif op in '-i': # physical memory image file
-        	
+        
             # LSOF: add to debug string
             #print '[+] Memory Image:', p
             debug += '[+] Memory Image: %s\n' %p
@@ -119,14 +126,14 @@ def main():
             #print 'Verbose:', p
             vflag = 1
            
-        else:
-            #print '[+] Command error:', op	# LSOF: not printed, getopt catches this
-            usage()
-            sys.exit()
+        #else:
+        #    print '[+] Command error:', op	# LSOF: not printed, getopt catches this
+        #    usage()
+        #    sys.exit()
             
     # LSOF: all of this information now requires an explicit flag (or command error)
     if vflag:
-    	print debug[:-1]
+        print debug
 
     if mempath == "" and ( oflag == "" or dflag == 0 or mflag == 0):
         usage()
@@ -142,7 +149,7 @@ def main():
     overlay_path = m_volafox.get_kernel_version(vflag) # ret: true/false , overlay filepath
     if overlay_path == '':
         print '[+] WARNING: Can not found image information'
-	sys.exit()
+        sys.exit()
 
     ret_loader = m_volafox.overlay_loader(overlay_path, vflag)
     if ret_loader == 1:
@@ -155,22 +162,22 @@ def main():
         sys.exit()
 
     if mflag == 1:
-	m_volafox.kextdump(kext_num)
-	sys.exit()
+        m_volafox.kextdump(kext_num)
+        sys.exit()
         
     if dflag == 1:
         m_volafox.proc_dump(pid)
         sys.exit()
     
     if tflag == 1:
-	m_volafox.task_dump(task_id)
-	sys.exit()
-	
+        m_volafox.task_dump(task_id)
+        sys.exit()
+
     # test
     if oflag == 'get_phy':
         m_volafox.get_read_address(0xffffff801afd87e8)
         sys.exit()
-	
+
     if oflag == 'system_profiler':
         m_volafox.get_system_profiler()
         sys.exit()
@@ -190,16 +197,17 @@ def main():
     elif oflag == 'tasks':
         m_volafox.get_tasks()
         sys.exit()
+
+    elif oflag == 'machdump':
+        m_volafox.machdump(pid)
+        sys.exit()
         
     # LSOF: lsof command branch
     elif oflag == 'lsof':
-	if vflag:
-    		print ""	# separate output from command specification
-    	filelist = m_volafox.lsof(pid, vflag)
-    	#if vflag:
-    	#	print ""	# separate output from command specification
-    	#printfilelist(filelist)
-    	sys.exit()
+        if vflag:
+            print ""	# separate output from command specification
+        filelist = m_volafox.lsof(pid, vflag)
+        sys.exit()
 
     elif oflag == 'systab':
         m_volafox.systab()
@@ -256,7 +264,7 @@ def main():
     elif oflag == 'trustedbsd':
         m_volafox.trustedbsd()
         sys.exit()
-	
+
     else:
         print '[+] WARNING: -o Argument Error: %s\n'%oflag
         sys.exit()

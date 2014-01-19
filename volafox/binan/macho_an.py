@@ -72,6 +72,7 @@ class macho_an():
             return -1
         arch_count = int(binascii.b2a_hex(self.buf[4:8]), 16)
         return arch_count
+
     def getfilesize(self):
         return os.fstat(self.fp.fileno()).st_size
 #struct mach_header_64

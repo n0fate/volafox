@@ -39,6 +39,7 @@ from plugins.lsof import getfilelist, printfilelist
 from plugins.imageinfo import get_imageinfo # user defined class > CL
 from plugins.system_profiler import get_system_profile
 from plugins.ps import get_proc_list, get_proc_dump, get_task_list, proc_lookup, proc_print, task_print, get_task_dump
+from plugins.machdump import get_macho_dump
 from plugins.kextstat import get_kext_list, kext_dump, print_kext_list, get_kext_scan, print_kext_scan
 from plugins.systab import get_system_call_table_list, print_syscall_table
 from plugins.mach_trap import get_mach_trap_table_list, print_mach_trap_table
@@ -171,15 +172,20 @@ class volafox():
         sym_addr2 = self.symbol_list['_g_kernel_kmod_info']
         kext_dump(self.x86_mem_pae, sym_addr, sym_addr2, self.arch, self.os_version, self.build, KID, self.base_address)
     
-    def mount(self): # 11.11.23 64bit suppport(Lion)
+    def mount(self):
         sym_addr = self.symbol_list['_mountlist']
         mount_list = get_mount_list(self.x86_mem_pae, sym_addr, self.arch, self.os_version, self.build, self.base_address)
         print_mount_list(mount_list)
 
-    def get_ps(self): # 11.11.23 64bit suppport
+    def get_ps(self): 
         sym_addr = self.symbol_list['_kernproc']
         proc_list = get_proc_list(self.x86_mem_pae, sym_addr, self.arch, self.os_version, self.build, self.base_address)
         proc_print(proc_list, self.os_version)
+
+    def machdump(self, pid):
+        sym_addr = self.symbol_list['_kernproc']
+        get_macho_dump(self.x86_mem_pae, sym_addr, self.arch, self.os_version, self.build, pid, self.base_address, self.mempath)
+
 
     def task_dump(self, task_id):
         task_addr = self.symbol_list['_tasks']

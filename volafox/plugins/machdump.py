@@ -3,6 +3,7 @@ import sys
 import struct
 import time
 import os
+import binascii
 
 from tableprint import columnprint
 
@@ -154,53 +155,6 @@ class process_manager:
             
             except struct.error:
                 break
-    
-    def get_queue(self, ptr):
-        if self.arch == 32:
-            QUEUE_STRUCTURE = DATA_QUEUE_STRUCTURE[0]
-        elif self.arch == 64:
-            QUEUE_STRUCTURE = DATA_QUEUE_STRUCTURE[1]
-        else:
-            return queue
-
-        queue_ptr = self.x86_mem_pae.read(ptr+self.base_address, QUEUE_STRUCTURE[0])
-        queue = struct.unpack(QUEUE_STRUCTURE[1], queue_ptr)
-        return queue # next, prev
-    
-    def get_task_queue(self, sym_addr, count, task_list):
-        queue = self.get_queue(sym_addr)
-
-        print '[+] Task Count at Kernel Symbol: %d'%count
-
-        #print 'Queue Next: %.8x, prev: %.8x'%(self.x86_mem_pae.vtop(queue[0]),self.x86_mem_pae.vtop(queue[1]))
-
-        #print '[+] Get Task Queue'
-
-        task_ptr = queue[0] # next
-
-        i = 0
-
-        while i < count:
-            task = [] # temp
-                
-            if task_ptr == 0:
-                break
-            if not(self.x86_mem_pae.is_valid_address(task_ptr)):
-                break
-              
-            task_struct = self.get_task("", task_ptr)
-            
-            task.append(i) # count
-            task.append(self.x86_mem_pae.vtop(task_ptr)) # physical address
-            task.append(task_ptr) # virtual address
-            task.append(task_struct) # task structure
-            task.append(task_struct[6]) # task.bsd_info physical address
-            
-            task_list.append(task)
-            task_ptr = task_struct[4] # task_queue_t
-            i += 1
-
-        return i
 
     
     def get_task(self, proc, task_ptr):
@@ -250,19 +204,6 @@ class process_manager:
 
         if not(self.x86_mem_pae.is_valid_address(vm_struct[6])):
             return vm_list, vm_struct
-        
-        ### 11.09.28 end n0fate
-        #print '======= vm_map_t --> osfmk\\vm\\vm_map.h ========'
-        #print 'prev: %x'%vm_struct[0]
-        #print 'next: %x'%self.x86_mem_pae.vtop(vm_struct[1])
-        #print ''
-        #print '[+] Virtual Memory Map Information'
-        #print ' [-] Virtual Address Start Point: 0x%x'%vm_struct[2]
-        #print ' [-] Virtual Address End Point: 0x%x'%vm_struct[3]
-        #print ' [-] Number of Entries: %d'%vm_struct[4] # number of entries
-        #print ' [-] Pageable Entries: %x'%vm_struct[5]
-        #print 'pmap_t: %x'%self.x86_mem_pae.vtop(vm_struct[6])
-        #print 'Virtual size: %x\n'%vm_struct[7]
 
         vm_list = []
 
@@ -289,48 +230,7 @@ class process_manager:
             vm_temp_list.append(vme_list[2]) # start
             vm_temp_list.append(vme_list[3]) # end
             vm_list.append(vm_temp_list)
-            # get permission on virtual memory ('rwx')
-            permission = ''
-            max_permission = ''
-            
-            perm_list = []
-            perm = ((vme_list[4]) >> 7 )& 0x003f
-            count = 6
-            while count >= 0:
-                perm_list.append(perm&1)
-                perm = perm >> 1
-                count = count - 1
-                
-            if (perm_list[0] == 1 ):
-                permission += 'r' # Protection
-            else:
-                permission += '-'
-            if (perm_list[1] == 1 ):
-                permission += 'w' # Protection
-            else:
-                permission += '-'
-            if (perm_list[2] == 1 ):
-                permission += 'x' # Protection
-            else:
-                permission += '-'
-            if (perm_list[3] == 1 ):
-                max_permission += 'r' # Max Protection
-            else:
-                max_permission += '-'
-            if (perm_list[4] == 1 ):
-                max_permission += 'w' # Max Protection
-            else:
-                max_permission += '-'
-            if (perm_list[5] == 1 ):
-                max_permission += 'x' # Max Protection
-            else:
-                max_permission += '-'
-            ##########################################
-            #if vme_list[3] == user_stack:
-              #print ' [-] Region from 0x%x to 0x%x (%s, max %s;), %s'%(vme_list[2], vme_list[3], permission, max_permission, "<UserStack>")
-            #else:
-              #print ' [-] Region from 0x%x to 0x%x (%s, max %s;)'%(vme_list[2], vme_list[3], permission, max_permission)
-            #print 'next[data]: %x'%self.x86_mem_pae.vtop(vme_list[1])
+
             entry_next_ptr = vme_list[1]
             #print '%x'%self.x86_mem_pae.vtop(vme_list[1])
         
@@ -356,95 +256,137 @@ class process_manager:
         pm_cr3 = struct.unpack(PMAP_STRUCTURE[1], pmap_info)[0]
         return pm_cr3
         
-    def get_proc_dump(self, vm_list, vm_struct, process_name, mempath):
+    def get_proc_dump(self, vm_list, vm_struct, pid_process_name, mempath):
 
         pm_cr3 = self.get_proc_cr3(vm_list, vm_struct)
         
         proc_pae = 0
         
-        print '[+] Resetting the Page Mapping Table: 0x%x'%pm_cr3
+        #print '[+] Resetting the Page Mapping Table: 0x%x'%pm_cr3
         
         proc_pae = IA32PML4MemoryPae(FileAddressSpace(mempath), pm_cr3)
         
-        print '[+] Process Dump Start'
-        
+        #print '[+] Process Dump Start'
+        MH_MAGIC_X86 = 'feedface'
+        MH_MAGIC_X64 = 'feedfacf'
+
+        MACHHEADER_32 = 'IIIIIII'
+        SIZEOFMACHOHEADER_32 = 28 # bytes
+        MACHHEADER_64 = 'IIIIIIII'
+        SIZEOFMACHOHEADER_64 = 32 # bytes
+        MACHHEADER = MACHHEADER_32
+        SIZEOFMACHOHEADER = SIZEOFMACHOHEADER_32
+
+        COMMAND = ''
+        COMMAND_32 = 'II16sIIII'
+        COMMAND_64 = 'II16sQQQQ'
+        SIZEOFCOMMAND = 32
+        SIZEOFCOMMAND_32 = 40 # bytes
+        SIZEOFCOMMAND_64 = 56 # bytes
+        TYPE_SEGMENT = 0x01
+        TYPE_SEGMENT64 = 0x19
+        FILE_MACH_EXECUTE = 0x02
+        dump_start = 0
+        dump_end = 0
+        difference = 0
+        mach_vme_list = []
         for vme_info in  vm_list:
-            #print proc_pae.vtop(vme_info[0])
-            #print vme_info[1]
-            
+            try:
+                machoheader_t = proc_pae.read(vme_info[0], SIZEOFMACHOHEADER) # read 0x1c bytes
+                machoheader = struct.unpack(MACHHEADER, machoheader_t)
+            except:
+                continue
+            strHex = '%x'%machoheader[0]
+            if MH_MAGIC_X86 == strHex and FILE_MACH_EXECUTE == machoheader[3]:
+                print ' [-] Find 32 bit Mach-O signature at %.8x'%vme_info[0]
+                COMMAND = COMMAND_32
+                SIZEOFCOMMAND = SIZEOFCOMMAND_32
+                MACHHEADER = MACHHEADER_32
+                SIZEOFMACHOHEADER = SIZEOFMACHOHEADER_32
+
+            elif MH_MAGIC_X64 == strHex and FILE_MACH_EXECUTE == machoheader[3]:
+                print ' [-] Find 64 bit Mach-O signature at %.8x'%vme_info[0]
+                COMMAND = COMMAND_64
+                SIZEOFCOMMAND = SIZEOFCOMMAND_64
+                MACHHEADER = MACHHEADER_64
+                SIZEOFMACHOHEADER = SIZEOFMACHOHEADER_64
+
+            else:
+                continue
+
+            file_offset = vme_info[0]
+            dump_start = file_offset
+            final_dump_start = 0
+            loadcommand_offset = file_offset+SIZEOFMACHOHEADER
+            #mach_vme_list.append(vme_info)
+
+            for num_load_command in range(0, machoheader[4]):
+                #print 'offset: %x'%loadcommand_offset
+                loadcommand_t = proc_pae.read(loadcommand_offset, SIZEOFCOMMAND) # 'II16sII'
+                loadcommand = struct.unpack(COMMAND, loadcommand_t)
+                if loadcommand[2].split('\x00')[0] == '__PAGEZERO':
+                    difference = dump_start - loadcommand[4]
+                    loadcommand_offset = loadcommand_offset + loadcommand[1]
+                    continue
+                #print '%x: %x-%.8x-%x'%(loadcommand[0], loadcommand[1], loadcommand[3], loadcommand[4])
+                if loadcommand[0] == TYPE_SEGMENT or loadcommand[0] == TYPE_SEGMENT64:
+                    if loadcommand[2].split('\x00')[0] == '__PAGEZERO':
+                        difference = dump_start - loadcommand[4]
+                        loadcommand_offset = loadcommand_offset + loadcommand[1]
+                        continue
+                    mach_vme_info = []
+                    mach_vme_info.append(loadcommand[3]+difference)
+                    mach_vme_info.append(loadcommand[6]+loadcommand[3]+difference)
+                    mach_vme_list.append(mach_vme_info)
+                    #if final_dump_start < loadcommand[3]:
+                    #    final_dump_start = loadcommand[3]
+                loadcommand_offset = loadcommand_offset + loadcommand[1]
+
+        # if final_dump_start == 0:
+        #     print '[+] Not availiable Mach O File'
+        #     return
+        # print '%x'%(final_dump_start+difference)
+
+        file = open('%s-%x'%(pid_process_name, dump_start), mode="wb")
+        for mach_vme_info in mach_vme_list:
+            # if difference+final_dump_start < vme_info[0]:
+            #     file.close()
+            #     break
+            print ' [-] from %.8x to %.8x'%(mach_vme_info[0], mach_vme_info[1])
             nop_code = 0x00
             pk_nop_code = struct.pack('=B', nop_code)
             nop = pk_nop_code*0x1000
-            
-            file = open('%s-%x-%x'%(process_name, vme_info[0], vme_info[1]), mode="wb")
-            
+
             nop_flag = 0
-            for i in range(vme_info[0], vme_info[1], 0x1000):
+            writebuf = ''
+            for i in range(mach_vme_info[0], mach_vme_info[1], 0x1000):
                 raw_data = 0x00
                 if not(proc_pae.is_valid_address(i)):
                     if nop_flag == 1:
                         raw_data = nop
-                        file.write(raw_data)
+                        writebuf += raw_data
                     continue
                 raw_data = proc_pae.read(i, 0x1000)
                 if raw_data is None:
                     if nop_flag == 1:
                         raw_data = nop
-                        file.write(raw_data)
+                        writebuf += raw_data
                     continue
-                file.write(raw_data)
+                writebuf += raw_data
                 nop_flag = 1
-            file.close()
-            size = os.path.getsize('%s-%x-%x'%(process_name, vme_info[0], vme_info[1]))
-            if size == 0:
-               os.remove('%s-%x-%x'%(process_name, vme_info[0], vme_info[1]))
-            else:
-                print ' [-] [DUMP] Image Name: %s-%x-%x'%(process_name, vme_info[0], vme_info[1])
+            file.write(writebuf[:mach_vme_info[1]-mach_vme_info[0]])
+        
+        file.close()   
+        
+        print ' [-] [DUMP] Image Name: %s-%x'%(pid_process_name, dump_start)
         print '[+] Process Dump End'
         return
 
 #################################### PUBLIC FUNCTIONS ####################################
 
-def proc_print(data_list, os_version):
-    print '[+] Process List'
-    if os_version >= 11:
-        headerlist = ["OFFSET(P)", "PID", "PPID", "PRIORITY", "NICE", "PROCESS_NAME", "USERNAME(UID,GID)", "CRED(UID,GID)", "CREATE_TIME (UTC+0)", ""]
-    else:
-        headerlist = ["OFFSET(P)", "PID", "PPID", "PRIORITY", "NICE", "PROCESS_NAME", "USERNAME", "CRED(UID,GID)", "CREATE_TIME (UTC+0)", ""]
-    contentlist = []
 
-    for data in data_list:
-        line = []
-        line.append("0x%.8X"%data[0]) # offset
-        line.append('%d'%data[1]) # pid
-        line.append('%d'%data[4]) # ppid
-        line.append('%d'%unsigned8(data[10])) # Priority
-        line.append('%d'%unsigned8(data[12])) # nice
-        line.append('%s'%data[14]) # Changed by CL to read null formatted strings
-        if os_version >= 11:
-            line.append('%s(%d,%d)'%(data[15], data[5], data[6]))
-        else:
-            line.append('%s'%(data[15]))
-        line.append('(%d,%d)'%(data[17], data[18]))
-        line.append('%s'%time.strftime("%a %b %d %H:%M:%S %Y", time.gmtime(data[16])))
-        line.append('')
-        contentlist.append(line)
-
-    mszlist = [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1]
-    columnprint(headerlist, contentlist, mszlist)
-      
-def get_proc_list(x86_mem_pae, sym_addr, arch, os_version, build, base_address):
-    proclist = []
-    ProcMan = process_manager(x86_mem_pae, arch, os_version, build, base_address)
-    ret = ProcMan.get_proc_list(sym_addr, proclist, -1)
-    
-    return proclist
-
-def print_proc_list(proc_list, os_version):
-    proc_print(proc_list, os_version)
-
-
-def get_proc_dump(x86_mem_pae, sym_addr, arch, os_version, build, pid, base_address, mempath):
+def get_macho_dump(x86_mem_pae, sym_addr, arch, os_version, build, pid, base_address, mempath):
+    print '[+] Process Dump Start'
     proclist = []
     ProcMan = process_manager(x86_mem_pae, arch, os_version, build, base_address)
     ret = ProcMan.get_proc_list(sym_addr, proclist, pid)
@@ -452,8 +394,6 @@ def get_proc_dump(x86_mem_pae, sym_addr, arch, os_version, build, pid, base_addr
         return 1
     
     dumped_proc = proclist
-    
-    proc_print(dumped_proc, os_version)
     
     task_struct = ProcMan.get_task(dumped_proc[0], dumped_proc[0][2])
     
@@ -465,109 +405,3 @@ def get_proc_dump(x86_mem_pae, sym_addr, arch, os_version, build, pid, base_addr
     ProcMan.get_proc_dump(vm_list, vm_struct, str(dumped_proc[0][1])+'-'+dumped_proc[0][14], mempath)
     
     return
-  
-def get_task_dump(x86_mem_pae, sym_addr, count, arch, os_version, build, task_id, base_address, mempath):
-    ProcMan = process_manager(x86_mem_pae, arch, os_version, build, base_address)
-    task_list = []
-    check_count = ProcMan.get_task_queue(sym_addr, count, task_list) # task queue ptr, task_count, task_list
-    
-    for task in task_list:
-        if task[0] == task_id:
-            task_struct = task
-            break
-    
-    if len(task_struct) == 0:
-      '[+] Could not found TASK ID'
-      return
-
-    PROC_STRUCTURE = ProcMan.get_proc_struct()
-    proc_matched = ProcMan.get_proc(task[4], PROC_STRUCTURE)[0]
-    
-    if len(proc_matched) == 0:
-        print '[+] task dump failed'
-        return 
-
-    retData = ProcMan.get_proc_region(task_struct[3][3], 0x00, 0) # 
-    
-    vm_list = retData[0]
-    vm_struct = retData[1]
-    ProcMan.get_proc_dump(vm_list, vm_struct, str(proc_matched[1])+'-'+proc_matched[14], mempath)
-    
-    return
-    
-    
-    
-def get_task_list(x86_mem_pae, sym_addr, count, arch, os_version, build, base_address):
-    ProcMan = process_manager(x86_mem_pae, arch, os_version, build, base_address)
-    
-    task_list = []
-    check_count = ProcMan.get_task_queue(sym_addr, count, task_list) # task queue ptr, task_count, task_list
-    
-    return task_list, check_count
-
-def proc_lookup(proc_list, task_list, x86_mem_pae, arch, os_version, build, base_address):
-
-
-    ProcMan = process_manager(x86_mem_pae, arch, os_version, build, base_address)
-    PROC_STRUCTURE = ProcMan.get_proc_struct()
-    
-    print '[+] Task List Count at Queue: %d'%len(task_list)
-    print '[+] Process List Count: %d'%len(proc_list)
-    
-    # task list
-    unlinked_task = []
-    valid_task = []
-    
-    # comment: task = [count, task_ptr(Physical), task_ptr(Virtual), [task structure], task.bsd_info]
-    for task in task_list:
-        task_ptr = task[2]
-        valid_flag = 0
-
-        for proc in proc_list:
-            task_ptr_in_proc = proc[2]
-            if task_ptr_in_proc == task_ptr:
-                valid_flag = 1
-                task.append(proc[1]) # PID
-                task.append(proc[14]) # process name
-                task.append(proc[15]) # username
-                valid_task.append(task)
-                break
-
-        if valid_flag == 0:
-            proc_matched = ProcMan.get_proc(task[4], PROC_STRUCTURE)[0]
-            if len(proc_matched) != 0:
-                task.append(proc_matched[1])
-                task.append(proc_matched[14])
-                task.append(proc_matched[15])
-                unlinked_task.append(task)
-
-    return valid_task, unlinked_task
-
-
-def task_print(data_list):
-    #print '[+] Process List'
-
-    headerlist = ["TASK CNT", "OFFSET(P)", "REF_CNT", "Active", "Halt", "VM_MAP(V)", "PID", "PROCESS", "USERNAME", ""]
-    contentlist = []
-
-    for data in data_list:
-        line = ['%d'%data[0]] # count
-        line.append("0x%.8X"%data[1]) # offset
-        line.append('%d'%data[3][0]) # Number of references to me
-        line.append('%d'%data[3][1]) # task has not been terminated
-        line.append('%d'%data[3][2]) # task is being halted
-        line.append('0x%.8X'%data[3][3]) # VM_MAP
-        line.append('%d'%data[5]) # PID
-        line.append('%s'%data[6]) # Process Name
-        line.append('%s'%data[7]) # User Name
-        #line.append('%s'%data[8]) # proc.tasks -> Task ptr
-        #line.append('%s'%data[9]) # task.bsd_info -> proc ptr
-        
-        #line.append('%s'%time.strftime("%a %b %d %H:%M:%S %Y", time.gmtime(data[14])))
-        line.append('')
-        contentlist.append(line)
-
-    # use optional max size list here to match default lsof output, otherwise specify
-    # lsof +c 0 on the command line to print full name of commands
-    mszlist = [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1]
-    columnprint(headerlist, contentlist, mszlist)
