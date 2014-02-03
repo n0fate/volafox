@@ -48,8 +48,8 @@ class systab_manager():
 
                 syscall_list.append(data)
         elif self.os_version == 13: # Mavericks
-            sysentaddr = sym_addr + self.base_address + 0x19F6D4818# Mavericks
-            print '%x'%self.x86_mem_pae.vtop(sysentaddr)
+            sysentaddr = sym_addr + self.base_address + 0x19818# Mavericks
+            #print '%x'%self.x86_mem_pae.vtop(sysentaddr)
             for count in range(0, data[0]):
                 tmplist = []
                 sysent = self.x86_mem_pae.read(sysentaddr + (count*SYSCALL_TABLE_STRUCTURE[0]), SYSCALL_TABLE_STRUCTURE[0]); # .data _nsysent
@@ -62,6 +62,7 @@ class systab_manager():
                 tmplist.append(data[5]) #  Total size of arguments bytes for 32bit system calls
 
                 syscall_list.append(tmplist)
+            #print '%x'%self.x86_mem_pae.vtop(sysentaddr + (count*SYSCALL_TABLE_STRUCTURE[0]))
 
 
     
