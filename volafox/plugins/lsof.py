@@ -219,6 +219,7 @@ class Struct(object):
 			stderr.write("ERROR instance of %s failed to construct with address %.8x.\n" %(self.__class__.__name__, addr))
 			
 # Cnode --> Filefork
+# http://www.opensource.apple.com/source/xnu/xnu-2422.1.72/bsd/hfs/hfs_cnode.h
 class Filefork(Struct):
 	
 	TEMPLATES = {
@@ -241,6 +242,7 @@ class Filefork(Struct):
 		return unpacktype(self.smem, self.template['ff_data'][4]['cf_size'], INT)
 
 # Vnode --> Cnode
+# http://www.opensource.apple.com/source/xnu/xnu-2422.1.72/bsd/hfs/hfs_cnode.h
 class Cnode(Struct):
 
 	TEMPLATES = {
@@ -271,6 +273,7 @@ class Cnode(Struct):
 		return datafork.getoff()
 
 # Vnode --> Devnode
+# http://www.opensource.apple.com/source/xnu/xnu-2422.1.72/bsd/miscfs/devfs/devfsdefs.h
 class Devnode(Struct):
 
 	TEMPLATES = {
@@ -293,6 +296,7 @@ class Devnode(Struct):
 		return unpacktype(self.smem, self.template['dn_ino'], INT)
 
 # Vnode --> Specinfo
+# http://www.opensource.apple.com/source/xnu/xnu-2422.1.72/bsd/miscfs/specfs/specdev.h
 class Specinfo(Struct):
 
 	TEMPLATES = {
@@ -367,6 +371,8 @@ class Mount(Struct):
 # Filesesc --> Vnode (cwd)
 # Fileglob --> Vnode
 # Vnode    --> Vnode (parent)
+# http://www.opensource.apple.com/source/xnu/xnu-2422.1.72/bsd/sys/vnode_internal.h
+# 14.02.03 change mount and cnode offset, n0fate
 class Vnode(Struct):
 	
 	TEMPLATES = {
@@ -378,7 +384,7 @@ class Vnode(Struct):
 			10:{'v_type':('uint16_t',112,2,'TYPE(vnode)'),'v_tag':('uint16_t',114,2,'vfs-type'),'v_un':('union',120,8,'->ubc_info/specinfo'),'v_name':('const char *',184,8,'NAME'),'v_parent':('vnode_t',192,8,'->vnode(parent)'),'v_mount':('mount_t',224,8,'->mount'),'v_data':('void *',232,8,'->cnode/devnode')}
 			, 11:{'v_type':('uint16_t',104,2,'TYPE(vnode)'),'v_tag':('uint16_t',106,2,'vfs-type'),'v_un':('union',112,8,'->ubc_info/specinfo'),'v_name':('const char *',176,8,'NAME'),'v_parent':('vnode_t',184,8,'->vnode(parent)'),'v_mount':('mount_t',216,8,'->mount'),'v_data':('void *',224,8,'->cnode/devnode')}
 			, 12:{'v_type':('uint16_t',104,2,'TYPE(vnode)'),'v_tag':('uint16_t',106,2,'vfs-type'),'v_un':('union',112,8,'->ubc_info/specinfo'),'v_name':('const char *',176,8,'NAME'),'v_parent':('vnode_t',184,8,'->vnode(parent)'),'v_mount':('mount_t',216,8,'->mount'),'v_data':('void *',224,8,'->cnode/devnode')}
-			, 13:{'v_type':('uint16_t',104,2,'TYPE(vnode)'),'v_tag':('uint16_t',106,2,'vfs-type'),'v_un':('union',112,8,'->ubc_info/specinfo'),'v_name':('const char *',176,8,'NAME'),'v_parent':('vnode_t',184,8,'->vnode(parent)'),'v_mount':('mount_t',216,8,'->mount'),'v_data':('void *',224,8,'->cnode/devnode')}
+			, 13:{'v_type':('uint16_t',104,2,'TYPE(vnode)'),'v_tag':('uint16_t',106,2,'vfs-type'),'v_un':('union',112,8,'->ubc_info/specinfo'),'v_name':('const char *',176,8,'NAME'),'v_parent':('vnode_t',184,8,'->vnode(parent)'),'v_mount':('mount_t',208,8,'->mount'),'v_data':('void *',216,8,'->cnode/devnode')}
 		}
 	}
 	
@@ -566,6 +572,8 @@ class Vnode(Struct):
 		return ECODE['size']
 		
 # Fileproc --> Fileglob
+# http://www.opensource.apple.com/source/xnu/xnu-2422.1.72/bsd/sys/file_internal.h
+# 14.02.03 change file_type offset, n0fate
 class Fileglob(Struct):
 
 	TEMPLATES = {
@@ -577,7 +585,7 @@ class Fileglob(Struct):
 			10:{'fg_flag':('int32_t',32,4,'MODE'),'fg_type':('file_type_t',36,4,'FTYPE'),'fg_offset':('off_t',64,8,'SIZE/OFF'),'fg_data':('caddr_t',72,8,'->vnode')}
 			, 11:{'fg_flag':('int32_t',32,4,'MODE'),'fg_type':('file_type_t',36,4,'FTYPE'),'fg_offset':('off_t',64,8,'SIZE/OFF'),'fg_data':('caddr_t',72,8,'->vnode')}
 			, 12:{'fg_flag':('int32_t',32,4,'MODE'),'fg_type':('file_type_t',36,4,'FTYPE'),'fg_offset':('off_t',64,8,'SIZE/OFF'),'fg_data':('caddr_t',72,8,'->vnode')}
-			, 13:{'fg_flag':('int32_t',32,4,'MODE'),'fg_type':('file_type_t',36,4,'FTYPE'),'fg_offset':('off_t',64,8,'SIZE/OFF'),'fg_data':('caddr_t',72,8,'->vnode')}
+			, 13:{'fg_flag':('int32_t',32,4,'MODE'),'fg_type':('file_type_t',52,4,'FTYPE'),'fg_offset':('off_t',64,8,'SIZE/OFF'),'fg_data':('caddr_t',72,8,'->vnode')}
 		}
 	}
 	
