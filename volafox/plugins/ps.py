@@ -31,7 +31,7 @@ DATA_VME_STRUCTURE = [[162+12, '=12xIIQQII8x4xIQ16xIII42xIIIIIIIII', 52, '=IIQQ2
     [162, '=12xIIQQIIIQ16xIII42xIIIIIIIII', 40, '=IIQQ12xI'],
     [194, '=16xQQQQII16xQQ16xIII42xIIIIIIIII', 80, '=QQQQ40xQ'],
     [178, '=16xQQQQIIQQ16xIII42xIIIIIIIII', 56, '=QQQQ16xQ'],
-    [202, '=16xQQQQII16x8xQQ16xIII42xIIIIIIIII', 80, '=QQQQ40xQ']]
+    [202, '=16xQQQQII16x4xIQQ16xIII42xIIIIIIIII', 80, '=QQQQ40xQ']]
 
 # http://opensource.apple.com/source/xnu/xnu-xxxx.xx.xx/osfmk/i386/pmap.h
 # 11D50, Lion 32bit, SN 32bit, Lion64bit, SN 64bit
@@ -245,10 +245,10 @@ class process_manager:
         vm_info = self.x86_mem_pae.read(task_ptr, VME_STRUCTURE[0])
         vm_struct = struct.unpack(VME_STRUCTURE[1], vm_info)
         
-        if vm_struct[6] == 0: # pmap_t
+        if vm_struct[7] == 0: # pmap_t
             return vm_list, vm_struct
 
-        if not(self.x86_mem_pae.is_valid_address(vm_struct[6])):
+        if not(self.x86_mem_pae.is_valid_address(vm_struct[7])):
             return vm_list, vm_struct
         
         ### 11.09.28 end n0fate
@@ -256,12 +256,13 @@ class process_manager:
         #print 'prev: %x'%vm_struct[0]
         #print 'next: %x'%self.x86_mem_pae.vtop(vm_struct[1])
         #print ''
-        #print '[+] Virtual Memory Map Information'
-        #print ' [-] Virtual Address Start Point: 0x%x'%vm_struct[2]
-        #print ' [-] Virtual Address End Point: 0x%x'%vm_struct[3]
-        #print ' [-] Number of Entries: %d'%vm_struct[4] # number of entries
-        #print ' [-] Pageable Entries: %x'%vm_struct[5]
-        #print 'pmap_t: %x'%self.x86_mem_pae.vtop(vm_struct[6])
+        print '[+] Virtual Memory Map Information'
+        print ' [-] Virtual Address Start Point: 0x%x'%vm_struct[2]
+        print ' [-] Virtual Address End Point: 0x%x'%vm_struct[3]
+        print ' [-] Number of Entries: %d'%vm_struct[4] # number of entries
+        print ' [-] Pageable Entries: %x'%vm_struct[5]
+        print 'page_shift: %x'%vm_struct[6]
+        print 'pmap_t: %x'%self.x86_mem_pae.vtop(vm_struct[7])
         #print 'Virtual size: %x\n'%vm_struct[7]
 
         vm_list = []
@@ -279,6 +280,7 @@ class process_manager:
         entry_next_ptr = vm_struct[1]
         for data in range(0, vm_struct[4]): # number of entries
             try:
+                print 'next ptr: %x'%self.x86_mem_pae.vtop(entry_next_ptr)
                 vm_list_ptr = self.x86_mem_pae.read(entry_next_ptr, VME_STRUCTURE[2])
                 vme_list = struct.unpack(VME_STRUCTURE[3], vm_list_ptr)
             except:
@@ -326,10 +328,10 @@ class process_manager:
             else:
                 max_permission += '-'
             ##########################################
-            #if vme_list[3] == user_stack:
-              #print ' [-] Region from 0x%x to 0x%x (%s, max %s;), %s'%(vme_list[2], vme_list[3], permission, max_permission, "<UserStack>")
-            #else:
-              #print ' [-] Region from 0x%x to 0x%x (%s, max %s;)'%(vme_list[2], vme_list[3], permission, max_permission)
+            if vme_list[3] == user_stack:
+              print ' [-] Region from 0x%x to 0x%x (%s, max %s;), %s'%(vme_list[2], vme_list[3], permission, max_permission, "<UserStack>")
+            else:
+              print ' [-] Region from 0x%x to 0x%x (%s, max %s;)'%(vme_list[2], vme_list[3], permission, max_permission)
             #print 'next[data]: %x'%self.x86_mem_pae.vtop(vme_list[1])
             entry_next_ptr = vme_list[1]
             #print '%x'%self.x86_mem_pae.vtop(vme_list[1])
@@ -352,7 +354,7 @@ class process_manager:
             else: # Leopard or Snow Leopard xnu-1456
                 PMAP_STRUCTURE = DATA_PMAP_STRUCTURE[5]
         
-        pmap_info = self.x86_mem_pae.read(vm_struct[6], PMAP_STRUCTURE[0])
+        pmap_info = self.x86_mem_pae.read(vm_struct[7], PMAP_STRUCTURE[0])
         pm_cr3 = struct.unpack(PMAP_STRUCTURE[1], pmap_info)[0]
         return pm_cr3
         
