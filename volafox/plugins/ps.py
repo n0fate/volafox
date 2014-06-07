@@ -256,13 +256,13 @@ class process_manager:
         #print 'prev: %x'%vm_struct[0]
         #print 'next: %x'%self.x86_mem_pae.vtop(vm_struct[1])
         #print ''
-        print '[+] Virtual Memory Map Information'
-        print ' [-] Virtual Address Start Point: 0x%x'%vm_struct[2]
-        print ' [-] Virtual Address End Point: 0x%x'%vm_struct[3]
-        print ' [-] Number of Entries: %d'%vm_struct[4] # number of entries
-        print ' [-] Pageable Entries: %x'%vm_struct[5]
-        print 'page_shift: %x'%vm_struct[6]
-        print 'pmap_t: %x'%self.x86_mem_pae.vtop(vm_struct[7])
+        #print '[+] Virtual Memory Map Information'
+        #print ' [-] Virtual Address Start Point: 0x%x'%vm_struct[2]
+        #print ' [-] Virtual Address End Point: 0x%x'%vm_struct[3]
+        #print ' [-] Number of Entries: %d'%vm_struct[4] # number of entries
+        #print ' [-] Pageable Entries: %x'%vm_struct[5]
+        #print 'page_shift: %x'%vm_struct[6]
+        #print 'pmap_t: %x'%self.x86_mem_pae.vtop(vm_struct[7])
         #print 'Virtual size: %x\n'%vm_struct[7]
 
         vm_list = []
@@ -280,7 +280,7 @@ class process_manager:
         entry_next_ptr = vm_struct[1]
         for data in range(0, vm_struct[4]): # number of entries
             try:
-                print 'next ptr: %x'%self.x86_mem_pae.vtop(entry_next_ptr)
+                #print 'next ptr: %x'%self.x86_mem_pae.vtop(entry_next_ptr)
                 vm_list_ptr = self.x86_mem_pae.read(entry_next_ptr, VME_STRUCTURE[2])
                 vme_list = struct.unpack(VME_STRUCTURE[3], vm_list_ptr)
             except:
