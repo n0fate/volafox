@@ -283,6 +283,10 @@ def main():
         m_volafox.trustedbsd()
         sys.exit()
 
+    elif oflag == 'fbt_syscall':
+        m_volafox.fbt_syscall()
+        sys.exit()
+
     else:
         print '[+] WARNING: -o Argument Error: %s\n'%oflag
         sys.exit()

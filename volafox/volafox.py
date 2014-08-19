@@ -29,10 +29,7 @@ _______________________SUPPORT_________________________
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 #
 
-import sys
-import binascii
 import pickle # added by CL
-import os
 
 # LSOF: most research functionality consolidated here
 from plugins.lsof import getfilelist, printfilelist
@@ -46,7 +43,7 @@ from plugins.mach_trap import get_mach_trap_table_list, print_mach_trap_table
 from plugins.mount import get_mount_list, print_mount_list
 from plugins.netstat import get_network_hash, print_network_list, get_network_list
 from plugins.pe_state import get_pe_state, print_pe_state, get_boot_args, print_boot_args
-from plugins.efiinfo import get_efi_system_table, print_efi_system_table, get_efi_runtime_services, print_efi_runtime_services
+from plugins.efiinfo import get_efi_system_table, print_efi_system_table, get_efi_runtime_services
 
 from plugins.keychaindump import dump_master_key, print_master_key
 from plugins.bash_history import dump_bash_history, print_bash_history
@@ -56,6 +53,8 @@ from plugins.uname import get_uname
 from plugins.hostname import get_hostname
 from plugins.notifier import get_notifier_table, print_notifier_list
 from plugins.trustedbsd import get_mac_policy_table, print_mac_policy_list
+
+from plugins.fbt_systab import check_fbt_syscall, print_fbt_syscall
 
 from vatopa.machaddrspace import MachoAddressSpace, isMachoVolafoxCompatible, is_universal_binary
 
@@ -317,13 +316,14 @@ class volafox():
         
         bash_history_list = dump_bash_history(self.x86_mem_pae, sym_addr, self.arch, self.os_version, self.build, self.base_address, self.mempath)
         print_bash_history(bash_history_list)
+
     # 2013.04.05 dmesg
     #################################################
     
     def dmesg(self):
-    	dmesg_symbol_addr = self.symbol_list['_smsg_bufc']
-    	dmesg_str = get_dmesg(self.x86_mem_pae, dmesg_symbol_addr, self.arch, self.os_version, self.build, self.base_address)
-    	print dmesg_str
+        dmesg_symbol_addr = self.symbol_list['_smsg_bufc']
+        dmesg_str = get_dmesg(self.x86_mem_pae, dmesg_symbol_addr, self.arch, self.os_version, self.build, self.base_address)
+        print dmesg_str
 	
     def uname(self):
     	uname_symbol_addr = self.symbol_list['_kdp_kernelversion_string']
@@ -396,4 +396,9 @@ class volafox():
     	for symbol_structure in notifier_symbol_list:
     		notifier_list = get_notifier_table(self.x86_mem_pae, symbol_structure[1], self.arch, self.os_version, self.build, self.base_address)
     		print_notifier_list(notifier_list, self.symbol_list, self.base_address, symbol_structure[0])
+
+    def fbt_syscall(self):
+        sym_addr = self.symbol_list['_nsysent']
+        fbt_list = check_fbt_syscall(self.x86_mem_pae, sym_addr, self.arch, self.os_version, self.build, self.base_address)
+        print_fbt_syscall(fbt_list, self.symbol_list, self.base_address)
 
