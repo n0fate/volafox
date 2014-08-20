@@ -1,3 +1,5 @@
+# -*- coding: cp949 -*-
+
 from distorm3 import Decode, Decode16Bits, Decode32Bits, Decode64Bits
 
 # Copyright by n0fate
@@ -7,13 +9,13 @@ from distorm3 import Decode, Decode16Bits, Decode32Bits, Decode64Bits
 #
 # following text is a Korean-language comment
 #
-# í›„í‚¹ ê°€ëŠ¥í•œ ëª…ë ¹ì–´ëŠ” JMP, CALL, RETNì´ ìˆìŒ
-############### ì˜ˆì œ #####################
-# PUSH + RET - ë¦¬í„´ ì‹œ ìŠ¤íƒì— ì €ì¥ëœ ì£¼ì†Œë¡œ ì œì–´ë¥¼ ì´ì „í•˜ëŠ” ë°©ë²•ì„ ì‚¬ìš© (Signature<Prologue> : C3(RETN))
+# ÈÄÅ·¿¡ »ç¿ëÇÏ´Â ¸í·É¾î´Â JMP, CALL, RETÀÌ ÀÖÀ½
+############### ¿¹Á¦ #####################
+# PUSH + RET - ¸®ÅÏ ½Ã ½ºÅÃ¿¡ ÀúÀåµÈ ÁÖ¼Ò·Î Á¦¾î¸¦ ÀÌÀüÇÏ´Â ¹æ¹ıÀ» »ç¿ë (Signature<Prologue> : C3(RETN))
 # 68 00104000   PUSH 00401000
 # C3            RETN
 ########################################
-# MOV + JMP - ê°€ì¥ ë§ì´ ì‚¬ìš©í•˜ëŠ” ë°©ë²• (Signature<Prologue/Epilogue> : FFE0)
+# MOV + JMP - °¡Àå ¸¹ÀÌ »ç¿ëÇÏ´Â ¹æ¹ı (Signature<Prologue/Epilogue> : FFE0)
 #
 # 32bit
 # B8 00104000   MOV EAX, 00401000
@@ -25,24 +27,79 @@ from distorm3 import Decode, Decode16Bits, Decode32Bits, Decode64Bits
 # 48B8 3508400000000000 MOV RAX, 0x0000000000400835
 # FFE0                  JMP RAX
 ########################################
-# JMP - ìƒëŒ€ì£¼ì†Œ ì í”„ ì‹œ ì‚¬ìš©(ì»¤ë„ ë£¨íŠ¸í‚·ë„ ì‚¬ìš©) (Signature<Prologue/Epilogue> : E9 JMP)
-# E9 XXXXXXXX   JMP XXXXXXXX (ì í”„í•  ì£¼ì†Œ - í˜„ì¬ ëª…ë ¹ì–´ ì£¼ì†Œ - 5), 5ëŠ” í˜„ì¬ ëª…ë ¹ì–´ í¬ê¸°
+# JMP - »ó´ëÁÖ¼Ò Á¡ÇÁ ½Ã »ç¿ë(Ä¿³Î ·çÆ®Å¶µµ »ç¿ë) (Signature<Prologue/Epilogue> : E9 JMP)
+# E9 XXXXXXXX   JMP XXXXXXXX (Á¡ÇÁÇÒ ÁÖ¼Ò - ÇöÀç ¸í·É¾î ÁÖ¼Ò - 5), 5´Â ÇöÀç ¸í·É¾î Å©±â
 ########################################
 
+
 class INLINEHOOK():
-    def __init__(self, x86_mem_pae, arch, os_version, build, base_address):
+    def __init__(self, x86_mem_pae, arch, os_version, base_address):
         self.x86_mem_pae = x86_mem_pae
         self.arch = arch
         self.os_version = os_version
         self.base_address = base_address
 
-    def check_hook_code(self, address):
+    def check_prologue(self, address):
+        base_pointer = address + self.base_address
+
+        buf = self.x86_mem_pae.read(base_pointer, 12)
+
+        code = Decode(base_pointer, buf, Decode64Bits)
+
+        # code[0] format : (address, instruction size, instruction, hex string)
+        call_address = 0
+        inst_opcode2 = code[1][2].split(' ')[0]
+        inst_opcode = code[0][2].split(' ')[0]
+
+        if inst_opcode == 'MOV':
+            if inst_opcode2 == 'JMP' or inst_opcode2 == 'CALL' or inst_opcode2 == 'RET':
+                call_address = code[0][2].split(' ')[2]  # operand
+
+        elif inst_opcode == 'JMP':
+            call_address = code[0][2].split(' ')[1] # operand
+
+        if call_address == 0:
+            print 'No Prologue hook'
+        else:
+            print 'JMP Address : %x'%(call_address)
+
+        return call_address
+
+    def find_function_in_code(self, caller_addr, callee_addr):
+        #print 'Callie Address : %x'%(callie_addr+self.base_address)
+        base_pointer = caller_addr + self.base_address
+        buf = self.x86_mem_pae.read(base_pointer, 256)
+        code = Decode(base_pointer, buf, Decode64Bits)
+
+        findit = []
+        function_inst = []
+        for instruction in code:
+            function_inst.append(instruction)
+            if instruction[2].split(' ')[0] == 'RET':
+                break
+
+            inst_split = instruction[2].split(' ')
+            if inst_split[0] == 'CALL':
+                try:
+                    if int(inst_split[1], 16) == callee_addr+self.base_address:
+                        #print 'Find Function : %x'%instruction[0]
+                        findit.append(instruction)
+                except ValueError:
+                    continue    # bypass 'CALL reg/64'
+
+        return findit, function_inst
 
 
+# Korean comments
+# inline_quick - ÇÔ¼ö ÇÁ·Ñ·Î±×¸¦ Ã¼Å©ÇÏ¿© JMP°¡ ÀÖ´ÂÁö È®ÀÎÇÏ´Â ¹æ¹ı
+# 5¹ÙÀÌÆ®¸¦ Ã¼Å©ÇÏ¿© Á¡ÇÁÇÏ´Â ¹æ¹ıÀÌ ÀÖÁö¸¸, MOV-JMP ¸¦ °í·ÁÇÏ¿© ÀÛ¼º
+def inline_quick(x86_mem_pae, sym_addr, arch, os_version, base_address):
+    inline = INLINEHOOK(x86_mem_pae, arch, os_version, base_address)
+    call_address = inline.check_prologue(sym_addr)
+    return call_address
 
-def inline_quick(x86_mem_pae, sym_addr, arch, os_version, build, base_address):
-    INLINEHOOK()
-
-
-
-def inline_detail():
+# Return : function counter, instruction set
+def find_function_in_code(x86_mem_pae, caller_addr, callee_addr, arch, os_version, base_address):
+    inline = INLINEHOOK(x86_mem_pae, arch, os_version, base_address)
+    ret, code = inline.find_function_in_code(caller_addr, callee_addr)
+    return ret, code

@@ -55,6 +55,10 @@ from plugins.notifier import get_notifier_table, print_notifier_list
 from plugins.trustedbsd import get_mac_policy_table, print_mac_policy_list
 
 from plugins.fbt_systab import check_fbt_syscall, print_fbt_syscall
+from plugins.inline_hook_finder import inline_quick, find_function_in_code
+from plugins.bsm_hook import find_auto_commit
+from plugins.kauth_hook import kauth_hook
+from plugins.kdebug import kdebug_hook
 
 from vatopa.machaddrspace import MachoAddressSpace, isMachoVolafoxCompatible, is_universal_binary
 
@@ -402,3 +406,22 @@ class volafox():
         fbt_list = check_fbt_syscall(self.x86_mem_pae, sym_addr, self.arch, self.os_version, self.build, self.base_address)
         print_fbt_syscall(fbt_list, self.symbol_list, self.base_address)
 
+    # for testing
+    def inline_quick(self, func_name):
+        sym_addr = self.symbol_list[func_name]
+        inline_quick(self.x86_mem_pae, sym_addr, self.arch, self.os_version, self.base_address)
+
+    # for testing
+    def find_function(self, caller_func, callie_func):
+        caller_addr = self.symbol_list[caller_func]
+        callee_addr = self.symbol_list[callie_func]
+        find_function_in_code(self.x86_mem_pae, caller_addr, callee_addr, self.arch, self.os_version, self.base_address)
+
+    def find_bsm_hook(self):
+        find_auto_commit(self.x86_mem_pae, self.symbol_list, self.arch, self.os_version, self.base_address)
+
+    def find_kauth_hook(self):
+        kauth_hook(self.x86_mem_pae, self.symbol_list, self.arch, self.os_version, self.base_address)
+
+    def find_kdebug_hook(self):
+        kdebug_hook(self.x86_mem_pae, self.symbol_list, self.arch, self.os_version, self.base_address)

@@ -62,6 +62,12 @@ def usage():
     #print 'notifiers       : Detects I/O Kit function hooking (experiment)'
     print 'trustedbsd      : Show TrustedBSD MAC Framework'
     print 'bash_history    : Show history in bash process'
+    print ''
+    print 'Kernel Rootkit Finder: (testing code by n0fate)'
+    print 'kdebug_hook     : Finding inline hooking method for hiding on kernel_debug'
+    print 'kauth_hook      : Finding inline hooking method for hiding on Anti-virus'
+    print 'bsm_hook        : Checking to calling auto_commit function on audit_syscall_exit'
+    print 'fbt_syscall     : Checking syscall table for hooking by DTrace FBT Provider'
 #    print 'net_info_test\t network information(plist), (experiment)'
 
 def main():
@@ -73,11 +79,12 @@ def main():
     mflag = 0   
     tflag = 0           # task dump option
     pid = -1            # LSOF: relocated this definition
+    callie = ''
 
     try:
         # LSOF: added -p flag for pid specification with lsof, -v no longer needs arg
         #option, args = getopt.getopt(sys.argv[1:], 'o:i:x:v:m:')
-        option, args = getopt.getopt(sys.argv[1:], 'o:i:x:vfp:')
+        option, args = getopt.getopt(sys.argv[1:], 'o:i:x:vp:f:')
 
     except getopt.GetoptError, err:
         print str(err)
@@ -108,6 +115,11 @@ def main():
                     pid = int(x[1], 10)
                     debug += ' -x %d' %pid
                     dflag = 1
+                    break
+
+                elif p == 'inline_quick' and x[0] == '-x':  # function name
+                    pid = str(x[1])
+                    debug += ' -x %s' %pid
                     break
         
                 elif p == 'machdump' and x[0] == '-x': # process dump
@@ -285,6 +297,23 @@ def main():
 
     elif oflag == 'fbt_syscall':
         m_volafox.fbt_syscall()
+        sys.exit()
+
+    elif oflag == 'inline_quick':
+        print 'func : %s'%pid
+        m_volafox.inline_quick(pid)
+        sys.exit()
+
+    elif oflag == 'bsm_hook':
+        m_volafox.find_bsm_hook()
+        sys.exit()
+
+    elif oflag == 'kauth_hook':
+        m_volafox.find_kauth_hook()
+        sys.exit()
+
+    elif oflag == 'kdebug_hook':
+        m_volafox.find_kdebug_hook()
         sys.exit()
 
     else:
