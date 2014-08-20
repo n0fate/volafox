@@ -63,11 +63,11 @@ def usage():
     print 'trustedbsd      : Show TrustedBSD MAC Framework'
     print 'bash_history    : Show history in bash process'
     print ''
-    print 'Kernel Rootkit Finder: (testing code by n0fate)'
-    print 'kdebug_hook     : Finding inline hooking method for hiding on kernel_debug'
-    print 'kauth_hook      : Finding inline hooking method for hiding on Anti-virus'
-    print 'bsm_hook        : Checking to calling auto_commit function on audit_syscall_exit'
-    print 'fbt_syscall     : Checking syscall table for hooking by DTrace FBT Provider'
+    print 'Kernel Rootkit Detection: (testing code by n0fate) - Required Library : distorm3'
+    print 'kdebug_hook     : Examination of the KDebug function code for mal-code detection'
+    print 'kauth_hook      : Examination of the KAUTH for mal-code hiding detection from Anti-virus'
+    print 'bsm_hook        : Examination of auto_commit function on the OpenBSM'
+    print 'fbt_syscall     : Examination of syscall table for hooking by DTrace FBT Provider'
 #    print 'net_info_test\t network information(plist), (experiment)'
 
 def main():
