@@ -110,9 +110,9 @@ class process_manager:
             elif self.os_version == 12:
                 PROC_STRUCTURE = DATA_PROC_STRUCTURE[4] # Mountain Lion
             elif self.os_version == 13:
-                PROC_STRUCTURE = DATA_PROC_STRUCTURE[5] # above Mavericks
+                PROC_STRUCTURE = DATA_PROC_STRUCTURE[5] # Mavericks
             elif self.os_version >= 14:
-                PROC_STRUCTURE = DATA_PROC_STRUCTURE[6] # above Mavericks
+                PROC_STRUCTURE = DATA_PROC_STRUCTURE[6] # above Yosemite
             else:
                 PROC_STRUCTURE = DATA_PROC_STRUCTURE[3] # Snow Leopard 64bit
 
@@ -486,17 +486,17 @@ def get_task_dump(x86_mem_pae, sym_addr, count, arch, os_version, build, task_id
       return
 
     PROC_STRUCTURE = ProcMan.get_proc_struct()
-    proc_matched = ProcMan.get_proc(task[4], PROC_STRUCTURE)[0]
+    #proc_matched = ProcMan.get_proc(task[4], PROC_STRUCTURE)[0]
     
-    if len(proc_matched) == 0:
-        print '[+] task dump failed'
-        return 
+    #if len(proc_matched) == 0:
+    #    print '[+] task dump failed'
+    #    return
 
     retData = ProcMan.get_proc_region(task_struct[3][3], 0x00, 0) # 
     
     vm_list = retData[0]
     vm_struct = retData[1]
-    ProcMan.get_proc_dump(vm_list, vm_struct, str(proc_matched[1])+'-'+proc_matched[14], mempath)
+    ProcMan.get_proc_dump(vm_list, vm_struct, str(task_id), mempath)
     
     return
     

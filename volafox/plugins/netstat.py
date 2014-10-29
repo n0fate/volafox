@@ -55,7 +55,7 @@ class network_manager():
             PTR_SIZE = DATA_PTR_SIZE[0]
             NETWORK_STRUCTURE = DATA_NETWORK_STRUCTURE[0]
         else:
-          if self.os_version == 13:
+          if self.os_version >= 13:
             PTR_SIZE = DATA_PTR_SIZE[1]
             NETWORK_STRUCTURE = DATA_NETWORK_STRUCTURE[2]
           else:
