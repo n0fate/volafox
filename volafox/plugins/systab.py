@@ -1,12 +1,24 @@
 import sys
 import struct
-
 from tableprint import columnprint
 
 # http://opensource.apple.com/source/xnu/xnu-xxxx.xx.xx/bsd/sys/sysent.h
 
+
+
+sy_return_type = {
+    0: 'NONE',
+    1: 'INT',
+    2: 'UINT',
+    3: 'OFFSET',
+    4: 'ADDRESS',
+    5: 'SIZE',
+    6: 'SSIZE', # Length : [-1, {SSIZE_MAX}]
+    7: 'UINT64'
+}
+
 # SN/Lion 32bit, SN/Lion/ML 64bit, Mavericks
-DATA_SYSCALL_TABLE_STRUCTURE = [[24, '=h2xIIIII'], [40, '=I4xQQQII'], [32, '=QQQIHH']]
+DATA_SYSCALL_TABLE_STRUCTURE = [[24, '=h2xIIIII'], [40, '=I4xQQQII'], [32, '=QQQIHH'], [24, '=QQIHH']]
 
 
 class systab_manager():
@@ -32,6 +44,11 @@ class systab_manager():
             SYSCALL_TABLE_STRUCTURE = DATA_SYSCALL_TABLE_STRUCTURE[2]
             nsysent = self.x86_mem_pae.read(sym_addr + self.base_address, 8) # .data _nsysent
             data = struct.unpack('Q', nsysent)
+        elif self.os_version == 14: # Mavericks
+            SYSCALL_TABLE_STRUCTURE = DATA_SYSCALL_TABLE_STRUCTURE[3]
+            nsysent = self.x86_mem_pae.read(sym_addr + self.base_address, 8) # .data _nsysent
+            data = struct.unpack('Q', nsysent)
+
         else:
             print '[+] systab support SN/Lion/ML/Mavericks'
             return syscall_list
@@ -61,6 +78,20 @@ class systab_manager():
                 tmplist.append(data[3]) # system call return types
                 tmplist.append(data[5]) #  Total size of arguments bytes for 32bit system calls
 
+        elif self.os_version == 14: # Yosemite
+            sysentaddr = sym_addr + self.base_address - 0x69978
+            #print '%x'%self.x86_mem_pae.vtop(sysentaddr)
+            for count in range(0, data[0]):
+                tmplist = []
+                sysent = self.x86_mem_pae.read(sysentaddr + (count*SYSCALL_TABLE_STRUCTURE[0]), SYSCALL_TABLE_STRUCTURE[0]); # .data _nsysent
+                data = struct.unpack(SYSCALL_TABLE_STRUCTURE[1], sysent) # uint32
+                tmplist.append(data[3]) # number of args
+                tmplist.append(data[0]) # system call
+                tmplist.append(0X00) # Not Available on Yosemite
+                tmplist.append(data[1]) # system call arguments munger for 64-bit process
+                tmplist.append(data[2]) # system call return types
+                tmplist.append(data[4]) #  Total size of arguments bytes for 32bit system calls
+
                 syscall_list.append(tmplist)
             #print '%x'%self.x86_mem_pae.vtop(sysentaddr + (count*SYSCALL_TABLE_STRUCTURE[0]))
 
@@ -76,7 +107,6 @@ def print_syscall_table(data_list, symbol_list, base_address):
     sym_addr_list = symbol_list.values()
     print '[+] Syscall List'
     headerlist = ["NUM","ARG_COUNT", "NAME", "CALL_PTR", "ARG_MUNGE32_PTR", "ARG_MUNGE64_PTR", "RET_TYPE", "ARG_BYTES", "HOOK_FINDER"]
-    #print 'number\tsy_narg\tsy_resv\tsy_flags\tsy_call_ptr\tsy_arg_munge32_ptr\tsy_arg_munge64_ptr\tsy_ret_type\tsy_arg_bytes\tValid Function Address'
     contentlist = []
     
     count = 0
@@ -95,7 +125,10 @@ def print_syscall_table(data_list, symbol_list, base_address):
         line.append('0x%.8X'%data[1])
         line.append('0x%.8X'%data[2])
         line.append('0x%.8X'%data[3])
-        line.append('%d'%data[4])
+        try:
+            line.append('%s'%sy_return_type[data[4]])
+        except:
+            line.append('%d'%data[4])
         line.append('%d'%data[5])
         if symflag == 1:
             line.append('True')

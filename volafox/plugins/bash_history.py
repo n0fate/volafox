@@ -62,9 +62,12 @@ class bash_history:
 							if timebuf != '':
 								for byte in range(value[0], vm_address[1], 1):
 									buf = proc_pae.read(byte, 1)
-									if struct.unpack('b', buf)[0] == 0:
-										break
-									linebuf += struct.unpack('c', buf)[0]
+									try:
+										if struct.unpack('b', buf)[0] == 0:
+											break
+										linebuf += struct.unpack('c', buf)[0]
+									except struct.error:
+										continue
 							temp_list.append(long(timebuf))
 							temp_list.append(linebuf)
 

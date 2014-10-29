@@ -15,7 +15,8 @@ DATA_PROC_STRUCTURE = [[476+24+168, '=4xIIIII4xII88xI276xQII20xbbbb52sI164xI', 1
     [752+24+268, '=8xQQQQI4xII152xQ456xQQQ16xbbbb52sQ264xI', 32, '=QQQQ', 303, '=IQQIQQQ255s', 120, '=24xI4x8x64xI12x'],
     [1028, '=8xQQQQI4xII144xQ448xQQQ16xbbbb52sQ264xI', 32, '=QQQQ', 303, '=IQQIQQQ255s', 120, '=24xI4x8x64xI12x'], 
     [752+24+276, '=8xQQQQI4xII152xQ456xQQQ16xbbbb52sQ272xI', 32, '=QQQQ', 303, '=IQQIQQQ255s', 120, '=24xI4x8x64xI12x'],
-    [760+24+268, '=8xQQQQI4xII160xQ456xQQQ16xbbbb52sQ264xI', 32, '=QQQQ', 303, '=IQQIQQQ255s', 120, '=24xI4x8x64xI12x']]
+    [760+24+268, '=8xQQQQI4xII160xQ456xQQQ16xbbbb52sQ264xI', 32, '=QQQQ', 303, '=IQQIQQQ255s', 120, '=24xI4x8x64xI12x'],
+    [760+24+268+16, '=8xQQQQI4xII160xQ456xQQQ16xbbbb52sQ264x16xI', 32, '=QQQQ', 303, '=IQQIQQQ255s', 120, '=24xI4x8x64xI12x']]
     # Mavericks add new element in proc structure : uint64_t   p_puniqueid;        /* parent's unique ID - set on fork/spawn/vfork, doesn't change if reparented. */
 
 # Lion 32bit, SN 32bit, Lion64bit, SN 64bit, Mountain Lion 64bit
@@ -107,9 +108,11 @@ class process_manager:
             if self.os_version == 11:
                 PROC_STRUCTURE = DATA_PROC_STRUCTURE[2] # Lion 64bit
             elif self.os_version == 12:
-                PROC_STRUCTURE = DATA_PROC_STRUCTURE[4]
+                PROC_STRUCTURE = DATA_PROC_STRUCTURE[4] # Mountain Lion
             elif self.os_version == 13:
-                PROC_STRUCTURE = DATA_PROC_STRUCTURE[5]
+                PROC_STRUCTURE = DATA_PROC_STRUCTURE[5] # above Mavericks
+            elif self.os_version >= 14:
+                PROC_STRUCTURE = DATA_PROC_STRUCTURE[6] # above Mavericks
             else:
                 PROC_STRUCTURE = DATA_PROC_STRUCTURE[3] # Snow Leopard 64bit
 
@@ -117,10 +120,10 @@ class process_manager:
 
     def get_kernel_task_addr(self, sym_addr):
         if self.arch == 32:
-            kernproc = self.x86_mem_pae.read(sym_addr+self.base_address, 4); # __DATA.__common _kernproc
+            kernproc = self.x86_mem_pae.read(sym_addr+self.base_address, 4) # __DATA.__common _kernproc
             proc_sym_addr = struct.unpack('I', kernproc)[0]
         else:
-            kernproc = self.x86_mem_pae.read(sym_addr+self.base_address, 8); # __DATA.__common _kernproc
+            kernproc = self.x86_mem_pae.read(sym_addr+self.base_address, 8) # __DATA.__common _kernproc
             proc_sym_addr = struct.unpack('Q', kernproc)[0]
 
         return proc_sym_addr
@@ -237,7 +240,7 @@ class process_manager:
                 VME_STRUCTURE = DATA_VME_STRUCTURE[2]
             elif self.os_version == 12: # Mountain Lion
                 VME_STRUCTURE = DATA_VME_STRUCTURE[2]
-            elif self.os_version == 13: # Mavericks
+            elif self.os_version >= 13: # above Mavericks
                 VME_STRUCTURE = DATA_VME_STRUCTURE[4]
             else:
                 VME_STRUCTURE = DATA_VME_STRUCTURE[3]

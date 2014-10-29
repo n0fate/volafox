@@ -33,7 +33,7 @@ class Mach_Trap_Table():
         else:
             if self.osversion == 10:
                 MACH_TRAP_TABLE = DATA_MACH_TRAP_TABLE_STRUCTURE[1]
-            elif self.osversion == 13:
+            elif self.osversion >= 13:
                 MACH_TRAP_TABLE = DATA_MACH_TRAP_TABLE_STRUCTURE[4] # Mavericks
             else:
                 MACH_TRAP_TABLE = DATA_MACH_TRAP_TABLE_STRUCTURE[3]

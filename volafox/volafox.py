@@ -43,7 +43,7 @@ from plugins.mach_trap import get_mach_trap_table_list, print_mach_trap_table
 from plugins.mount import get_mount_list, print_mount_list
 from plugins.netstat import get_network_hash, print_network_list, get_network_list
 from plugins.pe_state import get_pe_state, print_pe_state, get_boot_args, print_boot_args
-from plugins.efiinfo import get_efi_system_table, print_efi_system_table, get_efi_runtime_services
+from plugins.efiinfo import get_efi_system_table, print_efi_system_table, get_efi_runtime_services, print_efi_runtime_services
 
 from plugins.keychaindump import dump_master_key, print_master_key
 from plugins.bash_history import dump_bash_history, print_bash_history
