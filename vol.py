@@ -31,15 +31,15 @@ def usage():
     print ''
     print 'volafox: Mac OS X Memory Analysis Toolkit'
     print 'project: http://code.google.com/p/volafox'
-    print 'support: 10.6-9(Snow Leopard ~ Mavericks); 32/64-bit kernel'
+    print 'support: 10.6-10(Snow Leopard ~ Yosemite); 32/64-bit kernel'
     print '  input: *.vmem (VMWare memory file), *.mmr (Mac Memory Reader, flattened x86, IA-32e)'
-    print '  usage: python %s -i IMAGE [-o COMMAND [-vp PID][-x PID][-x KEXT_ID][-x TASKID]]\n' %sys.argv[0]
+    print '  usage: python %s -i IMAGE [-o COMMAND [-vp PID][-x PID][-x KEXT_ID][-x TASKID][-x SYMFILENAME]]\n' %sys.argv[0]
     
     print 'Options:'
     print '-o CMD            : Print kernel information for CMD (below)'
     print '-p PID            : List open files for PID (where CMD is "lsof")'
     print '-v                : Print all files, including unsupported types (where CMD is "lsof")'  
-    print '-x PID/KID/TASKID : Dump process/task/kernel extension address space for PID/KID/Task ID (where CMD is "ps"/"kextstat"/"tasks"/"machdump")\n'
+    print '-x PID/KID/TASKID/SYMBOLNAME : Dump process/task/kernel extension address space for PID/KID/Task ID (where CMD is "ps"/"kextstat"/"tasks"/"machdump"/"dumpsym")\n'
     
     print 'COMMANDS:'
     print 'system_profiler : Kernel version, CPU, and memory spec, Boot/Sleep/Wakeup time'
@@ -62,6 +62,7 @@ def usage():
     #print 'notifiers       : Detects I/O Kit function hooking (experiment)'
     print 'trustedbsd      : Show TrustedBSD MAC Framework'
     print 'bash_history    : Show history in bash process'
+    print 'dumpsym         : Dump kernel symbol address considered of KASLR to file (for RE), experiment'
     print ''
     print 'Kernel Rootkit Detection: (testing code by n0fate) - Required Library : distorm3'
     print 'kdebug_hook     : Examination of the KDebug function code for mal-code detection'
@@ -79,7 +80,8 @@ def main():
     mflag = 0   
     tflag = 0           # task dump option
     pid = -1            # LSOF: relocated this definition
-    callie = ''
+    #callie = ''
+    filename = ''
 
     try:
         # LSOF: added -p flag for pid specification with lsof, -v no longer needs arg
@@ -131,6 +133,11 @@ def main():
                     kext_num = int(x[1], 10)
                     debug += ' -x %d' %kext_num
                     mflag = 1
+                    break
+
+                elif p =='dumpsym' and x[0] == '-x': # kext dump
+                    filename = str(x[1])
+                    debug += ' -x %s' %filename
                     break
 
                 elif p == 'tasks' and x[0] == '-x': # task dump
@@ -314,6 +321,13 @@ def main():
 
     elif oflag == 'kdebug_hook':
         m_volafox.find_kdebug_hook()
+        sys.exit()
+
+    elif oflag == 'dumpsym':
+        if len(filename) == 0:
+            print '[+] WARNING: -x Argument Error. Please enter dump file name(-x option)'
+            sys.exit()
+        m_volafox.export_symbol_table(filename)
         sys.exit()
 
     else:

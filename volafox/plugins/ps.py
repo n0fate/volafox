@@ -364,9 +364,7 @@ class process_manager:
     def get_proc_dump(self, vm_list, vm_struct, process_name, mempath):
 
         pm_cr3 = self.get_proc_cr3(vm_list, vm_struct)
-        
-        proc_pae = 0
-        
+
         print '[+] Resetting the Page Mapping Table: 0x%x'%pm_cr3
         
         proc_pae = IA32PML4MemoryPae(FileAddressSpace(mempath), pm_cr3)

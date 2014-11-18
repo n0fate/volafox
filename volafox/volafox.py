@@ -44,6 +44,7 @@ from plugins.mount import get_mount_list, print_mount_list
 from plugins.netstat import get_network_hash, print_network_list, get_network_list
 from plugins.pe_state import get_pe_state, print_pe_state, get_boot_args, print_boot_args
 from plugins.efiinfo import get_efi_system_table, print_efi_system_table, get_efi_runtime_services, print_efi_runtime_services
+from plugins.export_table_symbol import dump_symbollist
 
 from plugins.keychaindump import dump_master_key, print_master_key
 from plugins.bash_history import dump_bash_history, print_bash_history
@@ -425,3 +426,6 @@ class volafox():
 
     def find_kdebug_hook(self):
         kdebug_hook(self.x86_mem_pae, self.symbol_list, self.arch, self.os_version, self.base_address)
+
+    def export_symbol_table(self, filename):
+        dump_symbollist(self.x86_mem_pae, self.arch, self.os_version, self.build, self.base_address, self.symbol_list, filename)

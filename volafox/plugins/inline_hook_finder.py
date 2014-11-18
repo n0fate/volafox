@@ -1,21 +1,22 @@
 # -*- coding: cp949 -*-
-
-from distorm3 import Decode, Decode16Bits, Decode32Bits, Decode64Bits
+try:
+    from distorm3 import Decode, Decode16Bits, Decode32Bits, Decode64Bits
+except:
+    print 'Inline function hook finder need to distorm3.'
 
 # Copyright by n0fate
 # License : GPLv2
 # Only Working for Mountain Lion and Mavericks (IA-32e)
 # This plugin will be used to find the general method of inline code modification
 #
-# following text is a Korean-language comment
 #
-# 후킹에 사용하는 명령어는 JMP, CALL, RET이 있음
+# The most instruction for hooking is JMP, CALL and RET
 ############### 예제 #####################
-# PUSH + RET - 리턴 시 스택에 저장된 주소로 제어를 이전하는 방법을 사용 (Signature<Prologue> : C3(RETN))
+# PUSH + RET - (Signature<Prologue> : C3(RETN))
 # 68 00104000   PUSH 00401000
 # C3            RETN
 ########################################
-# MOV + JMP - 가장 많이 사용하는 방법 (Signature<Prologue/Epilogue> : FFE0)
+# MOV + JMP - Most used technique (Signature<Prologue/Epilogue> : FFE0)
 #
 # 32bit
 # B8 00104000   MOV EAX, 00401000
@@ -27,8 +28,8 @@ from distorm3 import Decode, Decode16Bits, Decode32Bits, Decode64Bits
 # 48B8 3508400000000000 MOV RAX, 0x0000000000400835
 # FFE0                  JMP RAX
 ########################################
-# JMP - 상대주소 점프 시 사용(커널 루트킷도 사용) (Signature<Prologue/Epilogue> : E9 JMP)
-# E9 XXXXXXXX   JMP XXXXXXXX (점프할 주소 - 현재 명령어 주소 - 5), 5는 현재 명령어 크기
+# JMP - (Signature<Prologue/Epilogue> : E9 JMP)
+# E9 XXXXXXXX   JMP XXXXXXXX (target address - address of current instruction - 5), 5 is length of current instruction
 ########################################
 
 
@@ -91,8 +92,7 @@ class INLINEHOOK():
 
 
 # Korean comments
-# inline_quick - 함수 프롤로그를 체크하여 JMP가 있는지 확인하는 방법
-# 5바이트를 체크하여 점프하는 방법이 있지만, MOV-JMP 를 고려하여 작성
+# inline_quick - Checking JMP instruction in function prologue considered as MOV-JMP instructions
 def inline_quick(x86_mem_pae, sym_addr, arch, os_version, base_address):
     inline = INLINEHOOK(x86_mem_pae, arch, os_version, base_address)
     call_address = inline.check_prologue(sym_addr)
