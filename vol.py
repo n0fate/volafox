@@ -37,9 +37,10 @@ def usage():
     
     print 'Options:'
     print '-o CMD            : Print kernel information for CMD (below)'
-    print '-p PID            : List open files for PID (where CMD is "lsof")'
+    print '-p PID            : List open files for PID (where CMD is "lsof" and dumpfile)'
     print '-v                : Print all files, including unsupported types (where CMD is "lsof")'  
-    print '-x PID/KID/TASKID/SYMBOLNAME : Dump process/task/kernel extension address space for PID/KID/Task ID (where CMD is "ps"/"kextstat"/"tasks"/"machdump"/"dumpsym")\n'
+    print '-x PID/KID/TASKID/SYMBOLNAME/Virtual ADDRESS :'
+    print '   Dump process/task/kernel extension address space for PID/KID/Task ID (where CMD is "ps"/"kextstat"/"tasks"/"machdump"/"dumpsym"/"dumpfile")\n'
     
     print 'COMMANDS:'
     print 'system_profiler : Kernel version, CPU, and memory spec, Boot/Sleep/Wakeup time'
@@ -53,7 +54,7 @@ def usage():
     print 'mtt             : Mach trap table (Hooking detection)'
     print 'netstat         : Network socket listing (Hash table)'
     print 'lsof            : Open files listing by process (research, osxmem@gmail.com)'    # LSOF: new lsof command
-    print 'dumpfile        : Dump a file on Memory'
+    print 'dumpfile        : Dump a file on Memory (Required -p and -x option)'
     print 'pestate         : Show Boot information'
     print 'efiinfo         : EFI System Table, EFI Runtime Services'
     print 'keychaindump    : Dump master key candidates for decrypting keychain(Lion ~ Mavericks)'
