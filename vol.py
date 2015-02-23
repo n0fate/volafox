@@ -53,6 +53,7 @@ def usage():
     print 'mtt             : Mach trap table (Hooking detection)'
     print 'netstat         : Network socket listing (Hash table)'
     print 'lsof            : Open files listing by process (research, osxmem@gmail.com)'    # LSOF: new lsof command
+    print 'dumpfile        : Dump a file on Memory'
     print 'pestate         : Show Boot information'
     print 'efiinfo         : EFI System Table, EFI Runtime Services'
     print 'keychaindump    : Dump master key candidates for decrypting keychain(Lion ~ Mavericks)'
@@ -80,6 +81,7 @@ def main():
     mflag = 0   
     tflag = 0           # task dump option
     pid = -1            # LSOF: relocated this definition
+    offset = 0          # dumpfile
     #callie = ''
     filename = ''
 
@@ -112,6 +114,14 @@ def main():
                     pflag = 1;
                     debug += " -p %d" %pid
                     break
+
+                elif p == 'dumpfile' and x[0] == '-p':
+                    pid = int(x[1], 10)
+                    debug += " -p %x" %offset
+
+                elif p == 'dumpfile' and x[0] == '-x':
+                    offset = int(x[1], 16)
+                    debug += " -x %x" %offset
 
                 elif p == 'ps' and x[0] == '-x': # process dump
                     pid = int(x[1], 10)
@@ -212,7 +222,7 @@ def main():
 
     # test
     if oflag == 'get_phy':
-        m_volafox.get_read_address(0xffffff801afd87e8)
+        m_volafox.get_read_address(0xffffff802c0931f0)
         sys.exit()
 
     if oflag == 'system_profiler':
@@ -245,6 +255,14 @@ def main():
             print ""    # separate output from command specification
         filelist = m_volafox.lsof(pid, vflag)
         sys.exit()
+
+    elif oflag == 'dumpfile':
+        if not(offset) or not(pid):
+            print 'Check a dumpfile option'
+            return
+        if vflag:
+            print ""
+        m_volafox.dumpfile(offset, pid, vflag)
 
     elif oflag == 'systab':
         m_volafox.systab()

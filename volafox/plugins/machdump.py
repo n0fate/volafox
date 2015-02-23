@@ -71,10 +71,8 @@ class machdump:
         MACHHEADER = MACHHEADER_32
         SIZEOFMACHOHEADER = SIZEOFMACHOHEADER_32
 
-        COMMAND = ''
         COMMAND_32 = 'II16sIIII'
         COMMAND_64 = 'II16sQQQQ'
-        SIZEOFCOMMAND = 32
         SIZEOFCOMMAND_32 = 40 # bytes
         SIZEOFCOMMAND_64 = 56 # bytes
         TYPE_SEGMENT = 0x01
@@ -83,7 +81,6 @@ class machdump:
 
 
         dump_start = 0
-        dump_end = 0
         difference = 0
         mach_vme_list = []
         for vme_info in vm_list:
@@ -112,19 +109,15 @@ class machdump:
 
             file_offset = vme_info[0]
             dump_start = file_offset
-            final_dump_start = 0
             loadcommand_offset = file_offset+SIZEOFMACHOHEADER
-            #mach_vme_list.append(vme_info)
 
             for num_load_command in range(0, machoheader[4]):
-                #print 'offset: %x'%loadcommand_offset
                 loadcommand_t = proc_pae.read(loadcommand_offset, SIZEOFCOMMAND) # 'II16sII'
                 loadcommand = struct.unpack(COMMAND, loadcommand_t)
                 if loadcommand[2].split('\x00')[0] == '__PAGEZERO':
                     difference = dump_start - loadcommand[4]
                     loadcommand_offset = loadcommand_offset + loadcommand[1]
                     continue
-                #print '%x: %x-%.8x-%x'%(loadcommand[0], loadcommand[1], loadcommand[3], loadcommand[4])
                 if loadcommand[0] == TYPE_SEGMENT or loadcommand[0] == TYPE_SEGMENT64:
                     if loadcommand[2].split('\x00')[0] == '__PAGEZERO':
                         difference = dump_start - loadcommand[4]
@@ -134,20 +127,10 @@ class machdump:
                     mach_vme_info.append(loadcommand[3]+difference)
                     mach_vme_info.append(loadcommand[6]+loadcommand[3]+difference)
                     mach_vme_list.append(mach_vme_info)
-                    #if final_dump_start < loadcommand[3]:
-                    #    final_dump_start = loadcommand[3]
                 loadcommand_offset = loadcommand_offset + loadcommand[1]
-
-        # if final_dump_start == 0:
-        #     print '[+] Not availiable Mach O File'
-        #     return
-        # print '%x'%(final_dump_start+difference)
 
         file = open('%s-%x'%(pid_process_name, dump_start), mode="wb")
         for mach_vme_info in mach_vme_list:
-            # if difference+final_dump_start < vme_info[0]:
-            #     file.close()
-            #     break
             print ' [-] from %.8x to %.8x'%(mach_vme_info[0], mach_vme_info[1])
             nop_code = 0x00
             pk_nop_code = struct.pack('=B', nop_code)

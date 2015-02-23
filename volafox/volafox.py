@@ -32,6 +32,7 @@ _______________________SUPPORT_________________________
 import pickle # added by CL
 
 # LSOF: most research functionality consolidated here
+import plugins
 from plugins.lsof import getfilelist, printfilelist
 from plugins.imageinfo import get_imageinfo # user defined class > CL
 from plugins.system_profiler import get_system_profile
@@ -429,3 +430,18 @@ class volafox():
 
     def export_symbol_table(self, filename):
         dump_symbollist(self.x86_mem_pae, self.arch, self.os_version, self.build, self.base_address, self.symbol_list, filename)
+
+    def dumpfile(self, offset, pid, vflag):
+        sym_addr = self.symbol_list['_kernproc'] + self.base_address
+        if self.arch == 32:
+            # read 4 bytes from kernel executable or overlay starting at symbol _kernproc
+            kernproc = self.x86_mem_pae.read(sym_addr, 4);
+
+            # unpack pointer to the process list, only need the first member returned
+            proc_head = struct.unpack('I', kernproc)[0]
+
+        else: # 64-bit
+            kernproc = self.x86_mem_pae.read(sym_addr, 8);
+            proc_head = struct.unpack('Q', kernproc)[0]
+
+        plugins.lsof.filedump(self.x86_mem_pae, self.arch, self.os_version, proc_head, offset, pid, vflag)

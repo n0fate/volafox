@@ -11,7 +11,7 @@ except:
 #
 #
 # The most instruction for hooking is JMP, CALL and RET
-############### ¿¹Á¦ #####################
+############### example #####################
 # PUSH + RET - (Signature<Prologue> : C3(RETN))
 # 68 00104000   PUSH 00401000
 # C3            RETN
