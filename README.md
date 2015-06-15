@@ -6,6 +6,9 @@ Lastest version : [http://volafox.tumblr.com/post/75481455662/volafox-0-9-releas
 
 *_please check out our repository for all of features included experiment_*
 
+## License
+GNU GPL v2
+
 ## System Environment
 *Lang*: Python 2.x <br>
 *Arch*: Intel 32/64 bit<br>
