@@ -47,7 +47,7 @@ class keychaindump:
 				if proc_pae.is_valid_address(vm_offset):
 					signature = proc_pae.read(vm_offset, ptr_size)
 					
-					if 0x18 == struct.unpack(unpack_int, signature)[0]: # find specific hex code(0x00000018)
+					if KEY_SIZE == struct.unpack(unpack_int, signature)[0]: # find specific hex code(0x00000018)
 						#print signature.encode('hex')
 						key_buf = proc_pae.read(vm_offset+ptr_size, ptr_size)
 						key_buf_ptr = struct.unpack(unpack_int, key_buf)[0]

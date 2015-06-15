@@ -135,6 +135,7 @@ class process_manager:
         PROC_STRUCTURE = self.get_proc_struct()
 
         proc_sym_addr = self.get_kernel_task_addr(sym_addr)
+        proc_addr = []
 
         while 1:
             #break
@@ -143,7 +144,13 @@ class process_manager:
             if not(self.x86_mem_pae.is_valid_address(proc_sym_addr)):
                 break
             try:
+                #print '%x'%self.x86_mem_pae.vtop(proc_sym_addr)
                 proc = []
+
+                if proc_sym_addr in proc_addr:
+                    break
+
+                proc_addr.append(proc_sym_addr)
 
                 proc, next_proc_addr, pid_in_proc = self.get_proc(proc_sym_addr, PROC_STRUCTURE)
                 
@@ -331,10 +338,10 @@ class process_manager:
             else:
                 max_permission += '-'
             ##########################################
-            if vme_list[3] == user_stack:
-              print ' [-] Region from 0x%x to 0x%x (%s, max %s;), %s'%(vme_list[2], vme_list[3], permission, max_permission, "<UserStack>")
-            else:
-              print ' [-] Region from 0x%x to 0x%x (%s, max %s;)'%(vme_list[2], vme_list[3], permission, max_permission)
+            #if vme_list[3] == user_stack:
+            #  print ' [-] Region from 0x%x to 0x%x (%s, max %s;), %s'%(vme_list[2], vme_list[3], permission, max_permission, "<UserStack>")
+            #else:
+            #  print ' [-] Region from 0x%x to 0x%x (%s, max %s;)'%(vme_list[2], vme_list[3], permission, max_permission)
             #print 'next[data]: %x'%self.x86_mem_pae.vtop(vme_list[1])
             entry_next_ptr = vme_list[1]
             #print '%x'%self.x86_mem_pae.vtop(vme_list[1])
