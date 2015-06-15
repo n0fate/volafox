@@ -357,47 +357,15 @@ class volafox():
     def notifier(self):
     	notifier_symbol_list = []
 
-    	symbol_structure = ['IONotifier', self.symbol_list['__ZTV10IONotifier']]
-    	notifier_symbol_list.append(symbol_structure)
+    	# symbol_structure = ['IONotifier', self.symbol_list['__ZTV10IONotifier']]
+    	# notifier_symbol_list.append(symbol_structure)
 
-    	symbol_structure = ['IOServiceInterestNotifier', self.symbol_list['__ZTV26_IOServiceInterestNotifier']]
-    	notifier_symbol_list.append(symbol_structure)
-
-    	symbol_structure = ['IOServiceJob', self.symbol_list['__ZTV13_IOServiceJob']]
-    	notifier_symbol_list.append(symbol_structure)
-
-    	symbol_structure = ['IOConfigThread', self.symbol_list['__ZTV15_IOConfigThread']]
-    	notifier_symbol_list.append(symbol_structure)
+    	# symbol_structure = ['IOServiceInterestNotifier', self.symbol_list['__ZTV26_IOServiceInterestNotifier']]
+    	# notifier_symbol_list.append(symbol_structure)
 
     	symbol_structure = ['IOServiceNotifier', self.symbol_list['__ZTV18_IOServiceNotifier']]
     	notifier_symbol_list.append(symbol_structure)
 
-    	symbol_structure = ['IOOpenServiceIterator', self.symbol_list['__ZTV22_IOOpenServiceIterator']]
-    	notifier_symbol_list.append(symbol_structure)
-
-    	symbol_structure = ['IOOpenServiceIterator', self.symbol_list['__ZTV22_IOOpenServiceIterator']]
-    	notifier_symbol_list.append(symbol_structure)
-
-    	symbol_structure = ['PMEventDetails9MetaClassE', self.symbol_list['__ZTVN14PMEventDetails9MetaClassE']]
-    	notifier_symbol_list.append(symbol_structure)
-
-    	symbol_structure = ['IOPMRequest9MetaClassE', self.symbol_list['__ZTVN11IOPMRequest9MetaClassE']]
-    	notifier_symbol_list.append(symbol_structure)
-
-    	symbol_structure = ['IOPMRequestQueue9MetaClassE', self.symbol_list['__ZTVN16IOPMRequestQueue9MetaClassE']]
-    	notifier_symbol_list.append(symbol_structure)
-
-    	symbol_structure = ['IOPMWorkQueue9MetaClassE', self.symbol_list['__ZTVN13IOPMWorkQueue9MetaClassE']]
-    	notifier_symbol_list.append(symbol_structure)
-
-    	symbol_structure = ['IOPMCompletionQueue9MetaClassE', self.symbol_list['__ZTVN19IOPMCompletionQueue9MetaClassE']]
-    	notifier_symbol_list.append(symbol_structure)
-
-    	symbol_structure = ['IOServicePM9MetaClassE', self.symbol_list['__ZTVN11IOServicePM9MetaClassE']]
-    	notifier_symbol_list.append(symbol_structure)
-
-    	symbol_structure = ['IOServicePM', self.symbol_list['__ZTV11IOServicePM']]
-    	notifier_symbol_list.append(symbol_structure)
 
     	for symbol_structure in notifier_symbol_list:
     		notifier_list = get_notifier_table(self.x86_mem_pae, symbol_structure[1], self.arch, self.os_version, self.build, self.base_address)
