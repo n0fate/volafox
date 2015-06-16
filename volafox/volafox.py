@@ -83,8 +83,12 @@ class volafox():
         self.catfishlocation = 0 # low_vector position at memory
         self.base_address = 0 # find dynamic kernel location (Mountain Lion only)
 
-    def get_read_address(self, address):
-        print '%x'%self.x86_mem_pae.vtop(address+self.base_address)
+    def get_vtop(self, address):    # Get non-shifted address
+        print '%x'%self.x86_mem_pae.vtop(address)
+        return
+
+    def get_shift_vtop(self, address):  # Get shifted kernel symbol address
+        print '%x'%self.x86_mem_pae.vtop(address)
         return
     
     def overlay_loader(self, overlay_path, vflag):

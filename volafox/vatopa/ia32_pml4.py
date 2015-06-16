@@ -20,7 +20,7 @@
 @contact:      rapfer@gmail.com
 """
 
-"""Module for dealing with IA-32 with PML4 Paging Mechnism stuff
+"""Module for dealing with IA-32 with PML4 Paging mechanism stuff
  & based on x86.py (Volatility Framework)
 """
 import struct
@@ -44,7 +44,7 @@ entry_size = 8
 pointer_size = 8
 page_shift = 12 # page offset
 #ptrs_per_pte = 1024
-#ptrs_per_pgd = 1024
+ptrs_per_pgd = 1024
 ptrs_per_pae_pte = 512 ## 9 bits
 ptrs_per_pae_pgd = 512 ## 9 bits
 ptrs_per_pae_pml4 = 512 ## 9 bits
@@ -62,7 +62,6 @@ class IA32PML4MemoryPae:
     def __init__(self, baseAddressSpace, pml4):
         self.base = baseAddressSpace
         self.pml4_vaddr = pml4 # 32 bit address
-        #self.pgd_vaddr = pdbr
         self.pae = True
 
     def entry_present(self, entry):
@@ -86,7 +85,7 @@ class IA32PML4MemoryPae:
         return pml4 & 0xFFFFFFFE0
 
     def pml4_index(self, pml4):
-        return ((pml4 & 0x0000FFFFFFFFFFFF) >> pml4_shift)
+        return ((pml4 & 0xff8000000000) >> pml4_shift)
 
     ### PML4 Entry
     def get_pml4(self, vaddr):
@@ -94,14 +93,14 @@ class IA32PML4MemoryPae:
         return self.read_long_long_phys(pdpi_entry)
     
     ###
-    def pdpa_base(self, pml4e):
-        return pml4e & 0x0000FFFFFFFFF000
+    def pdpa_base(self, pdpi):
+        return pdpi & 0xFFFFFFFFFFFFF000
 
     def pdpi_index(self, pdpi):
-        return ((pdpi & 0x0000007FFFFFFFFF) >> pdpi_shift)
+        return ((pdpi & 0x7FFFFFFFFF) >> pdpi_shift)
 
-    def get_pdpi(self, vaddr, pml4e):
-        pdpi_entry = self.pdpa_base(pml4e) + self.pdpi_index(vaddr) * entry_size
+    def get_pdpi(self, vaddr, pdpi):
+        pdpi_entry = self.pdpa_base(pdpi) + self.pdpi_index(vaddr) * entry_size
         return self.read_long_long_phys(pdpi_entry)
 
     def pde_index(self, vaddr): 
@@ -137,6 +136,9 @@ class IA32PML4MemoryPae:
     def get_large_paddr(self, vaddr, pgd_entry):
         return (pgd_entry & 0x0000FFFFFFE00000) | (vaddr & 0x00000000001FFFFF)
 
+    def get_1GB_paddr(self, vaddr, pdpe):
+        return (pdpe & 0xfffffc0000000) | (vaddr & 0x3fffffff)
+
     def vtop(self, vaddr):
         retVal = None
         pdpi = self.get_pml4(vaddr) ###
@@ -146,6 +148,9 @@ class IA32PML4MemoryPae:
         pdpe = self.get_pdpi(vaddr, pdpi)
         if not self.entry_present(pdpe):
             return retVal
+
+        if self.page_size_flag(pdpe):
+            return self.get_1GB_paddr(vaddr, pdpe)
 
         pgd = self.get_pgd(vaddr,pdpe)
 
