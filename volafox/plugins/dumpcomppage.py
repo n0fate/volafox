@@ -231,12 +231,13 @@ class C_Segment(Struct):
 
 
 class dumpcomppage():
-    def __init__(self, x86_mem_pae, arch, os_version, base_address, symbollist):
+    def __init__(self, x86_mem_pae, arch, os_version, base_address, symbollist, dump_dir):
         self.x86_mem_pae = x86_mem_pae
         self.arch = arch
         self.os_version = os_version
         self.base_address = base_address
         self.symbol_list = symbollist
+        self.dump_dir = dump_dir
 
     def process(self):
         pages = self.getsegmentcount(self.symbol_list['_c_segment_count'])
@@ -245,7 +246,7 @@ class dumpcomppage():
 
         c_segment_list = []
         segbaseaddr = struct.unpack('=Q', self.x86_mem_pae.read(self.symbol_list['_c_segments'] + self.base_address, 8))[0]
-        print 'Base Address: %x, %x'%(self.x86_mem_pae.vtop(segbaseaddr), segbaseaddr)
+        #print 'Base Address: %x, %x'%(self.x86_mem_pae.vtop(segbaseaddr), segbaseaddr)
         addr = struct.unpack('=Q', self.x86_mem_pae.read(segbaseaddr, 8))[0]
         #print 'Address: %x, %x'%(self.x86_mem_pae.vtop(addr), addr)
 
@@ -258,7 +259,7 @@ class dumpcomppage():
             c_segment_list.append([i, c_segment])
 
         for segcount, c_segment in c_segment_list:
-            print 'Dump a Segment %d'%segcount
+            print 'Dump a Segment (%d/%d)'%(segcount, pages-1)
             if c_segment.isswapout():
                 #print 'swapout'
                 continue
@@ -304,7 +305,7 @@ class dumpcomppage():
                     try:
                         decompressed = WKdm_decompress_apple(data)
                         if decompressed:
-                            dirname = os.path.join(os.getcwd()+"/decompresspage", "segment%d"%segcount)
+                            dirname = os.path.join(self.dump_dir, "segment%d"%segcount)
                             try:
                                 os.mkdir(dirname)
                             except OSError:
@@ -323,17 +324,16 @@ class dumpcomppage():
 
 
 
-def dumpcompressedpage(x86_mem_pae, symbollist, arch, majorversion, base_address):
+def dumpcompressedpage(x86_mem_pae, symbollist, arch, majorversion, base_address, dump_dir):
     Struct.mem = x86_mem_pae
     Struct.arch = arch
     Struct.kvers = majorversion
     Struct.verb = False
 
-    dump_dir = os.getcwd()+"/decompresspage"
     try:
         os.mkdir(dump_dir)
     except OSError:
         pass
 
-    dump = dumpcomppage(x86_mem_pae, arch, majorversion, base_address, symbollist)
+    dump = dumpcomppage(x86_mem_pae, arch, majorversion, base_address, symbollist, dump_dir)
     dump.process()
