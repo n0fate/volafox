@@ -223,7 +223,7 @@ def main():
 
     # test
     if oflag == 'get_phy':
-        m_volafox.get_vtop(0xffffff8019a80f40)
+        m_volafox.get_vtop(0xffffff802d573c60)
         sys.exit()
 
     if oflag == 'system_profiler':
@@ -347,6 +347,10 @@ def main():
             print '[+] WARNING: -x Argument Error. Please enter dump file name(-x option)'
             sys.exit()
         m_volafox.export_symbol_table(filename)
+        sys.exit()
+
+    elif oflag == 'dumpcomppage':
+        m_volafox.dumpcompsegment()
         sys.exit()
 
     else:

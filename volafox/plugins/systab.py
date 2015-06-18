@@ -44,13 +44,13 @@ class systab_manager():
             SYSCALL_TABLE_STRUCTURE = DATA_SYSCALL_TABLE_STRUCTURE[2]
             nsysent = self.x86_mem_pae.read(sym_addr + self.base_address, 8) # .data _nsysent
             data = struct.unpack('Q', nsysent)
-        elif self.os_version == 14: # Mavericks
+        elif self.os_version == 14: # Yosemite
             SYSCALL_TABLE_STRUCTURE = DATA_SYSCALL_TABLE_STRUCTURE[3]
             nsysent = self.x86_mem_pae.read(sym_addr + self.base_address, 8) # .data _nsysent
             data = struct.unpack('Q', nsysent)
 
         else:
-            print '[+] systab support SN/Lion/ML/Mavericks'
+            print '[+] systab support Snow Leopard ~ Yosemite'
             return syscall_list
 
         if self.os_version <= 12:
@@ -79,7 +79,10 @@ class systab_manager():
                 tmplist.append(data[5]) #  Total size of arguments bytes for 32bit system calls
 
         elif self.os_version == 14: # Yosemite
-            sysentaddr = sym_addr + self.base_address - 0x69978
+            if self.build == '14D136':
+                sysentaddr = sym_addr + self.base_address - 0x6BDA8
+            else:    
+                sysentaddr = sym_addr + self.base_address - 0x69978
             #print '%x'%self.x86_mem_pae.vtop(sysentaddr)
             for count in range(0, data[0]):
                 tmplist = []
