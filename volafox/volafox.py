@@ -62,6 +62,8 @@ from plugins.bsm_hook import find_auto_commit
 from plugins.kauth_hook import kauth_hook
 from plugins.kdebug import kdebug_hook
 
+from plugins.dumpcomppage import dumpcompressedpage
+
 from vatopa.machaddrspace import MachoAddressSpace, isMachoVolafoxCompatible, is_universal_binary
 
 from vatopa.x86 import *
@@ -417,3 +419,6 @@ class volafox():
             proc_head = struct.unpack('Q', kernproc)[0]
 
         plugins.lsof.filedump(self.x86_mem_pae, self.arch, self.os_version, proc_head, offset, pid, vflag)
+
+    def dumpcompsegment(self):
+        dumpcompressedpage(self.x86_mem_pae, self.symbol_list, self.arch, self.os_version, self.base_address)
