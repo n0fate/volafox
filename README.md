@@ -23,18 +23,48 @@ GNU GPL v2
  * Flatten Mac Memory Reader Format using flatten.py(32bit, 64bit)
 
 ## Information
-* Kernel version, CPU and memory spec, boot/sleep/wakeup time<br>
-* Mounted filesystems<br>
-* Process listing and dump address space<br>
-* KEXT(Kernel Extensions) listing<br>
-* System Call / Mach Trap Table (Hooking Detection)<br>
-* Network socket listing
-* Open files listing by process
-* PE State information ( Device Tree, Video Memory Area)
-* EFI information ( EFI System Table, EFI Configuration Table, EFI Runtime Services)
-* extract keychain master key candidates
-* TrustedBSD analysis
-* other command : uname, dmesg ... etc 
+    volafox: Mac OS X Memory Analysis Toolkit
+    project: http://code.google.com/p/volafox
+    support: 10.6-10(Snow Leopard ~ Yosemite); 32/64-bit kernel
+      input: *.vmem (VMWare memory file), *.mmr (Mac Memory Reader, flattened x86, IA-32e)
+      usage: python vol.py -i IMAGE [-o COMMAND [-vp PID][-x PID][-x KEXT_ID][-x TASKID][-x SYMFILENAME]]
+    
+    Options:
+        -o CMD            : Print kernel information for CMD (below)
+        -p PID            : List open files for PID (where CMD is "lsof" and dumpfile)
+        -v                : Print all files, including unsupported types (where CMD is "lsof")
+        -x PID/KID/TASKID/SYMBOLNAME/Virtual ADDRESS :
+           Dump process/task/kernel extension address space for PID/KID/Task ID (where CMD is "ps"/"kextstat"/"tasks"/"machdump"/"dumpsym"/"dumpfile")
+    
+    COMMANDS:
+    system_profiler : Kernel version, CPU, and memory spec, Boot/Sleep/Wakeup time
+    mount           : Mounted filesystems
+    kextstat        : KEXT (Kernel Extensions) listing
+    kextscan        : Scanning KEXT (Kernel Extensions) (64bit OS only, experiment)
+    ps              : Process listing
+    tasks           : Task listing (Finding process hiding)
+    machdump        : Dump macho binary (experiment)
+    systab          : Syscall table (Hooking detection)
+    mtt             : Mach trap table (Hooking detection)
+    netstat         : Network socket listing (Hash table)
+    lsof            : Open files listing by process (research, osxmem@gmail.com)
+    dumpfile        : Dump a file on Memory (Required -p and -x option)
+    pestate         : Show Boot information
+    efiinfo         : EFI System Table, EFI Runtime Services
+    keychaindump    : Dump master key candidates for decrypting keychain(Lion ~ Yosemite)
+    dmesg           : Debug message at boot time
+    uname           : Print a short for unix name(uname)
+    hostname        : Print a hostname
+    notifiers       : Detects I/O Kit function hooking (experiment)
+    trustedbsd      : Show TrustedBSD MAC Framework
+    bash_history    : Show history in bash process
+    dumpsym         : Dump kernel symbol address considered of KASLR to file (for RE), experiment
+    
+    Kernel Rootkit Detection: (testing code by n0fate) - Required Library : distorm3
+    kdebug_hook     : Examination of the KDebug function code for mal-code detection
+    kauth_hook      : Examination of the KAUTH for mal-code hiding detection from Anti-virus
+    bsm_hook        : Examination of auto_commit function on the OpenBSM
+    fbt_syscall     : Examination of syscall table for hooking by DTrace FBT Provider
 
 
 
