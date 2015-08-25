@@ -81,6 +81,8 @@ class systab_manager():
         elif self.os_version == 14: # Yosemite
             if self.build == '14D136':
                 sysentaddr = sym_addr + self.base_address - 0x6BDA8
+            elif self.build == '14F27':
+                sysentaddr = sym_addr + self.base_address - 0x6BDA8
             else:    
                 sysentaddr = sym_addr + self.base_address - 0x69978
             #print '%x'%self.x86_mem_pae.vtop(sysentaddr)

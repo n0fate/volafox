@@ -255,11 +255,11 @@ class process_manager:
         vm_info = self.x86_mem_pae.read(task_ptr, VME_STRUCTURE[0])
         vm_struct = struct.unpack(VME_STRUCTURE[1], vm_info)
         
-        if vm_struct[7] == 0: # pmap_t
-            return vm_list, vm_struct
+        # if vm_struct[7] == 0: # pmap_t
+        #     return vm_list, vm_struct
 
-        if not(self.x86_mem_pae.is_valid_address(vm_struct[7])):
-            return vm_list, vm_struct
+        # if not(self.x86_mem_pae.is_valid_address(vm_struct[7])):
+        #     return vm_list, vm_struct
         
         ### 11.09.28 end n0fate
         #print '======= vm_map_t --> osfmk\\vm\\vm_map.h ========'
@@ -363,8 +363,10 @@ class process_manager:
                 PMAP_STRUCTURE = DATA_PMAP_STRUCTURE[4]
             else: # Leopard or Snow Leopard xnu-1456
                 PMAP_STRUCTURE = DATA_PMAP_STRUCTURE[5]
-        
-        pmap_info = self.x86_mem_pae.read(vm_struct[7], PMAP_STRUCTURE[0])
+        if self.os_version <= 12:
+            pmap_info = self.x86_mem_pae.read(vm_struct[6], PMAP_STRUCTURE[0])
+        else:    
+            pmap_info = self.x86_mem_pae.read(vm_struct[7], PMAP_STRUCTURE[0])
         pm_cr3 = struct.unpack(PMAP_STRUCTURE[1], pmap_info)[0]
         return pm_cr3
         
