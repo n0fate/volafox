@@ -79,9 +79,7 @@ class systab_manager():
                 tmplist.append(data[5]) #  Total size of arguments bytes for 32bit system calls
 
         elif self.os_version == 14: # Yosemite
-            if self.build == '14D136':
-                sysentaddr = sym_addr + self.base_address - 0x6BDA8
-            elif self.build == '14F27':
+            if self.build == '14D136' or '14E46' or '14F27':
                 sysentaddr = sym_addr + self.base_address - 0x6BDA8
             else:    
                 sysentaddr = sym_addr + self.base_address - 0x69978
