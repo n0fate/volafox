@@ -220,7 +220,7 @@ def print_kext(headerlist, contentlist, kext_list):
 
 def kext_dump(x86_mem_pae, sym_addr, sym_addr2, arch, os_version, build, KID, base_address):
     kextlist = []
-    kext_list = get_kext_list(x86_mem_pae, sym_addr, sym_addr2, arch, os_version, build, base_address)
+    kext_list = get_kext_list(x86_mem_pae, sym_addr, sym_addr2, arch, os_version, base_address)
 
     kextname = ''
     offset = 0

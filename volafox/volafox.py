@@ -357,7 +357,7 @@ class volafox():
 
     	sym_addr = self.symbol_list['_kmod']
     	sym_addr2 = self.symbol_list['_g_kernel_kmod_info']
-    	kext_list = get_kext_list(self.x86_mem_pae, sym_addr, sym_addr2, self.arch, self.os_version, self.build, self.base_address)
+    	kext_list = get_kext_list(self.x86_mem_pae, sym_addr, sym_addr2, self.arch, self.os_version, self.base_address)
 
     	print_mac_policy_list(mac_policy_list, mac_policy_structure, kext_list)
 

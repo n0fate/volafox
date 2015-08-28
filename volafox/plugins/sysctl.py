@@ -202,7 +202,7 @@ def print_sysctl(symbol_list, sysctllist, kextlist):
         for kext in kextlist:
         	if handler > kext[7] and handler < kext[7]+kext[8]:
         		flag = True
-        		line.append(kext[3].split('\x00')[0])
+        		line.append(kext[3].split('\x00')[0] + "(%x)"%handler)
         		break
         if not flag:
         	line.append('0x%08x'%(handler))
