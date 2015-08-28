@@ -63,6 +63,7 @@ from plugins.kauth_hook import kauth_hook
 from plugins.kdebug import kdebug_hook
 
 from plugins.dumpcomppage import dumpcompressedpage
+from plugins.sysctl import getsysctl
 
 from vatopa.machaddrspace import MachoAddressSpace, isMachoVolafoxCompatible, is_universal_binary
 
@@ -170,7 +171,7 @@ class volafox():
     def kextstat(self): # 11.11.23 64bit suppport
         sym_addr = self.symbol_list['_kmod']
         sym_addr2 = self.symbol_list['_g_kernel_kmod_info']
-        kext_list = get_kext_list(self.x86_mem_pae, sym_addr, sym_addr2, self.arch, self.os_version, self.build, self.base_address)
+        kext_list = get_kext_list(self.x86_mem_pae, sym_addr, sym_addr2, self.arch, self.os_version, self.base_address)
         print_kext_list(kext_list)
 
     def kextscan(self):
@@ -422,3 +423,6 @@ class volafox():
 
     def dumpcompsegment(self):
         dumpcompressedpage(self.x86_mem_pae, self.symbol_list, self.arch, self.os_version, self.base_address)
+
+    def checksysctl(self):
+        getsysctl(self.x86_mem_pae, self.symbol_list, self.arch, self.os_version, self.base_address)        

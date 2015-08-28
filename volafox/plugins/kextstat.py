@@ -11,7 +11,7 @@ class kext_manager():
     def __init__(self, x86_mem_pae, arch, base_address):
         self.x86_mem_pae = x86_mem_pae
         self.arch = arch
-	self.base_address = base_address
+        self.base_address = base_address
         
     def kern_kextstat(self, sym_addr): # 11.11.23 64bit suppport
         kext = []
@@ -155,7 +155,7 @@ class kext_manager():
 
 #################################### PUBLIC FUNCTIONS ####################################
 
-def get_kext_list(x86_mem_pae, sym_addr, sym_addr2, arch, os_version, build, base_address):
+def get_kext_list(x86_mem_pae, sym_addr, sym_addr2, arch, os_version, base_address):
     kextlist = []
     KEXTMan = kext_manager(x86_mem_pae, arch, base_address)
     kext_list = KEXTMan.get_kextstat(sym_addr)

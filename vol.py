@@ -223,7 +223,7 @@ def main():
 
     # test
     if oflag == 'get_phy':
-        m_volafox.get_vtop(0xffffff802d573c60)
+        m_volafox.get_vtop(0xffffff7f80bc7f26)
         sys.exit()
 
     if oflag == 'system_profiler':
@@ -351,6 +351,10 @@ def main():
 
     elif oflag == 'dumpcomppage':
         m_volafox.dumpcompsegment()
+        sys.exit()
+
+    elif oflag == 'sysctl':
+        m_volafox.checksysctl()
         sys.exit()
 
     else:
