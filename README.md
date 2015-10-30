@@ -12,7 +12,7 @@ GNU GPL v2
 ## System Environment
 *Lang*: Python 2.x <br>
 *Arch*: Intel 32/64 bit<br>
-*OS*: Snow Leopard(10.6), Lion(10.7), Mountain Lion(10.8), Mavericks(10.9), *Yosemite(10.10)*<br>
+*OS*: Snow Leopard(10.6), Lion(10.7), Mountain Lion(10.8), Mavericks(10.9), *Yosemite(10.10), El Capitan(10.11)*<br>
 
 ### Requirement
 * Kernel Symbol List
