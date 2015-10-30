@@ -18,7 +18,7 @@ def find_auto_commit(x86_mem_pae, symbol_list, arch, os_version, base_address):
 
     if len(ret):
         print ''
-        print '[+] Find "audit_commit" function :)'
+        print '[+] Find "audit_commit" function'
         print '[+] OS X does not attacked by audit remover'
     else:
         print ''

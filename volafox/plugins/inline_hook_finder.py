@@ -1,8 +1,4 @@
 # -*- coding: cp949 -*-
-try:
-    from distorm3 import Decode, Decode16Bits, Decode32Bits, Decode64Bits
-except:
-    print 'Inline function hook finder need to distorm3.'
 
 # Copyright by n0fate
 # License : GPLv2
@@ -35,6 +31,12 @@ except:
 
 class INLINEHOOK():
     def __init__(self, x86_mem_pae, arch, os_version, base_address):
+        try:
+            from distorm3 import Decode, Decode16Bits, Decode32Bits, Decode64Bits
+        except:
+            print '[!] Failed to load distorm3'
+            print '[!] Inline function hook finder need to distorm3.'
+            exit();
         self.x86_mem_pae = x86_mem_pae
         self.arch = arch
         self.os_version = os_version
