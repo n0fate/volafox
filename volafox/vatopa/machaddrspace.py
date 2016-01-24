@@ -268,7 +268,7 @@ def getoffset(lcmds, addr):
 
 class MachoAddressSpace:
     
-    def __init__(self, fname, mode='r+b'):
+    def __init__(self, fname, mode='rb'):
         self.fhandle    = open(fname, mode)
         #self.map        = mmap.mmap(self.fhandle.fileno(), os.path.getsize(fname))
         #self.map        = mmap.mmap(self.fhandle.fileno(), 4096*16)
@@ -377,7 +377,7 @@ def is64(fin):
         return False
 
 def isMachoVolafoxCompatible(fname):
-    fin = open(fname, 'r+b')
+    fin = open(fname, 'rb')
     #map = mmap.mmap(fin.fileno(), 4096)
     if not ismacho(fin):
         fin.close()

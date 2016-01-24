@@ -129,5 +129,9 @@ def print_master_key(candidate_key_list):
 	for candidate_key in candidate_key_list:
 		key = ''
 		for i in range(24):
-			key += '%02X'%ord(candidate_key[i])
-		print '[*] master key candidate: %s'%key
+			try:
+				key += '%02X'%ord(candidate_key[i])
+			except TypeError:
+				pass
+		if len(key):
+			print '[*] master key candidate: %s'%key
