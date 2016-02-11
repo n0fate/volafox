@@ -59,7 +59,7 @@ def usage():
     print 'dumpfile        : Dump a file on Memory (Required -p and -x option)'
     print 'pestate         : Show Boot information'
     print 'efiinfo         : EFI System Table, EFI Runtime Services'
-    print 'keychaindump    : Dump master key candidates for decrypting keychain(Lion ~ Yosemite)'
+    print 'keychaindump    : Dump master key candidates for decrypting keychain(Lion ~ El Capitan)'
     print 'dmesg           : Debug message at boot time'
     print 'uname           : Print a short for unix name(uname)'
     print 'hostname        : Print a hostname'
