@@ -9,14 +9,15 @@ from tableprint import columnprint
 from volafox.vatopa.addrspace import FileAddressSpace
 from volafox.vatopa.ia32_pml4 import IA32PML4MemoryPae
 
-# Lion 32bit, SN 32bit, Lion64bit, SN 64bit, Mountain Lion 64bit, Mavericks
+# Lion 32bit, SN 32bit, Lion64bit, SN 64bit, Mountain Lion 64bit, Mavericks, El Capitan
 DATA_PROC_STRUCTURE = [[476+24+168, '=4xIIIII4xII88xI276xQII20xbbbb52sI164xI', 16, '=IIII', 283, '=IIIIIII255s', 108, '=12xI4x8x64xI12x'],
     [476+168, '=4xIIIII4xII64xI276xQII20xbbbb52sI164xI', 16, '=IIII', 283, '=IIIIIII255s', 108, '=12xI4x8x64xI12x'], 
     [752+24+268, '=8xQQQQI4xII152xQ456xQQQ16xbbbb52sQ264xI', 32, '=QQQQ', 303, '=IQQIQQQ255s', 120, '=24xI4x8x64xI12x'],
     [1028, '=8xQQQQI4xII144xQ448xQQQ16xbbbb52sQ264xI', 32, '=QQQQ', 303, '=IQQIQQQ255s', 120, '=24xI4x8x64xI12x'], 
     [752+24+276, '=8xQQQQI4xII152xQ456xQQQ16xbbbb52sQ272xI', 32, '=QQQQ', 303, '=IQQIQQQ255s', 120, '=24xI4x8x64xI12x'],
     [760+24+268, '=8xQQQQI4xII160xQ456xQQQ16xbbbb52sQ264xI', 32, '=QQQQ', 303, '=IQQIQQQ255s', 120, '=24xI4x8x64xI12x'],
-    [760+24+268+16, '=8xQQQQI4xII160xQ456xQQQ16xbbbb52sQ264x16xI', 32, '=QQQQ', 303, '=IQQIQQQ255s', 120, '=24xI4x8x64xI12x']]
+    [760+24+268+16, '=8xQQQQI4xII160xQ456xQQQ16xbbbb52sQ264x16xI', 32, '=QQQQ', 303, '=IQQIQQQ255s', 120, '=24xI4x8x64xI12x'],
+    [1052, '=8xQQQQI4xII160xQ456xQQQ16xbbbb17x35sQ264xI', 32, '=QQQQ', 303, '=IQQIQQQ255s', 120, '=24xI4x8x64xI12x']]
     # Mavericks add new element in proc structure : uint64_t   p_puniqueid;        /* parent's unique ID - set on fork/spawn/vfork, doesn't change if reparented. */
 
 # Lion 32bit, SN 32bit, Lion64bit, SN 64bit, Mountain Lion 64bit
@@ -111,8 +112,10 @@ class process_manager:
                 PROC_STRUCTURE = DATA_PROC_STRUCTURE[4] # Mountain Lion
             elif self.os_version == 13:
                 PROC_STRUCTURE = DATA_PROC_STRUCTURE[5] # Mavericks
-            elif self.os_version >= 14:
+            elif self.os_version == 14:
                 PROC_STRUCTURE = DATA_PROC_STRUCTURE[6] # above Yosemite
+            elif self.os_version == 15:
+                PROC_STRUCTURE = DATA_PROC_STRUCTURE[7] # El Capitan
             else:
                 PROC_STRUCTURE = DATA_PROC_STRUCTURE[3] # Snow Leopard 64bit
 
