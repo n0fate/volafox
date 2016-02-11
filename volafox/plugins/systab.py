@@ -48,9 +48,14 @@ class systab_manager():
             SYSCALL_TABLE_STRUCTURE = DATA_SYSCALL_TABLE_STRUCTURE[3]
             nsysent = self.x86_mem_pae.read(sym_addr + self.base_address, 8) # .data _nsysent
             data = struct.unpack('Q', nsysent)
+        elif self.os_version == 15: # El Capitan
+            SYSCALL_TABLE_STRUCTURE = DATA_SYSCALL_TABLE_STRUCTURE[3]
+            nsysent = self.x86_mem_pae.read(sym_addr + self.base_address, 4) # .data _nsysent
+            #print '%x'%self.x86_mem_pae.vtop(sym_addr + self.base_address)
+            data = struct.unpack('I', nsysent)
 
         else:
-            print '[+] systab support Snow Leopard ~ Yosemite'
+            print '[+] systab support Snow Leopard ~ El Capitan'
             return syscall_list
 
         if self.os_version <= 12:
@@ -59,7 +64,7 @@ class systab_manager():
             else:
                 sysentaddr = sym_addr - (data[0] * SYSCALL_TABLE_STRUCTURE[0])# sysent structure size + 2bytes
 
-            for count in range(0, data[0]):
+            for count in xrange(0, data[0]):
                 sysent = self.x86_mem_pae.read(sysentaddr + (count*SYSCALL_TABLE_STRUCTURE[0]), SYSCALL_TABLE_STRUCTURE[0]); # .data _nsysent
                 data = struct.unpack(SYSCALL_TABLE_STRUCTURE[1], sysent) # uint32
 
@@ -67,7 +72,7 @@ class systab_manager():
         elif self.os_version == 13: # Mavericks
             sysentaddr = sym_addr + self.base_address + 0x19818# Mavericks
             #print '%x'%self.x86_mem_pae.vtop(sysentaddr)
-            for count in range(0, data[0]):
+            for count in xrange(0, data[0]):
                 tmplist = []
                 sysent = self.x86_mem_pae.read(sysentaddr + (count*SYSCALL_TABLE_STRUCTURE[0]), SYSCALL_TABLE_STRUCTURE[0]); # .data _nsysent
                 data = struct.unpack(SYSCALL_TABLE_STRUCTURE[1], sysent) # uint32
@@ -84,7 +89,27 @@ class systab_manager():
             else:    
                 sysentaddr = sym_addr + self.base_address - 0x69978
             #print '%x'%self.x86_mem_pae.vtop(sysentaddr)
-            for count in range(0, data[0]):
+            for count in xrange(0, data[0]):
+                tmplist = []
+                sysent = self.x86_mem_pae.read(sysentaddr + (count*SYSCALL_TABLE_STRUCTURE[0]), SYSCALL_TABLE_STRUCTURE[0]); # .data _nsysent
+                data = struct.unpack(SYSCALL_TABLE_STRUCTURE[1], sysent) # uint32
+                tmplist.append(data[3]) # number of args
+                tmplist.append(data[0]) # system call
+                tmplist.append(0X00) # Not Available on Yosemite
+                tmplist.append(data[1]) # system call arguments munger for 64-bit process
+                tmplist.append(data[2]) # system call return types
+                tmplist.append(data[4]) #  Total size of arguments bytes for 32bit system calls
+
+                syscall_list.append(tmplist)
+            #print '%x'%self.x86_mem_pae.vtop(sysentaddr + (count*SYSCALL_TABLE_STRUCTURE[0]))
+        elif self.os_version == 15: # El Capitan
+            #if self.build == '14D136' or '14E46' or '14F27':
+            #    sysentaddr = sym_addr + self.base_address - 0x6BDA8
+            #else:    
+            #print 'base : %x'%self.base_address
+            sysentaddr = sym_addr + self.base_address - 0x6F6B4 # 15A284
+            #print 'symbol : %x'%self.x86_mem_pae.vtop(sysentaddr)
+            for count in xrange(0, data[0]):
                 tmplist = []
                 sysent = self.x86_mem_pae.read(sysentaddr + (count*SYSCALL_TABLE_STRUCTURE[0]), SYSCALL_TABLE_STRUCTURE[0]); # .data _nsysent
                 data = struct.unpack(SYSCALL_TABLE_STRUCTURE[1], sysent) # uint32

@@ -31,7 +31,7 @@ class imageInfo:
 	def catfishSearch(self, f):
 		filename = open(f, 'rb')
 		for piece in self.read_in_chunks(filename):
-			if self.Catfishmagic == piece[:16]:
+			if (self.Catfishmagic == piece[:16]) and (0 != struct.unpack("Q", piece[16:24])[0]):
 				page = self.Offseted
 				segment = piece.find(self.Catfishmagic)
 				CatfishLocation = page + segment

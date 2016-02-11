@@ -39,7 +39,7 @@ fin     = open(sys.argv[1], 'rb')
 ncmds   = volafox.vatopa.machaddrspace.getncmds(fin)
 lcmds   = volafox.vatopa.machaddrspace.loadcommand(fin, ncmds)
 
-fout    = open(sys.argv[2], 'w+b')
+fout    = open(sys.argv[2], 'wb')
 
 def copy(fin, fin_where, fout, fout_where, size):
 

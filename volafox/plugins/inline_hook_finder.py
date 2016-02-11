@@ -31,18 +31,18 @@
 
 class INLINEHOOK():
     def __init__(self, x86_mem_pae, arch, os_version, base_address):
-        try:
-            from distorm3 import Decode, Decode16Bits, Decode32Bits, Decode64Bits
-        except:
-            print '[!] Failed to load distorm3'
-            print '[!] Inline function hook finder need to distorm3.'
-            exit();
         self.x86_mem_pae = x86_mem_pae
         self.arch = arch
         self.os_version = os_version
         self.base_address = base_address
 
     def check_prologue(self, address):
+        try:
+            from distorm3 import Decode, Decode16Bits, Decode32Bits, Decode64Bits
+        except:
+            print '[!] Failed to load distorm3'
+            print '[!] Inline function hook finder need to distorm3.'
+            exit();
         base_pointer = address + self.base_address
 
         buf = self.x86_mem_pae.read(base_pointer, 12)
@@ -69,6 +69,12 @@ class INLINEHOOK():
         return call_address
 
     def find_function_in_code(self, caller_addr, callee_addr):
+        try:
+            from distorm3 import Decode, Decode16Bits, Decode32Bits, Decode64Bits
+        except:
+            print '[!] Failed to load distorm3'
+            print '[!] Inline function hook finder need to distorm3.'
+            exit();
         #print 'Callie Address : %x'%(callie_addr+self.base_address)
         base_pointer = caller_addr + self.base_address
         buf = self.x86_mem_pae.read(base_pointer, 256)

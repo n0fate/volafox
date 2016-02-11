@@ -241,6 +241,7 @@ class Filefork(Struct):
     , 12: {'ff_data': ('struct cat_fork', 32, 96, '', {'cf_size': ('off_t', 32, 8, 'SIZE/OFF(LINK)')})}
     , 13: {'ff_data': ('struct cat_fork', 32, 96, '', {'cf_size': ('off_t', 32, 8, 'SIZE/OFF(LINK)')})}
     , 14: {'ff_data': ('struct cat_fork', 32, 96, '', {'cf_size': ('off_t', 32, 8, 'SIZE/OFF(LINK)')})}
+    , 15: {'ff_data': ('struct cat_fork', 32, 96, '', {'cf_size': ('off_t', 32, 8, 'SIZE/OFF(LINK)')})}
     }
     }
 
@@ -286,6 +287,10 @@ class Cnode(Struct):
     'struct cat_attr', 136, 120, '',
     {'ca_fileid': ('cnid_t', 136, 4, 'NODE'), 'ca_union2': ('union', 212, 4, 'entries->SIZE/OFF(dir)')}),
            'c_datafork': ('struct filefork *', 296, 8, '->datafork')}
+    , 15: {'c_desc': ('struct cat_desc', 112, 24, '', {'cd_cnid': ('cnid_t', 124, 4, 'NODE')}), 'c_attr': (
+    'struct cat_attr', 136, 120, '',
+    {'ca_fileid': ('cnid_t', 136, 4, 'NODE'), 'ca_union2': ('union', 212, 4, 'entries->SIZE/OFF(dir)')}),
+           'c_datafork': ('struct filefork *', 296, 8, '->datafork')}
     }
     }
 
@@ -318,6 +323,7 @@ class Devnode(Struct):
     , 12: {'dn_ino': ('ino_t', 192, 8, 'NODE(CHR)')}
     , 13: {'dn_ino': ('ino_t', 192, 8, 'NODE(CHR)')}
     , 14: {'dn_ino': ('ino_t', 192, 8, 'NODE(CHR)')}
+    , 15: {'dn_ino': ('ino_t', 192, 8, 'NODE(CHR)')}
     }
     }
 
@@ -342,6 +348,7 @@ class Specinfo(Struct):
     , 12: {'si_rdev': ('dev_t', 24, 4, '->DEVICE(CHR)')}
     , 13: {'si_rdev': ('dev_t', 24, 4, '->DEVICE(CHR)')}
     , 14: {'si_rdev': ('dev_t', 24, 4, '->DEVICE(CHR)')}
+    , 15: {'si_rdev': ('dev_t', 24, 4, '->DEVICE(CHR)')}
     }
     }
 
@@ -366,6 +373,8 @@ class MemoryObjectControl(Struct):
     , 13: {'_pad1': ('unsigned int', 0, 8, 'pad1'),
     'moc_object': ('vm_object', 8, 8, '->VMOBJECT')}
     , 14: {'_pad1': ('unsigned int', 0, 8, 'pad1'),
+    'moc_object': ('vm_object', 8, 8, '->VMOBJECT')}
+    , 15: {'_pad1': ('unsigned int', 0, 8, 'pad1'),
     'moc_object': ('vm_object', 8, 8, '->VMOBJECT')}
     }
     }
@@ -397,6 +406,8 @@ class Ubcinfo(Struct):
     , 13: {'ui_control': ('memory_object_control_t', 8, 8, 'VMControl Offset'),
            'ui_size': ('off_t', 40, 8, 'SIZE/OFF(REG)')}
     , 14: {'ui_control': ('memory_object_control_t', 8, 8, 'VMControl Offset'),
+           'ui_size': ('off_t', 32, 8, 'SIZE/OFF(REG)')}
+    , 15: {'ui_control': ('memory_object_control_t', 8, 8, 'VMControl Offset'),
            'ui_size': ('off_t', 32, 8, 'SIZE/OFF(REG)')}
     }
     }
@@ -436,6 +447,9 @@ class Mount(Struct):
     'f_fsid': ('fsid_t', 192, 8, '', {'val[0]': ('int32_t', 192, 4, '->DEVICE'), 'val[1]': ('int32_t', 196, 4, '')}),
     'f_mntonname': ('char[]', 228, 1024, '->NAME')})}
     , 14: {'mnt_vfsstat': ('struct vfsstatfs', 132, 2164, '', {
+    'f_fsid': ('fsid_t', 192, 8, '', {'val[0]': ('int32_t', 192, 4, '->DEVICE'), 'val[1]': ('int32_t', 196, 4, '')}),
+    'f_mntonname': ('char[]', 228, 1024, '->NAME')})}
+    , 15: {'mnt_vfsstat': ('struct vfsstatfs', 132, 2164, '', {
     'f_fsid': ('fsid_t', 192, 8, '', {'val[0]': ('int32_t', 192, 4, '->DEVICE'), 'val[1]': ('int32_t', 196, 4, '')}),
     'f_mntonname': ('char[]', 228, 1024, '->NAME')})}
     }
@@ -489,6 +503,10 @@ class Vnode(Struct):
            'v_parent': ('vnode_t', 184, 8, '->vnode(parent)'), 'v_mount': ('mount_t', 208, 8, '->mount'),
            'v_data': ('void *', 216, 8, '->cnode/devnode')}
     , 14: {'v_type': ('uint16_t', 104, 2, 'TYPE(vnode)'), 'v_tag': ('uint16_t', 106, 2, 'vfs-type'),
+           'v_un': ('union', 112, 8, '->ubc_info/specinfo'), 'v_name': ('const char *', 176, 8, 'NAME'),
+           'v_parent': ('vnode_t', 184, 8, '->vnode(parent)'), 'v_mount': ('mount_t', 208, 8, '->mount'),
+           'v_data': ('void *', 216, 8, '->cnode/devnode')}
+    , 15: {'v_type': ('uint16_t', 104, 2, 'TYPE(vnode)'), 'v_tag': ('uint16_t', 106, 2, 'vfs-type'),
            'v_un': ('union', 112, 8, '->ubc_info/specinfo'), 'v_name': ('const char *', 176, 8, 'NAME'),
            'v_parent': ('vnode_t', 184, 8, '->vnode(parent)'), 'v_mount': ('mount_t', 208, 8, '->mount'),
            'v_data': ('void *', 216, 8, '->cnode/devnode')}
@@ -731,6 +749,8 @@ class Fileglob(Struct):
            'fg_offset': ('off_t', 64, 8, 'SIZE/OFF'), 'fg_data': ('caddr_t', 72, 8, '->vnode')}
     , 14: {'fg_flag': ('int32_t', 32, 4, 'MODE'), 'fg_type': ('file_type_t', 52, 4, 'FTYPE'),
            'fg_offset': ('off_t', 64, 8, 'SIZE/OFF'), 'fg_data': ('caddr_t', 72, 8, '->vnode')}
+    , 15: {'fg_flag': ('int32_t', 32, 4, 'MODE'), 'fg_type': ('file_type_t', 52, 4, 'FTYPE'),
+           'fg_offset': ('off_t', 64, 8, 'SIZE/OFF'), 'fg_data': ('caddr_t', 72, 8, '->vnode')}
     }
     }
 
@@ -790,6 +810,7 @@ class Fileproc(Struct):
         , 12: {'f_fglob': ('struct fileglob *', 8, 8, '->fileglob')}
         , 13: {'f_fglob': ('struct fileglob *', 8, 8, '->fileglob')}
         , 14: {'f_fglob': ('struct fileglob *', 8, 8, '->fileglob')}
+        , 15: {'f_fglob': ('struct fileglob *', 8, 8, '->fileglob')}
         }
     }
 
@@ -823,6 +844,8 @@ class Filedesc(Struct):
     , 13: {'fd_ofiles': ('struct fileproc **', 0, 8, '->fileproc[]'), 'fd_cdir': ('struct vnode *', 16, 8, '->CWD'),
            'fd_lastfile': ('int', 36, 4, '->fileproc[LAST_INDEX]')}
     , 14: {'fd_ofiles': ('struct fileproc **', 0, 8, '->fileproc[]'), 'fd_cdir': ('struct vnode *', 16, 8, '->CWD'),
+           'fd_lastfile': ('int', 36, 4, '->fileproc[LAST_INDEX]')}
+    , 15: {'fd_ofiles': ('struct fileproc **', 0, 8, '->fileproc[]'), 'fd_cdir': ('struct vnode *', 16, 8, '->CWD'),
            'fd_lastfile': ('int', 36, 4, '->fileproc[LAST_INDEX]')}
     }
     }
@@ -880,6 +903,7 @@ class Vnode_pager(Struct):
     , 12: {'vnode_handle': ('struct vnode *', 32, 8, '->txt')}
     , 13: {'vnode_handle': ('struct vnode *', 32, 8, '->txt')}
     , 14: {'vnode_handle': ('struct vnode *', 32, 8, '->txt')}
+    , 15: {'vnode_handle': ('struct vnode *', 32, 8, '->txt')}
     }
     }
 
@@ -972,6 +996,15 @@ class Vm_page(Struct):
            'offset': ('vm_object_offset_t', 48, 4, '->offset'),
            'wire_count': ('unsigned int', 52, 4, 'maps'),
            'phys_page': ('ppnum_t', 56, 4, '->physicaladdress')}
+    , 15: {'pageq': ('queue_chain_t', 0, 16, '', {'prev': ('struct queue_entry *', 8, 8, 'type test(vm_object)'),
+                                                  'next': ('struct queue_entry *', 0, 8, 'type test(vm_object)')}),
+           'listq': ('queue_chain_t', 16, 16, '', {'prev': ('struct queue_entry *', 24, 8, 'type test(vm_object)'),
+                                                   'next': ('struct queue_entry *', 16, 8, 'type test(vm_object)')}),
+           'next': ('struct vm_page *', 32, 8, '->vm_page'),
+           'object': ('struct vm_object *', 40, 8, '->vm_object(recurse)'),
+           'offset': ('vm_object_offset_t', 48, 4, '->offset'),
+           'wire_count': ('unsigned int', 52, 4, 'maps'),
+           'phys_page': ('ppnum_t', 56, 4, '->physicaladdress')}
     }
     }
 
@@ -1032,6 +1065,10 @@ class Vm_object(Struct):
            'shadow': ('struct vm_object *', 72, 8, '->vm_object(recurse)'),
            'pager': ('memory_object_t', 88, 8, '->pager')}
     , 14: {'memq': ('queue_head_t', 0, 16, '', {'prev': ('struct queue_entry *', 8, 8, 'type test(vm_object)'),
+                                                'next': ('struct queue_entry *', 0, 8, 'type test(vm_object)')}),
+           'shadow': ('struct vm_object *', 72, 8, '->vm_object(recurse)'),
+           'pager': ('memory_object_t', 88, 8, '->pager')}
+    , 15: {'memq': ('queue_head_t', 0, 16, '', {'prev': ('struct queue_entry *', 8, 8, 'type test(vm_object)'),
                                                 'next': ('struct queue_entry *', 0, 8, 'type test(vm_object)')}),
            'shadow': ('struct vm_object *', 72, 8, '->vm_object(recurse)'),
            'pager': ('memory_object_t', 88, 8, '->pager')}
@@ -1112,6 +1149,9 @@ class Vm_map_entry(Struct):
     , 14: {'links': ('struct vm_map_links', 0, 32, '', {'prev': ('struct vm_map_entry *', 0, 8, ''),
                                                         'next': ('struct vm_map_entry *', 8, 8, '->vm_map_entry')}),
            'object': ('union vm_map_object', 56, 8, '->vm_object')}
+    , 15: {'links': ('struct vm_map_links', 0, 32, '', {'prev': ('struct vm_map_entry *', 0, 8, ''),
+                                                        'next': ('struct vm_map_entry *', 8, 8, '->vm_map_entry')}),
+           'object': ('union vm_map_object', 56, 8, '->vm_object')}
     }
     }
 
@@ -1172,6 +1212,11 @@ class Vm_map(Struct):
                                                                    'next': (
                                                                    'struct vm_map_entry *', 24, 8, '->vm_map_entry')}),
                                                         'nentries': ('int', 48, 4, 'no. nodes')})}
+    , 15: {'hdr': ('struct vm_map_header', 16, 56, '', {'links': ('struct vm_map_links', 16, 32, '',
+                                                                  {'prev': ('struct vm_map_entry *', 16, 8, ''),
+                                                                   'next': (
+                                                                   'struct vm_map_entry *', 24, 8, '->vm_map_entry')}),
+                                                        'nentries': ('int', 48, 4, 'no. nodes')})}
     }
     }
 
@@ -1218,6 +1263,7 @@ class Task(Struct):
     , 12: {'map': ('vm_map_t', 32, 8, '->vm_map')}  # NOTE: 10.8x64 offset for vm_map edited manually 28 --> 32
     , 13: {'map': ('vm_map_t', 32, 8, '->vm_map')}  # NOTE: 10.8x64 offset for vm_map edited manually 28 --> 32
     , 14: {'map': ('vm_map_t', 32, 8, '->vm_map')}  # NOTE: 10.8x64 offset for vm_map edited manually 28 --> 32
+    , 15: {'map': ('vm_map_t', 32, 8, '->vm_map')}  # NOTE: 10.8x64 offset for vm_map edited manually 28 --> 32
     }
     }
 
@@ -1247,6 +1293,7 @@ class Session(Struct):
     , 12: {'s_login': ('char[]', 48, 255, 'USER')}
     , 13: {'s_login': ('char[]', 48, 255, 'USER')}
     , 14: {'s_login': ('char[]', 48, 255, 'USER')}
+    , 15: {'s_login': ('char[]', 48, 255, 'USER')}
     }
     }
 
@@ -1270,6 +1317,7 @@ class Pgrp(Struct):
     , 12: {'pg_session': ('struct session *', 24, 8, '->session')}
     , 13: {'pg_session': ('struct session *', 24, 8, '->session')}
     , 14: {'pg_session': ('struct session *', 24, 8, '->session')}
+    , 15: {'pg_session': ('struct session *', 24, 8, '->session')}
     }
     }
 
@@ -1324,6 +1372,11 @@ class Proc(Struct):
            'p_fd': ('struct filedesc *', 224, 8, '->filedesc'), 'p_textvp': ('struct vnode *', 688, 8, '->proc(exe)'),
            'p_comm': ('char[]', 724, 17, 'COMMAND'), 'p_pgrp': ('struct pgrp *', 776, 8, '->pgrp')}
     , 14: {'p_list': ('LIST_ENTRY(proc)', 0, 16, '',
+                      {'le_next': ('struct proc *', 0, 8, ''), 'le_prev': ('struct proc **', 8, 8, '->next')}),
+           'p_pid': ('pid_t', 16, 4, 'PID'), 'task': ('void *', 24, 8, '->task'),
+           'p_fd': ('struct filedesc *', 224, 8, '->filedesc'), 'p_textvp': ('struct vnode *', 688, 8, '->proc(exe)'),
+           'p_comm': ('char[]', 724, 17, 'COMMAND'), 'p_pgrp': ('struct pgrp *', 776, 8, '->pgrp')}
+    , 15: {'p_list': ('LIST_ENTRY(proc)', 0, 16, '',
                       {'le_next': ('struct proc *', 0, 8, ''), 'le_prev': ('struct proc **', 8, 8, '->next')}),
            'p_pid': ('pid_t', 16, 4, 'PID'), 'task': ('void *', 24, 8, '->task'),
            'p_fd': ('struct filedesc *', 224, 8, '->filedesc'), 'p_textvp': ('struct vnode *', 688, 8, '->proc(exe)'),
