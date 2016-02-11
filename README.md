@@ -19,7 +19,9 @@ GNU GPL v2
  * overlay data
 
 * Memory Image
- * Linear File Format(OSXPMem, Firewire, VMware memory image)
+ * Raw memory image(Firewire, VMware memory image)
+ * Exported raw memory image using rekal developed by google
+    * command : rekal aff4export -D . [AFF4 IMAGE] => output filename : Physical Memory
  * Flatten Mac Memory Reader Format using flatten.py(32bit, 64bit)
 
 ## Information
