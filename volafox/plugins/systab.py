@@ -103,11 +103,10 @@ class systab_manager():
                 syscall_list.append(tmplist)
             #print '%x'%self.x86_mem_pae.vtop(sysentaddr + (count*SYSCALL_TABLE_STRUCTURE[0]))
         elif self.os_version == 15: # El Capitan
-            #if self.build == '14D136' or '14E46' or '14F27':
-            #    sysentaddr = sym_addr + self.base_address - 0x6BDA8
-            #else:    
-            #print 'base : %x'%self.base_address
-            sysentaddr = sym_addr + self.base_address - 0x6F6B4 # 15A284
+            if self.build == '15A284':  # 10.11.0
+                sysentaddr = sym_addr + self.base_address - 0x6F6B4 # 15A284
+            elif self.build == '15B42': # 10.11.1
+                sysentaddr = sym_addr + self.base_address - 0x71874
             #print 'symbol : %x'%self.x86_mem_pae.vtop(sysentaddr)
             for count in xrange(0, data[0]):
                 tmplist = []
@@ -115,7 +114,7 @@ class systab_manager():
                 data = struct.unpack(SYSCALL_TABLE_STRUCTURE[1], sysent) # uint32
                 tmplist.append(data[3]) # number of args
                 tmplist.append(data[0]) # system call
-                tmplist.append(0X00) # Not Available on Yosemite
+                tmplist.append(0X00) # Not Available on El Capitan
                 tmplist.append(data[1]) # system call arguments munger for 64-bit process
                 tmplist.append(data[2]) # system call return types
                 tmplist.append(data[4]) #  Total size of arguments bytes for 32bit system calls

@@ -191,36 +191,39 @@ class volafox():
 
     def get_ps(self): 
         sym_addr = self.symbol_list['_kernproc']
-        proc_list = get_proc_list(self.x86_mem_pae, sym_addr, self.arch, self.os_version, self.build, self.base_address)
+        nprocs = struct.unpack('=I', self.x86_mem_pae.read(self.base_address+self.symbol_list['_nprocs'], 4))[0]
+        proc_list = get_proc_list(self.x86_mem_pae, sym_addr, self.arch, self.os_version, self.build, self.base_address, nprocs)
         proc_print(proc_list, self.os_version)
 
     def machdump(self, pid):
         sym_addr = self.symbol_list['_kernproc']
-        get_macho_dump(self.x86_mem_pae, sym_addr, self.arch, self.os_version, self.build, pid, self.base_address, self.mempath)
+        nprocs = struct.unpack('=I', self.x86_mem_pae.read(self.base_address+self.symbol_list['_nprocs'], 4))[0]
+        get_macho_dump(self.x86_mem_pae, sym_addr, self.arch, self.os_version, self.build, pid, self.base_address, self.mempath, nprocs)
 
 
     def task_dump(self, task_id):
         task_addr = self.symbol_list['_tasks']
         task_count_addr = self.symbol_list['_tasks_count']
-        task_count_ptr = self.x86_mem_pae.read(task_count_addr+self.base_address, 4);
+        nprocs = struct.unpack('=I', self.x86_mem_pae.read(self.base_address+self.symbol_list['_nprocs'], 4))[0]
         task_count = struct.unpack('=I', task_count_ptr)[0]
-        get_task_dump(self.x86_mem_pae, task_addr, task_count, self.arch, self.os_version, self.build, task_id, self.base_address, self.mempath)
+        get_task_dump(self.x86_mem_pae, task_addr, task_count, self.arch, self.os_version, self.build, task_id, self.base_address, self.mempath, nprocs)
 
     def get_tasks(self): # comparing proc with task
         proc_addr = self.symbol_list['_kernproc']
+        nprocs = struct.unpack('=I', self.x86_mem_pae.read(self.base_address+self.symbol_list['_nprocs'], 4))[0]
         task_addr = self.symbol_list['_tasks']
         task_count_addr = self.symbol_list['_tasks_count']
-        task_count_ptr = self.x86_mem_pae.read(task_count_addr+self.base_address, 4);
+        task_count_ptr = self.x86_mem_pae.read(task_count_addr+self.base_address, 4)
         task_count = struct.unpack('=I', task_count_ptr)[0]
 
-        proc_list = get_proc_list(self.x86_mem_pae, proc_addr, self.arch, self.os_version, self.build, self.base_address)
-        task_list, check_count = get_task_list(self.x86_mem_pae, task_addr, task_count, self.arch, self.os_version, self.build, self.base_address)
+        proc_list = get_proc_list(self.x86_mem_pae, proc_addr, self.arch, self.os_version, self.build, self.base_address, nprocs)
+        task_list, check_count = get_task_list(self.x86_mem_pae, task_addr, task_count, self.arch, self.os_version, self.build, self.base_address, nprocs)
 
         #if check_count != task_count:
         #    print '[+] check_count: %d, task_count: %d'%(check_count, task_count)
 
 
-        valid_task_list, hide_task_list = proc_lookup(proc_list, task_list, self.x86_mem_pae, self.arch, self.os_version, self.build, self.base_address)
+        valid_task_list, hide_task_list = proc_lookup(proc_list, task_list, self.x86_mem_pae, self.arch, self.os_version, self.build, self.base_address, nprocs)
 
         print '[+] Linked task list'
         task_print(valid_task_list)

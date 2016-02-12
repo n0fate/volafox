@@ -17,7 +17,8 @@ DATA_PROC_STRUCTURE = [[476+24+168, '=4xIIIII4xII88xI276xQII20xbbbb52sI164xI', 1
     [752+24+276, '=8xQQQQI4xII152xQ456xQQQ16xbbbb52sQ272xI', 32, '=QQQQ', 303, '=IQQIQQQ255s', 120, '=24xI4x8x64xI12x'],
     [760+24+268, '=8xQQQQI4xII160xQ456xQQQ16xbbbb52sQ264xI', 32, '=QQQQ', 303, '=IQQIQQQ255s', 120, '=24xI4x8x64xI12x'],
     [760+24+268+16, '=8xQQQQI4xII160xQ456xQQQ16xbbbb52sQ264x16xI', 32, '=QQQQ', 303, '=IQQIQQQ255s', 120, '=24xI4x8x64xI12x'],
-    [1052, '=8xQQQQI4xII160xQ456xQQQ16xbbbb17x35sQ264xI', 32, '=QQQQ', 303, '=IQQIQQQ255s', 120, '=24xI4x8x64xI12x']]
+    [1052, '=8xQQQQI4xII160xQ456xQQQ16xbbbb17x35sQ264xI', 32, '=QQQQ', 303, '=IQQIQQQ255s', 120, '=24xI4x8x64xI12x'],
+    [1068, '=8xQQQQI4xII160x16xQ456xQQQ16xbbbb17x35sQ264xI', 32, '=QQQQ', 303, '=IQQIQQQ255s', 120, '=24xI4x8x64xI12x']]
     # Mavericks add new element in proc structure : uint64_t   p_puniqueid;        /* parent's unique ID - set on fork/spawn/vfork, doesn't change if reparented. */
 
 # Lion 32bit, SN 32bit, Lion64bit, SN 64bit, Mountain Lion 64bit
@@ -52,21 +53,22 @@ def unsigned8(n):
   return n & 0xFFL
 
 class process_manager:
-    def __init__(self, x86_mem_pae, arch, os_version, build, base_address):
+    def __init__(self, x86_mem_pae, arch, os_version, build, base_address, nproc):
         self.x86_mem_pae = x86_mem_pae
         self.arch = arch
         self.os_version = os_version
         self.build = build
         self.base_address = base_address
+        self.nproc = nproc
 
     def get_proc(self, proc_sym_addr, PROC_STRUCTURE):
         proc = []
         if not(self.x86_mem_pae.is_valid_address(proc_sym_addr)):
             return proc, '', ''
-
+        #print '%x'%self.x86_mem_pae.vtop(proc_sym_addr)
         proclist = self.x86_mem_pae.read(proc_sym_addr, PROC_STRUCTURE[0])
         data = struct.unpack(PROC_STRUCTURE[1], proclist)
-        
+        #print '%x'%self.x86_mem_pae.vtop(data[16])
         pgrp_t = self.x86_mem_pae.read(data[16], PROC_STRUCTURE[2]) # pgrp structure
         m_pgrp = struct.unpack(PROC_STRUCTURE[3], pgrp_t)
 
@@ -114,8 +116,10 @@ class process_manager:
                 PROC_STRUCTURE = DATA_PROC_STRUCTURE[5] # Mavericks
             elif self.os_version == 14:
                 PROC_STRUCTURE = DATA_PROC_STRUCTURE[6] # above Yosemite
-            elif self.os_version == 15:
+            elif self.os_version == 15 and (self.build == '15A264' or self.build == '15B42'):
                 PROC_STRUCTURE = DATA_PROC_STRUCTURE[7] # El Capitan
+            elif self.os_version == 15 and self.build == '15C50':
+                PROC_STRUCTURE = DATA_PROC_STRUCTURE[8] # El Capitan
             else:
                 PROC_STRUCTURE = DATA_PROC_STRUCTURE[3] # Snow Leopard 64bit
 
@@ -130,6 +134,16 @@ class process_manager:
             proc_sym_addr = struct.unpack('Q', kernproc)[0]
 
         return proc_sym_addr
+
+    def pass_kernel_task_proc(self, sym_addr):
+        if self.arch == 32:
+            kernproc = self.x86_mem_pae.read(sym_addr+4, 4) # __DATA.__common _kernproc
+            proc_sym_addr = struct.unpack('I', kernproc)[0]
+        else:
+            kernproc = self.x86_mem_pae.read(sym_addr+8, 8) # __DATA.__common _kernproc
+            proc_sym_addr = struct.unpack('Q', kernproc)[0]
+
+        return proc_sym_addr
     
     def get_proc_list(self, sym_addr, proc_list, pid):
         if not(self.x86_mem_pae.is_valid_address(sym_addr+self.base_address)):
@@ -137,36 +151,39 @@ class process_manager:
 
         PROC_STRUCTURE = self.get_proc_struct()
 
-        proc_sym_addr = self.get_kernel_task_addr(sym_addr)
+        proc_sym_addr = self.pass_kernel_task_proc(self.get_kernel_task_addr(sym_addr))
+        
+
         proc_addr = []
 
-        while 1:
+        for count in xrange(self.nproc):
             #break
             if proc_sym_addr == 0:
                 break
             if not(self.x86_mem_pae.is_valid_address(proc_sym_addr)):
                 break
-            try:
-                #print '%x'%self.x86_mem_pae.vtop(proc_sym_addr)
-                proc = []
+            #try:
+            #print '%x'%self.x86_mem_pae.vtop(proc_sym_addr)
+            proc = []
 
-                if proc_sym_addr in proc_addr:
-                    break
-
-                proc_addr.append(proc_sym_addr)
-
-                proc, next_proc_addr, pid_in_proc = self.get_proc(proc_sym_addr, PROC_STRUCTURE)
-                
-                proc_sym_addr = next_proc_addr
-                if pid == -1: # All Process
-                    proc_list.append(proc)
-                else: # Process Dump or filtering
-                    if pid_in_proc == pid:
-                        proc_list.append(proc)
-                        return 0
-            
-            except struct.error:
+            if proc_sym_addr in proc_addr:
                 break
+
+            proc_addr.append(proc_sym_addr)
+
+            proc, next_proc_addr, pid_in_proc = self.get_proc(proc_sym_addr, PROC_STRUCTURE)
+            
+            proc_sym_addr = next_proc_addr
+            if pid == -1: # All Process
+                proc_list.append(proc)
+            else: # Process Dump or filtering
+                if pid_in_proc == pid:
+                    proc_list.append(proc)
+                    return 0
+            
+            #except struct.error:
+            #    print '%x'%self.x86_mem_pae.vtop(proc_sym_addr)
+            #    break
     
     def get_queue(self, ptr):
         if self.arch == 32:
@@ -183,7 +200,7 @@ class process_manager:
     def get_task_queue(self, sym_addr, count, task_list):
         queue = self.get_queue(sym_addr)
 
-        print '[+] Task Count at Kernel Symbol: %d'%count
+        print '[+] Task Count at Kernel Symbol: %d'%(count-1)
 
         #print 'Queue Next: %.8x, prev: %.8x'%(self.x86_mem_pae.vtop(queue[0]),self.x86_mem_pae.vtop(queue[1]))
 
@@ -448,9 +465,9 @@ def proc_print(data_list, os_version):
     mszlist = [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1]
     columnprint(headerlist, contentlist, mszlist)
       
-def get_proc_list(x86_mem_pae, sym_addr, arch, os_version, build, base_address):
+def get_proc_list(x86_mem_pae, sym_addr, arch, os_version, build, base_address, nproc):
     proclist = []
-    ProcMan = process_manager(x86_mem_pae, arch, os_version, build, base_address)
+    ProcMan = process_manager(x86_mem_pae, arch, os_version, build, base_address, nproc)
     ret = ProcMan.get_proc_list(sym_addr, proclist, -1)
     
     return proclist
@@ -459,7 +476,7 @@ def print_proc_list(proc_list, os_version):
     proc_print(proc_list, os_version)
 
 
-def get_proc_dump(x86_mem_pae, sym_addr, arch, os_version, build, pid, base_address, mempath):
+def get_proc_dump(x86_mem_pae, sym_addr, arch, os_version, build, pid, base_address, mempath, nproc):
     proclist = []
     ProcMan = process_manager(x86_mem_pae, arch, os_version, build, base_address)
     ret = ProcMan.get_proc_list(sym_addr, proclist, pid)
@@ -481,8 +498,8 @@ def get_proc_dump(x86_mem_pae, sym_addr, arch, os_version, build, pid, base_addr
     
     return
   
-def get_task_dump(x86_mem_pae, sym_addr, count, arch, os_version, build, task_id, base_address, mempath):
-    ProcMan = process_manager(x86_mem_pae, arch, os_version, build, base_address)
+def get_task_dump(x86_mem_pae, sym_addr, count, arch, os_version, build, task_id, base_address, mempath, nproc):
+    ProcMan = process_manager(x86_mem_pae, arch, os_version, build, base_address, nproc)
     task_list = []
     check_count = ProcMan.get_task_queue(sym_addr, count, task_list) # task queue ptr, task_count, task_list
     
@@ -512,21 +529,19 @@ def get_task_dump(x86_mem_pae, sym_addr, count, arch, os_version, build, task_id
     
     
     
-def get_task_list(x86_mem_pae, sym_addr, count, arch, os_version, build, base_address):
-    ProcMan = process_manager(x86_mem_pae, arch, os_version, build, base_address)
+def get_task_list(x86_mem_pae, sym_addr, count, arch, os_version, build, base_address, nproc):
+    ProcMan = process_manager(x86_mem_pae, arch, os_version, build, base_address, nproc)
     
     task_list = []
     check_count = ProcMan.get_task_queue(sym_addr, count, task_list) # task queue ptr, task_count, task_list
     
     return task_list, check_count
 
-def proc_lookup(proc_list, task_list, x86_mem_pae, arch, os_version, build, base_address):
-
-
-    ProcMan = process_manager(x86_mem_pae, arch, os_version, build, base_address)
+def proc_lookup(proc_list, task_list, x86_mem_pae, arch, os_version, build, base_address, nproc):
+    ProcMan = process_manager(x86_mem_pae, arch, os_version, build, base_address, nproc)
     PROC_STRUCTURE = ProcMan.get_proc_struct()
     
-    print '[+] Task List Count at Queue: %d'%len(task_list)
+    print '[+] Task List Count at Queue: %d'%(len(task_list)-1)
     print '[+] Process List Count: %d'%len(proc_list)
     
     # task list
