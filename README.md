@@ -10,19 +10,19 @@ Lastest version : [http://volafox.tumblr.com/post/75481455662/volafox-0-9-releas
 GNU GPL v2
 
 ## System Environment
-*Lang*: Python 2.x <br>
-*Arch*: Intel 32/64 bit<br>
-*OS*: Snow Leopard(10.6), Lion(10.7), Mountain Lion(10.8), Mavericks(10.9), *Yosemite(10.10), El Capitan(10.11)*<br>
+*Language*: Python 2.x <br>
+*Architecture*: Intel 32/64 bit<br>
+*Officially supported os*: Snow Leopard(10.6), Lion(10.7), Mountain Lion(10.8), Mavericks(10.9), *Yosemite(10.10), El Capitan(10.11)*<br>
 
 ### Requirement
 * Kernel Symbol List
- * overlay data
+ * overlay data(Included repo from Snow Leopard to El Capitan 10.11.3)
 
 * Memory Image
  * Raw memory image(Firewire, VMware memory image)
  * Exported raw memory image using rekal developed by google
     * command : rekal aff4export -D . [AFF4 IMAGE] => output filename : Physical Memory
- * Flatten Mac Memory Reader Format using flatten.py(32bit, 64bit)
+ * Flatten Mac Memory Reader Format using flatten.py(32bit, 64bit) => MMR doesn't support OS X Mountain Lion above now.
 
 ## Information
     volafox: Mac OS X Memory Analysis Toolkit
@@ -72,9 +72,8 @@ GNU GPL v2
     fbt_syscall     : Examination of syscall table for hooking by DTrace FBT Provider
 
 
-
-# volafox for BSD(experimental)
-## Introduction
+# volafox for BSD(experimental, I just keep it for researcher)
+# Introduction
 *FreeBSD Memory Analysis Toolkit*<br>
 *Tested OS:* FreeBSD x86 7.x, 8.x<br>
 

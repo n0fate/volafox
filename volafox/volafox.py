@@ -251,8 +251,10 @@ class volafox():
 
     def systab(self): # 11.11.23 64bit suppport
         sym_addr = self.symbol_list['_nsysent']
+        #print 'exit : %x'%self.symbol_list['_exit']
         syscall_list = get_system_call_table_list(self.x86_mem_pae, sym_addr, self.arch, self.os_version, self.build, self.base_address)
-        print_syscall_table(syscall_list, self.symbol_list, self.base_address)
+        if len(syscall_list):
+            print_syscall_table(syscall_list, self.symbol_list, self.base_address)
 
     def mtt(self):
         mtt_ptr = self.symbol_list['_mach_trap_table']

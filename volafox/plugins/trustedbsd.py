@@ -209,14 +209,16 @@ class trustedbsd():
             return 'MPC_LOADTIME_FLAG_LABELMBUFS'
         elif num == 0x00000008:
             return 'MPC_LOADTIME_BASE_POLICY'
+        elif num == 0x00000000:
+            return 'NULL'
         else:
-            return 'unknown'
+            return 'Unknown(%d)'%num
 
     def get_runtime_flag(self, num):
         if num == 0x00000001:
             return 'MPC_RUNTIME_FLAG_REGISTERED'
         else:
-            return 'unknown'
+            return 'Unknown(%d)'%num
 
 #################################### PUBLIC FUNCTIONS ####################################
 

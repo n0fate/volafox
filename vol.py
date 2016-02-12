@@ -362,6 +362,7 @@ def main():
 
     else:
         print '[+] WARNING: -o Argument Error: %s\n'%oflag
+        usage()
         sys.exit()
 
 if __name__ == "__main__":

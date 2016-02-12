@@ -18,7 +18,9 @@ DATA_PROC_STRUCTURE = [[476+24+168, '=4xIIIII4xII88xI276xQII20xbbbb52sI164xI', 1
     [760+24+268, '=8xQQQQI4xII160xQ456xQQQ16xbbbb52sQ264xI', 32, '=QQQQ', 303, '=IQQIQQQ255s', 120, '=24xI4x8x64xI12x'],
     [760+24+268+16, '=8xQQQQI4xII160xQ456xQQQ16xbbbb52sQ264x16xI', 32, '=QQQQ', 303, '=IQQIQQQ255s', 120, '=24xI4x8x64xI12x'],
     [1052, '=8xQQQQI4xII160xQ456xQQQ16xbbbb17x35sQ264xI', 32, '=QQQQ', 303, '=IQQIQQQ255s', 120, '=24xI4x8x64xI12x'],
-    [1068, '=8xQQQQI4xII160x16xQ456xQQQ16xbbbb17x35sQ264xI', 32, '=QQQQ', 303, '=IQQIQQQ255s', 120, '=24xI4x8x64xI12x']]
+    [1068, '=8xQQQQI4xII160x16xQ456xQQQ16xbbbb17x35sQ264xI', 32, '=QQQQ', 303, '=IQQIQQQ255s', 120, '=24xI4x8x64xI12x'],
+    #[1068, '=8xQQQQI4xII80xQ80x16x64x392xQQQ16xbbbb17x35sQ264xI', 32, '=QQQQ', 303, '=IQQIQQQ255s', 120, '=24xI4x8x64xI12x']
+    ]
     # Mavericks add new element in proc structure : uint64_t   p_puniqueid;        /* parent's unique ID - set on fork/spawn/vfork, doesn't change if reparented. */
 
 # Lion 32bit, SN 32bit, Lion64bit, SN 64bit, Mountain Lion 64bit
@@ -68,14 +70,16 @@ class process_manager:
         #print '%x'%self.x86_mem_pae.vtop(proc_sym_addr)
         proclist = self.x86_mem_pae.read(proc_sym_addr, PROC_STRUCTURE[0])
         data = struct.unpack(PROC_STRUCTURE[1], proclist)
-        #print '%x'%self.x86_mem_pae.vtop(data[16])
+
+        if data[0] == 0:
+            return proc, '', ''
         pgrp_t = self.x86_mem_pae.read(data[16], PROC_STRUCTURE[2]) # pgrp structure
         m_pgrp = struct.unpack(PROC_STRUCTURE[3], pgrp_t)
 
         session_t = self.x86_mem_pae.read(m_pgrp[3], PROC_STRUCTURE[4]) # session structure
         m_session = struct.unpack(PROC_STRUCTURE[5], session_t)
 
-        #print '%x'%self.x86_mem_pae.vtop(data[5])
+        #print 'u_cred : %x'%self.x86_mem_pae.vtop(data[7])
         p_ucred = self.x86_mem_pae.read(data[7], PROC_STRUCTURE[6])
         ucred = struct.unpack(PROC_STRUCTURE[7], p_ucred)
 
@@ -118,7 +122,7 @@ class process_manager:
                 PROC_STRUCTURE = DATA_PROC_STRUCTURE[6] # above Yosemite
             elif self.os_version == 15 and (self.build == '15A264' or self.build == '15B42'):
                 PROC_STRUCTURE = DATA_PROC_STRUCTURE[7] # El Capitan
-            elif self.os_version == 15 and self.build == '15C50':
+            elif self.os_version == 15 and (self.build == '15C50' or self.build == '15D21'):
                 PROC_STRUCTURE = DATA_PROC_STRUCTURE[8] # El Capitan
             else:
                 PROC_STRUCTURE = DATA_PROC_STRUCTURE[3] # Snow Leopard 64bit
@@ -174,16 +178,15 @@ class process_manager:
             proc, next_proc_addr, pid_in_proc = self.get_proc(proc_sym_addr, PROC_STRUCTURE)
             
             proc_sym_addr = next_proc_addr
-            if pid == -1: # All Process
-                proc_list.append(proc)
-            else: # Process Dump or filtering
-                if pid_in_proc == pid:
+            if pid > 0 and len(proc):
+                if pid_in_proc == pid and len(proc):
                     proc_list.append(proc)
                     return 0
-            
-            #except struct.error:
-            #    print '%x'%self.x86_mem_pae.vtop(proc_sym_addr)
-            #    break
+            elif pid == -1 and len(proc): # All Process
+                proc_list.append(proc)
+            else: # Process Dump or filtering
+                return 1
+        return 1
     
     def get_queue(self, ptr):
         if self.arch == 32:

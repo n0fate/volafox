@@ -5,44 +5,6 @@ import ps
 from volafox.vatopa.addrspace import FileAddressSpace
 from volafox.vatopa.ia32_pml4 import IA32PML4MemoryPae
 
-# Lion 32bit, SN 32bit, Lion64bit, SN 64bit, Mountain Lion 64bit, Mavericks
-DATA_PROC_STRUCTURE = [[476+24+168, '=4xIIIII4xII88xI276xQII20xbbbb52sI164xI', 16, '=IIII', 283, '=IIIIIII255s', 108, '=12xI4x8x64xI12x'],
-    [476+168, '=4xIIIII4xII64xI276xQII20xbbbb52sI164xI', 16, '=IIII', 283, '=IIIIIII255s', 108, '=12xI4x8x64xI12x'], 
-    [752+24+268, '=8xQQQQI4xII152xQ456xQQQ16xbbbb52sQ264xI', 32, '=QQQQ', 303, '=IQQIQQQ255s', 120, '=24xI4x8x64xI12x'],
-    [1028, '=8xQQQQI4xII144xQ448xQQQ16xbbbb52sQ264xI', 32, '=QQQQ', 303, '=IQQIQQQ255s', 120, '=24xI4x8x64xI12x'], 
-    [752+24+276, '=8xQQQQI4xII152xQ456xQQQ16xbbbb52sQ272xI', 32, '=QQQQ', 303, '=IQQIQQQ255s', 120, '=24xI4x8x64xI12x'],
-    [760+24+268, '=8xQQQQI4xII160xQ456xQQQ16xbbbb52sQ264xI', 32, '=QQQQ', 303, '=IQQIQQQ255s', 120, '=24xI4x8x64xI12x'],
-    [760+24+268+16, '=8xQQQQI4xII160xQ456xQQQ16xbbbb52sQ264x16xI', 32, '=QQQQ', 303, '=IQQIQQQ255s', 120, '=24xI4x8x64xI12x']]
-    # Mavericks add new element in proc structure : uint64_t   p_puniqueid;        /* parent's unique ID - set on fork/spawn/vfork, doesn't change if reparented. */
-
-# Lion 32bit, SN 32bit, Lion64bit, SN 64bit, Mountain Lion 64bit
-DATA_TASK_STRUCTURE = [[32+460+4, '=8xIIIIII460xI'],
-    [36+428+4, '=12xIIIIII428xI'],
-    [736, '=16xIII4xQQQ672xQ'],
-    [712, '=24xIII4xQQQ640xQ'],
-    [744, '=16xIII4xQQQ656x24xQ']]
-
-# http://opensource.apple.com/source/xnu/xnu-xxxx.xx.xx/osfmk/vm/vm_map.h
-# Lion 32bit, SN 32bit, Lion64bit, SN 64bit, Mavericks
-DATA_VME_STRUCTURE = [[162+12, '=12xIIQQII8x4xIQ16xIII42xIIIIIIIII', 52, '=IIQQ24xI'],
-    [162, '=12xIIQQIIIQ16xIII42xIIIIIIIII', 40, '=IIQQ12xI'],
-    [194, '=16xQQQQII16xQQ16xIII42xIIIIIIIII', 80, '=QQQQ40xQ'],
-    [178, '=16xQQQQIIQQ16xIII42xIIIIIIIII', 56, '=QQQQ16xQ'],
-    [202, '=16xQQQQII16x4xIQQ16xIII42xIIIIIIIII', 80, '=QQQQ40xQ']]
-
-# http://opensource.apple.com/source/xnu/xnu-xxxx.xx.xx/osfmk/i386/pmap.h
-# 11D50, Lion 32bit, SN 32bit, Lion64bit, SN 64bit
-DATA_PMAP_STRUCTURE = [[44, '=36xQ'],
-    [12, '=4xQ'],
-    [100, '=84xQII'],
-    [80, '=72xQ'],
-    [16, '=8xQ'],
-    [152, '=128xQQQ']]
-
-# 32bit, 64bit
-DATA_QUEUE_STRUCTURE = [[8, '=II'],
-    [16, '=QQ']]
-
 def unsigned8(n):
   return n & 0xFFL
 
@@ -128,6 +90,7 @@ class machdump:
                     mach_vme_info.append(loadcommand[6]+loadcommand[3]+difference)
                     mach_vme_list.append(mach_vme_info)
                 loadcommand_offset = loadcommand_offset + loadcommand[1]
+            break
 
         file = open('%s-%x'%(pid_process_name, dump_start), mode="wb")
         for mach_vme_info in mach_vme_list:
@@ -164,16 +127,16 @@ class machdump:
 #################################### PUBLIC FUNCTIONS ####################################
 
 
-def get_macho_dump(x86_mem_pae, sym_addr, arch, os_version, build, pid, base_address, mempath):
-    print '[+] Process Dump Start'
-    proclist = []
-    ProcMan = ps.process_manager(x86_mem_pae, arch, os_version, build, base_address)
-    MachO = machdump(x86_mem_pae, arch, os_version, build, base_address)
-    ret = ProcMan.get_proc_list(sym_addr, proclist, pid)
+def get_macho_dump(x86_mem_pae, sym_addr, arch, os_version, build, pid, base_address, mempath, nproc):
+    if pid == -1:
+        print '[+] Check -x [PID] options'
+        return 0
+    print '[+] Process Dump Start => PID : %d'%pid
+    dumped_proc = []
+    ProcMan = ps.process_manager(x86_mem_pae, arch, os_version, build, base_address, nproc)
+    ret = ProcMan.get_proc_list(sym_addr, dumped_proc, pid)
     if ret == 1:
         return 1
-    
-    dumped_proc = proclist
     
     task_struct = ProcMan.get_task(dumped_proc[0], dumped_proc[0][2])
     
@@ -184,6 +147,7 @@ def get_macho_dump(x86_mem_pae, sym_addr, arch, os_version, build, pid, base_add
 
     pm_cr3 = ProcMan.get_proc_cr3(vm_list, vm_struct)
     
+    MachO = machdump(x86_mem_pae, arch, os_version, build, base_address)
     MachO.get_mach_dump(vm_list, vm_struct, str(dumped_proc[0][1])+'-'+dumped_proc[0][14], mempath, pm_cr3)
     
     return

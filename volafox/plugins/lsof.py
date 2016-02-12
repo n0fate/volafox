@@ -1379,8 +1379,8 @@ class Proc(Struct):
     , 15: {'p_list': ('LIST_ENTRY(proc)', 0, 16, '',
                       {'le_next': ('struct proc *', 0, 8, ''), 'le_prev': ('struct proc **', 8, 8, '->next')}),
            'p_pid': ('pid_t', 16, 4, 'PID'), 'task': ('void *', 24, 8, '->task'),
-           'p_fd': ('struct filedesc *', 224, 8, '->filedesc'), 'p_textvp': ('struct vnode *', 688, 8, '->proc(exe)'),
-           'p_comm': ('char[]', 724, 17, 'COMMAND'), 'p_pgrp': ('struct pgrp *', 776, 8, '->pgrp')}
+           'p_fd': ('struct filedesc *', 240, 8, '->filedesc'), 'p_textvp': ('struct vnode *', 688+16, 8, '->proc(exe)'),
+           'p_comm': ('char[]', 724+16, 17, 'COMMAND'), 'p_pgrp': ('struct pgrp *', 776+16, 8, '->pgrp')}
     }
     }
 

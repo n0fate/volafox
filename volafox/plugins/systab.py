@@ -107,6 +107,12 @@ class systab_manager():
                 sysentaddr = sym_addr + self.base_address - 0x6F6B4 # 15A284
             elif self.build == '15B42': # 10.11.1
                 sysentaddr = sym_addr + self.base_address - 0x71874
+            elif self.build == '15C50' or self.build == '15D21':
+                sysentaddr = sym_addr + self.base_address - 0x71984
+            else:
+                print '[+] Error : systab plugin support El Capitan from 10.11 to 10.11.3'
+                #print 'symbol : %x'%self.x86_mem_pae.vtop(sym_addr+self.base_address)
+                return syscall_list
             #print 'symbol : %x'%self.x86_mem_pae.vtop(sysentaddr)
             for count in xrange(0, data[0]):
                 tmplist = []
