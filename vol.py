@@ -30,7 +30,7 @@ def usage():
     
     print ''
     print 'volafox: Mac OS X Memory Analysis Toolkit'
-    print 'project: http://code.google.com/p/volafox'
+    print 'project: https://github.com/n0fate/volafox'
     print 'support: 10.6-11(Snow Leopard ~ El Capitan); 32/64-bit kernel'
     print '  input: raw memory image (*.mem or exported raw memory image using rekal developed by google'
     print '  -> If you get a AFF4 format, you can export linear memory image as following cmd : rekal aff4export -D . [AFF4 MEMORY IMAGE]'
