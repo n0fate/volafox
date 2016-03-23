@@ -481,7 +481,7 @@ def print_proc_list(proc_list, os_version):
 
 def get_proc_dump(x86_mem_pae, sym_addr, arch, os_version, build, pid, base_address, mempath, nproc):
     proclist = []
-    ProcMan = process_manager(x86_mem_pae, arch, os_version, build, base_address)
+    ProcMan = process_manager(x86_mem_pae, arch, os_version, build, base_address, nproc)
     ret = ProcMan.get_proc_list(sym_addr, proclist, pid)
     if ret == 1:
         return 1

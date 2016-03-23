@@ -264,8 +264,8 @@ class volafox():
 
     def proc_dump(self, pid):
         sym_addr = self.symbol_list['_kernproc']
-        
-        get_proc_dump(self.x86_mem_pae, sym_addr, self.arch, self.os_version, self.build, pid, self.base_address, self.mempath)
+        nprocs = struct.unpack('=I', self.x86_mem_pae.read(self.base_address+self.symbol_list['_nprocs'], 4))[0]
+        get_proc_dump(self.x86_mem_pae, sym_addr, self.arch, self.os_version, self.build, pid, self.base_address, self.mempath, nprocs)
 
     # 2011.08.08
     # network information (inpcbinfo.hashbase, test code)
