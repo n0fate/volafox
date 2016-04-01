@@ -86,7 +86,7 @@ class systab_manager():
         elif self.os_version == 14: # Yosemite
             if self.build == '14D136' or '14E46' or '14F27':
                 sysentaddr = sym_addr + self.base_address - 0x6BDA8
-            else:    
+            else:
                 sysentaddr = sym_addr + self.base_address - 0x69978
             #print '%x'%self.x86_mem_pae.vtop(sysentaddr)
             for count in xrange(0, data[0]):
@@ -107,8 +107,10 @@ class systab_manager():
                 sysentaddr = sym_addr + self.base_address - 0x6F6B4 # 15A284
             elif self.build == '15B42': # 10.11.1
                 sysentaddr = sym_addr + self.base_address - 0x71874
-            elif self.build == '15C50' or self.build == '15D21':
+            elif self.build == '15C50' or self.build == '15D21': # 10.11.2, 10.11.3
                 sysentaddr = sym_addr + self.base_address - 0x71984
+            elif self.build == '15E65': # 10.11.4
+                sysentaddr = sym_addr + self.base_address - 0x71AD4
             else:
                 print '[+] Error : systab plugin support El Capitan from 10.11 to 10.11.3'
                 #print 'symbol : %x'%self.x86_mem_pae.vtop(sym_addr+self.base_address)
@@ -129,7 +131,7 @@ class systab_manager():
             #print '%x'%self.x86_mem_pae.vtop(sysentaddr + (count*SYSCALL_TABLE_STRUCTURE[0]))
 
 
-    
+
         return syscall_list
 
 #################################### PUBLIC FUNCTIONS ####################################
@@ -141,7 +143,7 @@ def print_syscall_table(data_list, symbol_list, base_address):
     print '[+] Syscall List'
     headerlist = ["NUM","ARG_COUNT", "NAME", "CALL_PTR", "ARG_MUNGE32_PTR", "ARG_MUNGE64_PTR", "RET_TYPE", "ARG_BYTES", "HOOK_FINDER"]
     contentlist = []
-    
+
     count = 0
     for data in data_list:
         symflag = 0
@@ -171,7 +173,7 @@ def print_syscall_table(data_list, symbol_list, base_address):
         contentlist.append(line)
 
     mszlist = [-1, -1, -1, -1, -1, -1, -1, -1, -1]
-    columnprint(headerlist, contentlist, mszlist) 
+    columnprint(headerlist, contentlist, mszlist)
 
 def get_system_call_table_list(x86_mem_pae, sym_addr, arch, os_version, build, base_address):
     SYSCALLMan = systab_manager(x86_mem_pae, arch, os_version, build, base_address)

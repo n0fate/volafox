@@ -93,7 +93,7 @@ class volafox():
     def get_shift_vtop(self, address):  # Get shifted kernel symbol address
         print '%x'%self.x86_mem_pae.vtop(address)
         return
-    
+
     def overlay_loader(self, overlay_path, vflag):
         try:
             if vflag:
@@ -106,7 +106,7 @@ class volafox():
             print '[+] WARNING: volafox can\'t open \'%s\''%overlay_path
             print '[+] WARNING: You can create overlay file running \'overlay_generator.py\''
             return 1
-    
+
     def get_kernel_version(self, vflag):
         ret_data = get_imageinfo(self.mempath, vflag)
         self.arch = ret_data[1]
@@ -116,7 +116,7 @@ class volafox():
 
         ## open overlay file
         return 'overlays/%sx%d.overlay'%(self.build, self.arch)
-    
+
     def init_vatopa_x86_pae(self, vflag):
         if self.mempath == '':
             return 1
@@ -183,13 +183,13 @@ class volafox():
         sym_addr = self.symbol_list['_kmod']
         sym_addr2 = self.symbol_list['_g_kernel_kmod_info']
         kext_dump(self.x86_mem_pae, sym_addr, sym_addr2, self.arch, self.os_version, self.build, KID, self.base_address)
-    
+
     def mount(self):
         sym_addr = self.symbol_list['_mountlist']
         mount_list = get_mount_list(self.x86_mem_pae, sym_addr, self.arch, self.os_version, self.build, self.base_address)
         print_mount_list(mount_list)
 
-    def get_ps(self): 
+    def get_ps(self):
         sym_addr = self.symbol_list['_kernproc']
         nprocs = struct.unpack('=I', self.x86_mem_pae.read(self.base_address+self.symbol_list['_nprocs'], 4))[0]
         proc_list = get_proc_list(self.x86_mem_pae, sym_addr, self.arch, self.os_version, self.build, self.base_address, nprocs)
@@ -232,7 +232,7 @@ class volafox():
             print ''
             print '[+] Unlinked task list'
             task_print(hide_task_list)
- 
+
     # LSOF: new lsof module (stub)
     def lsof(self, pid, vflag):
         sym_addr = self.symbol_list['_kernproc'] + self.base_address
@@ -274,9 +274,9 @@ class volafox():
     def netstat(self):
         tcb_symbol_addr = self.symbol_list['_tcbinfo']
         udb_symbol_addr = self.symbol_list['_udbinfo']
-        
+
         if isMachoVolafoxCompatible(self.mempath):
-            net_pae = IA32PML4MemoryPae(MachoAddressSpace(self.mempath), self.idlepml4) 
+            net_pae = IA32PML4MemoryPae(MachoAddressSpace(self.mempath), self.idlepml4)
         else:
             net_pae = IA32PML4MemoryPae(FileAddressSpace(self.mempath), self.idlepml4)
         network_list = get_network_hash(net_pae, tcb_symbol_addr, udb_symbol_addr, self.arch, self.os_version, self.build, self.base_address)
@@ -287,12 +287,12 @@ class volafox():
     def netstat_test(self):
         tcb_symbol_addr = self.symbol_list['_tcbinfo']
         udb_symbol_addr = self.symbol_list['_udbinfo']
-	
+
         if isMachoVolafoxCompatible(self.mempath):
             net_pae = IA32PML4MemoryPae(MachoAddressSpace(self.mempath), self.idlepml4)
         else:
             net_pae = IA32PML4MemoryPae(FileAddressSpace(self.mempath), self.idlepml4)
-        
+
         network_list = get_network_list(net_pae, tcb_symbol_addr, udb_symbol_addr, self.arch, self.os_version, self.build, self.base_address)
         print_network_list(network_list[0], network_list[1])
 
@@ -303,14 +303,14 @@ class volafox():
         #print '0x%.8x'%self.x86_mem_pae.vtop(pe_state_symbol_addr)
         pe_state_info = get_pe_state(self.x86_mem_pae, pe_state_symbol_addr, self.arch, self.os_version, self.build, self.base_address)
         print_pe_state(pe_state_info, self.arch, self.os_version, self.build)
-        
+
         boot_args_ptr = pe_state_info[13]
-        
+
         #print '0x%.8x'%self.x86_mem_pae.vtop(boot_args_ptr)
-        
+
         boot_args_info = get_boot_args(self.x86_mem_pae, boot_args_ptr, self.arch, self.os_version, self.build)
         print_boot_args(boot_args_info, self.arch, self.os_version, self.build)
-    
+
     def efi_system_table(self):
         efi_system_symbol_addr = self.symbol_list['_gPEEFISystemTable']
         #print '0x%.8x'%self.x86_mem_pae.vtop(efi_system_symbol_addr)
@@ -320,29 +320,29 @@ class volafox():
         efi_runtime_symbol_addr = self.symbol_list['_gPEEFIRuntimeServices']
         efi_runtime_info = get_efi_runtime_services(self.x86_mem_pae, efi_runtime_symbol_addr, self.arch, self.os_version, self.build, self.base_address)
         print_efi_runtime_services(efi_runtime_info, self.arch, self.os_version, self.build)
-    
+
     def keychaindump(self):
         sym_addr = self.symbol_list['_kernproc']
-        
-        candidate_key_list = dump_master_key(self.x86_mem_pae, sym_addr, self.arch, self.os_version, self.build, self.base_address, self.mempath)
+        nprocs = struct.unpack('=I', self.x86_mem_pae.read(self.base_address+self.symbol_list['_nprocs'], 4))[0]
+        candidate_key_list = dump_master_key(self.x86_mem_pae, sym_addr, self.arch, self.os_version, self.build, self.base_address, self.mempath, nprocs)
         if candidate_key_list == 1:
             return
         print_master_key(candidate_key_list)
 
     def bash_history(self):
         sym_addr = self.symbol_list['_kernproc']
-        
-        bash_history_list = dump_bash_history(self.x86_mem_pae, sym_addr, self.arch, self.os_version, self.build, self.base_address, self.mempath)
+        nprocs = struct.unpack('=I', self.x86_mem_pae.read(self.base_address+self.symbol_list['_nprocs'], 4))[0]
+        bash_history_list = dump_bash_history(self.x86_mem_pae, sym_addr, self.arch, self.os_version, self.build, self.base_address, self.mempath, nprocs)
         print_bash_history(bash_history_list)
 
     # 2013.04.05 dmesg
     #################################################
-    
+
     def dmesg(self):
         dmesg_symbol_addr = self.symbol_list['_smsg_bufc']
         dmesg_str = get_dmesg(self.x86_mem_pae, dmesg_symbol_addr, self.arch, self.os_version, self.build, self.base_address)
         print dmesg_str
-	
+
     def uname(self):
     	uname_symbol_addr = self.symbol_list['_kdp_kernelversion_string']
     	uname_str = get_uname(self.x86_mem_pae, uname_symbol_addr, self.arch, self.os_version, self.build, self.base_address)
@@ -430,4 +430,4 @@ class volafox():
         dumpcompressedpage(self.x86_mem_pae, self.symbol_list, self.arch, self.os_version, self.base_address)
 
     def checksysctl(self):
-        getsysctl(self.x86_mem_pae, self.symbol_list, self.arch, self.os_version, self.base_address)        
+        getsysctl(self.x86_mem_pae, self.symbol_list, self.arch, self.os_version, self.base_address)

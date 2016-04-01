@@ -12,33 +12,33 @@ from tableprint import columnprint
 
 
 class bash_history:
-	def __init__(self, x86_mem_pae, arch, os_version, build, base_address):
+	def __init__(self, x86_mem_pae, arch, os_version, build, base_address, nproc):
 		self.x86_mem_pae = x86_mem_pae
 		self.arch = arch
 		self.os_version = os_version
 		self.build = build
 		self.base_address = base_address
-		self.processmanager = process_manager(self.x86_mem_pae, self.arch, self.os_version, self.build, self.base_address)
-	
+		self.processmanager = process_manager(self.x86_mem_pae, self.arch, self.os_version, self.build, self.base_address, nproc)
+
 	def search_for_history_in_task_memory(self, malloc_tiny_list, pm_cr3, mempath):
 		proc_pae = IA32PML4MemoryPae(FileAddressSpace(mempath), pm_cr3)
-		
+
 		history_list = []
-		
+
 		ptr_size = 8
 		unpack_int = '=QQ'
-		
+
 		#print ''
-		
+
 		for vm_address in malloc_tiny_list:
 			#print '[*] Search for keys in range 0x%.8x-0x%.8x'%(vm_address[0], vm_address[1])
-			
+
 			for vm_offset in range(vm_address[0], vm_address[1], ptr_size*2):
-				
+
 				if proc_pae.is_valid_address(vm_offset):
 					pointer_set = proc_pae.read(vm_offset, ptr_size*2)
 					value = struct.unpack(unpack_int, pointer_set)
-					
+
 					# brute-force
 					# value[0] = line pointer, value[1] = timestamp pointer
 					if ((value[0] & value[1]) >= vm_address[0]) and ((value[0] & value[1]) < vm_address[1]):
@@ -72,21 +72,21 @@ class bash_history:
 							temp_list.append(linebuf)
 
 							history_list.append(temp_list)
-			
+
 			#print history_list
-		
+
 		return history_list
-	
+
 	def search_malloc_tiny_in_vm(self, vm_map_ptr, user_stack_ptr, full_dump_flag):
 		retData = self.processmanager.get_proc_region(vm_map_ptr, user_stack_ptr, full_dump_flag)
 		vm_list = retData[0]
 		vm_struct = retData[1]
-		
+
 		malloc_tiny_list = []
-		
+
 		#print ''
 		#print '[+] Find MALLOC_TINY heap range (guess)'
-		
+
 		for vm_address in vm_list:
 			if vm_address[0] <= 0x00007f0000000000 or vm_address[1] >= 0x00007fff00000000:
 				continue
@@ -94,16 +94,16 @@ class bash_history:
 				continue
 			#print ' [-] range 0x%.8x-0x%.8x'%(vm_address[0], vm_address[1])
 			malloc_tiny_list.append(vm_address)
-		
+
 		pm_cr3 = self.processmanager.get_proc_cr3(vm_list, vm_struct)
-		
+
 		return malloc_tiny_list, pm_cr3
-	
+
 	def search_bash_process(self, sym_addr):
 		proclist = []
 		ret = self.processmanager.get_proc_list(sym_addr, proclist, -1)
 		if ret == 1:
-			return 1
+			return []
 
 		task_list = []
 		for proc in proclist:
@@ -118,14 +118,17 @@ class bash_history:
 
 ################## PUBLIC FUNCTION ###################################
 
-def dump_bash_history(x86_mem_pae, sym_addr, arch, os_version, build, base_address, mempath):
-	bash = bash_history(x86_mem_pae, arch, os_version, build, base_address)
-	if bash.build[0:2] < 13:
+def dump_bash_history(x86_mem_pae, sym_addr, arch, os_version, build, base_address, mempath, nproc):
+	bash = bash_history(x86_mem_pae, arch, os_version, build, base_address, nproc)
+	if os_version < 13:
 		print 'bash_history is compatible on more than Mac OS X Mavericks(13.0)'
 		return 1
 
 	bash_history_list = []
 	task_list = bash.search_bash_process(sym_addr)
+
+#	if type(task_list) == 'NoneType':
+#		return
 
 	for task in task_list:
 		malloc_tiny_list, pm_cr3 = bash.search_malloc_tiny_in_vm(task[2][3], 0, 0) # task structure
@@ -135,9 +138,9 @@ def dump_bash_history(x86_mem_pae, sym_addr, arch, os_version, build, base_addre
 		history_info.append(history_list)
 		print '[+] PID : %d, PROCESS: %s, HISTORY COUNT: %d'%(task[0], task[1], len(history_list))
 		bash_history_list.append(history_info)
-	
+
 	return bash_history_list
-	
+
 def print_bash_history(bash_history_list):
 
 	headerlist = ["PID", "PROCESS", "TIME (UTC+0)", "CMD"]

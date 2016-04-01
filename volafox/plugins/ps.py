@@ -11,9 +11,9 @@ from volafox.vatopa.ia32_pml4 import IA32PML4MemoryPae
 
 # Lion 32bit, SN 32bit, Lion64bit, SN 64bit, Mountain Lion 64bit, Mavericks, El Capitan
 DATA_PROC_STRUCTURE = [[476+24+168, '=4xIIIII4xII88xI276xQII20xbbbb52sI164xI', 16, '=IIII', 283, '=IIIIIII255s', 108, '=12xI4x8x64xI12x'],
-    [476+168, '=4xIIIII4xII64xI276xQII20xbbbb52sI164xI', 16, '=IIII', 283, '=IIIIIII255s', 108, '=12xI4x8x64xI12x'], 
+    [476+168, '=4xIIIII4xII64xI276xQII20xbbbb52sI164xI', 16, '=IIII', 283, '=IIIIIII255s', 108, '=12xI4x8x64xI12x'],
     [752+24+268, '=8xQQQQI4xII152xQ456xQQQ16xbbbb52sQ264xI', 32, '=QQQQ', 303, '=IQQIQQQ255s', 120, '=24xI4x8x64xI12x'],
-    [1028, '=8xQQQQI4xII144xQ448xQQQ16xbbbb52sQ264xI', 32, '=QQQQ', 303, '=IQQIQQQ255s', 120, '=24xI4x8x64xI12x'], 
+    [1028, '=8xQQQQI4xII144xQ448xQQQ16xbbbb52sQ264xI', 32, '=QQQQ', 303, '=IQQIQQQ255s', 120, '=24xI4x8x64xI12x'],
     [752+24+276, '=8xQQQQI4xII152xQ456xQQQ16xbbbb52sQ272xI', 32, '=QQQQ', 303, '=IQQIQQQ255s', 120, '=24xI4x8x64xI12x'],
     [760+24+268, '=8xQQQQI4xII160xQ456xQQQ16xbbbb52sQ264xI', 32, '=QQQQ', 303, '=IQQIQQQ255s', 120, '=24xI4x8x64xI12x'],
     [760+24+268+16, '=8xQQQQI4xII160xQ456xQQQ16xbbbb52sQ264x16xI', 32, '=QQQQ', 303, '=IQQIQQQ255s', 120, '=24xI4x8x64xI12x'],
@@ -122,10 +122,12 @@ class process_manager:
                 PROC_STRUCTURE = DATA_PROC_STRUCTURE[6] # above Yosemite
             elif self.os_version == 15 and (self.build == '15A264' or self.build == '15B42'):
                 PROC_STRUCTURE = DATA_PROC_STRUCTURE[7] # El Capitan
-            elif self.os_version == 15 and (self.build == '15C50' or self.build == '15D21'):
+            elif self.os_version == 15 and (self.build == '15C50' or self.build == '15D21'  or self.build == '15E65'):
                 PROC_STRUCTURE = DATA_PROC_STRUCTURE[8] # El Capitan
-            else:
+            elif self.os_version == 10:
                 PROC_STRUCTURE = DATA_PROC_STRUCTURE[3] # Snow Leopard 64bit
+            else:
+                PROC_STRUCTURE = []
 
         return PROC_STRUCTURE
 
@@ -148,26 +150,27 @@ class process_manager:
             proc_sym_addr = struct.unpack('Q', kernproc)[0]
 
         return proc_sym_addr
-    
+
     def get_proc_list(self, sym_addr, proc_list, pid):
         if not(self.x86_mem_pae.is_valid_address(sym_addr+self.base_address)):
             return 1
 
         PROC_STRUCTURE = self.get_proc_struct()
 
+        if len(PROC_STRUCTURE) == 0:
+            return 1
+
         proc_sym_addr = self.pass_kernel_task_proc(self.get_kernel_task_addr(sym_addr))
-        
+
 
         proc_addr = []
 
         for count in xrange(self.nproc):
-            #break
             if proc_sym_addr == 0:
                 break
             if not(self.x86_mem_pae.is_valid_address(proc_sym_addr)):
                 break
-            #try:
-            #print '%x'%self.x86_mem_pae.vtop(proc_sym_addr)
+
             proc = []
 
             if proc_sym_addr in proc_addr:
@@ -176,7 +179,7 @@ class process_manager:
             proc_addr.append(proc_sym_addr)
 
             proc, next_proc_addr, pid_in_proc = self.get_proc(proc_sym_addr, PROC_STRUCTURE)
-            
+
             proc_sym_addr = next_proc_addr
             if pid > 0 and len(proc):
                 if pid_in_proc == pid and len(proc):
@@ -186,8 +189,8 @@ class process_manager:
                 proc_list.append(proc)
             else: # Process Dump or filtering
                 return 1
-        return 1
-    
+        return 0
+
     def get_queue(self, ptr):
         if self.arch == 32:
             QUEUE_STRUCTURE = DATA_QUEUE_STRUCTURE[0]
@@ -199,7 +202,7 @@ class process_manager:
         queue_ptr = self.x86_mem_pae.read(ptr+self.base_address, QUEUE_STRUCTURE[0])
         queue = struct.unpack(QUEUE_STRUCTURE[1], queue_ptr)
         return queue # next, prev
-    
+
     def get_task_queue(self, sym_addr, count, task_list):
         queue = self.get_queue(sym_addr)
 
@@ -215,27 +218,27 @@ class process_manager:
 
         while i < count:
             task = [] # temp
-                
+
             if task_ptr == 0:
                 break
             if not(self.x86_mem_pae.is_valid_address(task_ptr)):
                 break
-              
+
             task_struct = self.get_task("", task_ptr)
-            
+
             task.append(i) # count
             task.append(self.x86_mem_pae.vtop(task_ptr)) # physical address
             task.append(task_ptr) # virtual address
             task.append(task_struct) # task structure
             task.append(task_struct[6]) # task.bsd_info physical address
-            
+
             task_list.append(task)
             task_ptr = task_struct[4] # task_queue_t
             i += 1
 
         return i
 
-    
+
     def get_task(self, proc, task_ptr):
         #print '====== task.h --> osfmk\\kern\\task.h'
         if self.arch == 32:
@@ -254,12 +257,12 @@ class process_manager:
         task_struct = struct.unpack(TASK_STRUCTURE[1], task_info)
 
         return task_struct
-    
+
     def get_proc_region(self, task_ptr, user_stack, fflag):
-        
+
         vm_list = []
         vm_struct = []
-        
+
         if self.arch == 32:
             if self.os_version >= 11: # Lion
                 VME_STRUCTURE = DATA_VME_STRUCTURE[0]
@@ -274,16 +277,16 @@ class process_manager:
                 VME_STRUCTURE = DATA_VME_STRUCTURE[4]
             else:
                 VME_STRUCTURE = DATA_VME_STRUCTURE[3]
-                
+
         vm_info = self.x86_mem_pae.read(task_ptr, VME_STRUCTURE[0])
         vm_struct = struct.unpack(VME_STRUCTURE[1], vm_info)
-        
+
         # if vm_struct[7] == 0: # pmap_t
         #     return vm_list, vm_struct
 
         # if not(self.x86_mem_pae.is_valid_address(vm_struct[7])):
         #     return vm_list, vm_struct
-        
+
         ### 11.09.28 end n0fate
         #print '======= vm_map_t --> osfmk\\vm\\vm_map.h ========'
         #print 'prev: %x'%vm_struct[0]
@@ -327,7 +330,7 @@ class process_manager:
             # get permission on virtual memory ('rwx')
             permission = ''
             max_permission = ''
-            
+
             perm_list = []
             perm = ((vme_list[4]) >> 7 )& 0x003f
             count = 6
@@ -335,7 +338,7 @@ class process_manager:
                 perm_list.append(perm&1)
                 perm = perm >> 1
                 count = count - 1
-                
+
             if (perm_list[0] == 1 ):
                 permission += 'r' # Protection
             else:
@@ -368,51 +371,51 @@ class process_manager:
             #print 'next[data]: %x'%self.x86_mem_pae.vtop(vme_list[1])
             entry_next_ptr = vme_list[1]
             #print '%x'%self.x86_mem_pae.vtop(vme_list[1])
-        
+
         return vm_list, vm_struct
-    
+
     def get_proc_cr3(self,  vm_list, vm_struct):
         if self.arch == 32:
             if self.build == '11D50': # temporary 12.04.24 n0fate
-                PMAP_STRUCTURE = DATA_PMAP_STRUCTURE[0]       
+                PMAP_STRUCTURE = DATA_PMAP_STRUCTURE[0]
             elif self.os_version >= 11:   # Lion xnu-1699, build version 11D50 has some bug (36xQ)
                 PMAP_STRUCTURE = DATA_PMAP_STRUCTURE[1]
             else: # Leopard or Snow Leopard xnu-1456
                 PMAP_STRUCTURE = DATA_PMAP_STRUCTURE[2]
         else:
             if self.build == '11D50': # temporary 12.04.24 n0fate
-                PMAP_STRUCTURE = DATA_PMAP_STRUCTURE[3]   
+                PMAP_STRUCTURE = DATA_PMAP_STRUCTURE[3]
             elif self.os_version >= 11:   # Lion xnu-1699, build version 11D50 has some bug (36xQ)
                 PMAP_STRUCTURE = DATA_PMAP_STRUCTURE[4]
             else: # Leopard or Snow Leopard xnu-1456
                 PMAP_STRUCTURE = DATA_PMAP_STRUCTURE[5]
         if self.os_version <= 12:
             pmap_info = self.x86_mem_pae.read(vm_struct[6], PMAP_STRUCTURE[0])
-        else:    
+        else:
             pmap_info = self.x86_mem_pae.read(vm_struct[7], PMAP_STRUCTURE[0])
         pm_cr3 = struct.unpack(PMAP_STRUCTURE[1], pmap_info)[0]
         return pm_cr3
-        
+
     def get_proc_dump(self, vm_list, vm_struct, process_name, mempath):
 
         pm_cr3 = self.get_proc_cr3(vm_list, vm_struct)
 
         print '[+] Resetting the Page Mapping Table: 0x%x'%pm_cr3
-        
+
         proc_pae = IA32PML4MemoryPae(FileAddressSpace(mempath), pm_cr3)
-        
+
         print '[+] Process Dump Start'
-        
+
         for vme_info in  vm_list:
             #print proc_pae.vtop(vme_info[0])
             #print vme_info[1]
-            
+
             nop_code = 0x00
             pk_nop_code = struct.pack('=B', nop_code)
             nop = pk_nop_code*0x1000
-            
+
             file = open('%s-%x-%x'%(process_name, vme_info[0], vme_info[1]), mode="wb")
-            
+
             nop_flag = 0
             for i in range(vme_info[0], vme_info[1], 0x1000):
                 raw_data = 0x00
@@ -467,12 +470,12 @@ def proc_print(data_list, os_version):
 
     mszlist = [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1]
     columnprint(headerlist, contentlist, mszlist)
-      
+
 def get_proc_list(x86_mem_pae, sym_addr, arch, os_version, build, base_address, nproc):
     proclist = []
     ProcMan = process_manager(x86_mem_pae, arch, os_version, build, base_address, nproc)
     ret = ProcMan.get_proc_list(sym_addr, proclist, -1)
-    
+
     return proclist
 
 def print_proc_list(proc_list, os_version):
@@ -485,72 +488,79 @@ def get_proc_dump(x86_mem_pae, sym_addr, arch, os_version, build, pid, base_addr
     ret = ProcMan.get_proc_list(sym_addr, proclist, pid)
     if ret == 1:
         return 1
-    
+
     dumped_proc = proclist
-    
+
     proc_print(dumped_proc, os_version)
-    
+
     task_struct = ProcMan.get_task(dumped_proc[0], dumped_proc[0][2])
-    
+
     retData = ProcMan.get_proc_region(task_struct[3], dumped_proc[0][5], 0)
-    
+
     vm_list = retData[0]
     vm_struct = retData[1]
-    
+
     ProcMan.get_proc_dump(vm_list, vm_struct, str(dumped_proc[0][1])+'-'+dumped_proc[0][14], mempath)
-    
+
     return
-  
+
 def get_task_dump(x86_mem_pae, sym_addr, count, arch, os_version, build, task_id, base_address, mempath, nproc):
     ProcMan = process_manager(x86_mem_pae, arch, os_version, build, base_address, nproc)
     task_list = []
     check_count = ProcMan.get_task_queue(sym_addr, count, task_list) # task queue ptr, task_count, task_list
-    
+
     for task in task_list:
         if task[0] == task_id:
             task_struct = task
             break
-    
+
     if len(task_struct) == 0:
       '[+] Could not found TASK ID'
       return
 
     PROC_STRUCTURE = ProcMan.get_proc_struct()
+
+    if len(PROC_STRUCTURE) == 0:
+        return
     #proc_matched = ProcMan.get_proc(task[4], PROC_STRUCTURE)[0]
-    
+
     #if len(proc_matched) == 0:
     #    print '[+] task dump failed'
     #    return
 
-    retData = ProcMan.get_proc_region(task_struct[3][3], 0x00, 0) # 
-    
+    retData = ProcMan.get_proc_region(task_struct[3][3], 0x00, 0) #
+
     vm_list = retData[0]
     vm_struct = retData[1]
     ProcMan.get_proc_dump(vm_list, vm_struct, str(task_id), mempath)
-    
+
     return
-    
-    
-    
+
+
+
 def get_task_list(x86_mem_pae, sym_addr, count, arch, os_version, build, base_address, nproc):
     ProcMan = process_manager(x86_mem_pae, arch, os_version, build, base_address, nproc)
-    
+
     task_list = []
     check_count = ProcMan.get_task_queue(sym_addr, count, task_list) # task queue ptr, task_count, task_list
-    
+
     return task_list, check_count
 
 def proc_lookup(proc_list, task_list, x86_mem_pae, arch, os_version, build, base_address, nproc):
     ProcMan = process_manager(x86_mem_pae, arch, os_version, build, base_address, nproc)
     PROC_STRUCTURE = ProcMan.get_proc_struct()
-    
+
+    if len(PROC_STRUCTURE) == 0:
+        print ' [*] Doesn\'t support kernel version'
+        return
+
     print '[+] Task List Count at Queue: %d'%(len(task_list)-1)
     print '[+] Process List Count: %d'%len(proc_list)
-    
+
     # task list
     unlinked_task = []
     valid_task = []
-    
+
     # comment: task = [count, task_ptr(Physical), task_ptr(Virtual), [task structure], task.bsd_info]
     for task in task_list:
         task_ptr = task[2]
@@ -595,7 +605,7 @@ def task_print(data_list):
         line.append('%s'%data[7]) # User Name
         #line.append('%s'%data[8]) # proc.tasks -> Task ptr
         #line.append('%s'%data[9]) # task.bsd_info -> proc ptr
-        
+
         #line.append('%s'%time.strftime("%a %b %d %H:%M:%S %Y", time.gmtime(data[14])))
         line.append('')
         contentlist.append(line)
