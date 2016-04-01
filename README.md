@@ -2,8 +2,6 @@
 ## Introduction
 volafox a.k.a 'Mac OS X Memory Analysis Toolkit' is developed on python 2.x
 
-Lastest version : [http://volafox.tumblr.com/post/75481455662/volafox-0-9-release volafox-0.9]
-
 *_please check out our repository for all of features included experiment_*
 
 ## License
@@ -16,7 +14,7 @@ GNU GPL v2
 
 ### Requirement
 * Kernel Symbol List
- * overlay data(Included repo from Snow Leopard to El Capitan 10.11.3)
+ * overlay data(Included repo from Snow Leopard to El Capitan)
 
 * Memory Image
  * Raw memory image(Firewire, VMware memory image)
@@ -47,7 +45,7 @@ GNU GPL v2
     kextscan        : Scanning KEXT (Kernel Extensions) (64bit OS only)
     ps              : Process listing
     tasks           : Task listing (Finding process hiding)
-    machdump        : Dump macho binary (experiment)
+    machdump        : Dump macho binary and relocation for analysis
     systab          : Syscall table (Hooking detection)
     mtt             : Mach trap table (Hooking detection)
     netstat         : Network socket listing (Hash table)
@@ -72,7 +70,9 @@ GNU GPL v2
     fbt_syscall     : Examination of syscall table for hooking by DTrace FBT Provider
 
 
-# volafox for BSD(experimental, I just keep it for researcher)
+# volafox for BSD
+* Experimental - I just keep it for researcher
+
 # Introduction
 *FreeBSD Memory Analysis Toolkit*<br>
 *Tested OS:* FreeBSD x86 7.x, 8.x<br>
