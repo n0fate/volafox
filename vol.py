@@ -60,6 +60,7 @@ def usage():
     print 'pestate         : Show Boot information'
     print 'efiinfo         : EFI System Table, EFI Runtime Services'
     print 'keychaindump    : Dump master key candidates for decrypting keychain(Lion ~ El Capitan)'
+    print 'getfvkey        : Dump Filevault2 Volume Masker Key (Thomas White\'s idea)'
     print 'dmesg           : Debug message at boot time'
     print 'uname           : Print a short for unix name(uname)'
     print 'hostname        : Print a hostname'
@@ -358,6 +359,10 @@ def main():
 
     elif oflag == 'sysctl':
         m_volafox.checksysctl()
+        sys.exit()
+
+    elif oflag == 'getfvkey':
+        m_volafox.dumpfilevaultkey()
         sys.exit()
 
     else:

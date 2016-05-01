@@ -73,8 +73,11 @@ class process_manager:
 
         if data[0] == 0:
             return proc, '', ''
-        pgrp_t = self.x86_mem_pae.read(data[16], PROC_STRUCTURE[2]) # pgrp structure
-        m_pgrp = struct.unpack(PROC_STRUCTURE[3], pgrp_t)
+        try:
+            pgrp_t = self.x86_mem_pae.read(data[16], PROC_STRUCTURE[2]) # pgrp structure
+            m_pgrp = struct.unpack(PROC_STRUCTURE[3], pgrp_t)
+        except struct.error:
+            return proc, '', ''
 
         session_t = self.x86_mem_pae.read(m_pgrp[3], PROC_STRUCTURE[4]) # session structure
         m_session = struct.unpack(PROC_STRUCTURE[5], session_t)
@@ -160,7 +163,7 @@ class process_manager:
         if len(PROC_STRUCTURE) == 0:
             return 1
 
-        proc_sym_addr = self.pass_kernel_task_proc(self.get_kernel_task_addr(sym_addr))
+        proc_sym_addr = self.get_kernel_task_addr(sym_addr)
 
 
         proc_addr = []
@@ -214,7 +217,7 @@ class process_manager:
 
         task_ptr = queue[0] # next
 
-        i = 0
+        i = 1
 
         while i < count:
             task = [] # temp
@@ -326,7 +329,7 @@ class process_manager:
             vm_temp_list = []
             vm_temp_list.append(vme_list[2]) # start
             vm_temp_list.append(vme_list[3]) # end
-            vm_list.append(vm_temp_list)
+            
             # get permission on virtual memory ('rwx')
             permission = ''
             max_permission = ''
@@ -370,7 +373,12 @@ class process_manager:
             #  print ' [-] Region from 0x%x to 0x%x (%s, max %s;)'%(vme_list[2], vme_list[3], permission, max_permission)
             #print 'next[data]: %x'%self.x86_mem_pae.vtop(vme_list[1])
             entry_next_ptr = vme_list[1]
-            #print '%x'%self.x86_mem_pae.vtop(vme_list[1])
+            
+            vm_temp_list.append(permission)
+            vm_temp_list.append(max_permission)
+            
+            vm_list.append(vm_temp_list)
+            
 
         return vm_list, vm_struct
 
@@ -554,7 +562,7 @@ def proc_lookup(proc_list, task_list, x86_mem_pae, arch, os_version, build, base
         print ' [*] Doesn\'t support kernel version'
         return
 
-    print '[+] Task List Count at Queue: %d'%(len(task_list)-1)
+    print '[+] Task List Count at Queue: %d'%len(task_list)
     print '[+] Process List Count: %d'%len(proc_list)
 
     # task list
@@ -583,6 +591,11 @@ def proc_lookup(proc_list, task_list, x86_mem_pae, arch, os_version, build, base
                 task.append(proc_matched[14])
                 task.append(proc_matched[15])
                 unlinked_task.append(task)
+            else:
+                task.append('-')
+                task.append('-')
+                task.append('-')
+                unlinked_task.append(task)
 
     return valid_task, unlinked_task
 
@@ -590,7 +603,7 @@ def proc_lookup(proc_list, task_list, x86_mem_pae, arch, os_version, build, base
 def task_print(data_list):
     #print '[+] Process List'
 
-    headerlist = ["TASK CNT", "OFFSET(P)", "REF_CNT", "Active", "Halt", "VM_MAP(V)", "PID", "PROCESS", "USERNAME", ""]
+    headerlist = ["TASK_CNT", "OFFSET(P)", "REF_CNT", "Active", "Halt", "VM_MAP(V)", "PID", "PROCESS", "USERNAME", ""]
     contentlist = []
 
     for data in data_list:
@@ -600,7 +613,7 @@ def task_print(data_list):
         line.append('%d'%data[3][1]) # task has not been terminated
         line.append('%d'%data[3][2]) # task is being halted
         line.append('0x%.8X'%data[3][3]) # VM_MAP
-        line.append('%d'%data[5]) # PID
+        line.append('%s'%str(data[5])) # PID
         line.append('%s'%data[6]) # Process Name
         line.append('%s'%data[7]) # User Name
         #line.append('%s'%data[8]) # proc.tasks -> Task ptr

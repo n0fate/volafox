@@ -48,6 +48,7 @@ from plugins.efiinfo import get_efi_system_table, print_efi_system_table, get_ef
 from plugins.export_table_symbol import dump_symbollist
 
 from plugins.keychaindump import dump_master_key, print_master_key
+from plugins.filevault2 import dump_filevault_key, print_fvmkey
 from plugins.bash_history import dump_bash_history, print_bash_history
 
 from plugins.dmesg import get_dmesg
@@ -205,6 +206,7 @@ class volafox():
         task_addr = self.symbol_list['_tasks']
         task_count_addr = self.symbol_list['_tasks_count']
         nprocs = struct.unpack('=I', self.x86_mem_pae.read(self.base_address+self.symbol_list['_nprocs'], 4))[0]
+        task_count_ptr = self.x86_mem_pae.read(task_count_addr+self.base_address, 4)
         task_count = struct.unpack('=I', task_count_ptr)[0]
         get_task_dump(self.x86_mem_pae, task_addr, task_count, self.arch, self.os_version, self.build, task_id, self.base_address, self.mempath, nprocs)
 
@@ -328,6 +330,14 @@ class volafox():
         if candidate_key_list == 1:
             return
         print_master_key(candidate_key_list)
+
+    def dumpfilevaultkey(self):
+        sym_addr = self.symbol_list['_kernproc']
+        nprocs = struct.unpack('=I', self.x86_mem_pae.read(self.base_address+self.symbol_list['_nprocs'], 4))[0]
+        candidate_key_list = dump_filevault_key(self.x86_mem_pae, sym_addr, self.arch, self.os_version, self.build, self.base_address, self.mempath, nprocs)
+        if not len(candidate_key_list):
+            return
+        print_fvmkey(candidate_key_list)
 
     def bash_history(self):
         sym_addr = self.symbol_list['_kernproc']

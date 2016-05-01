@@ -34,10 +34,7 @@ class keychaindump:
             ptr_size = 8
             unpack_int = '=Q'
         else:
-            ptr_size = 4
-            unpack_int = '=I'
-
-        print ''
+            return
 
         for vm_address in malloc_tiny_list:
             print '[*] Search for keys in range 0x%.8x-0x%.8x'%(vm_address[0], vm_address[1]),
@@ -56,12 +53,9 @@ class keychaindump:
                             candidate_key = proc_pae.read(key_buf_ptr, KEY_SIZE)
                             candidate_key_list.append(candidate_key) # append to candidate key list
 
-            print 'complete. master key candidates : %d'%len(candidate_key_list)
+            print '[*] Complete. master key candidates : %d'%len(candidate_key_list)
 
         return candidate_key_list
-
-
-
 
     def search_for_keys_in_vm(self, vm_map_ptr, user_stack_ptr, full_dump_flag):
         retData = self.processmanager.get_proc_region(vm_map_ptr, user_stack_ptr, full_dump_flag)
@@ -70,7 +64,6 @@ class keychaindump:
 
         malloc_tiny_list = []
 
-        print ''
         print '[+] Find MALLOC_TINY heap range (guess)'
 
         for vm_address in vm_list:
@@ -88,8 +81,8 @@ class keychaindump:
     def search_for_keys_in_process(self, sym_addr):
         proclist = []
         ret = self.processmanager.get_proc_list(sym_addr, proclist, -1)
-        if ret == 1:
-            return 1
+        if not len(proclist):
+            return ''
 
         for proc in proclist:
             if proc[14] == 'securityd':
@@ -109,6 +102,9 @@ def dump_master_key(x86_mem_pae, sym_addr, arch, os_version, build, base_address
         return 1
     task_struct = dump_key.search_for_keys_in_process(sym_addr)
 
+    if not len(task_struct):
+        return ''
+
     malloc_tiny_list, pm_cr3 = dump_key.search_for_keys_in_vm(task_struct[3], 0, 0)
 
     candidate_key_list = dump_key.search_for_keys_in_task_memory(malloc_tiny_list, pm_cr3, mempath)
@@ -116,8 +112,6 @@ def dump_master_key(x86_mem_pae, sym_addr, arch, os_version, build, base_address
     return candidate_key_list
 
 def print_master_key(candidate_key_list):
-    print ''
-
     if len(candidate_key_list) == 0:
         print '[*] Can not found master key candidates'
         return
