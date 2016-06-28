@@ -65,6 +65,7 @@ from plugins.kdebug import kdebug_hook
 
 from plugins.dumpcomppage import dumpcompressedpage
 from plugins.sysctl import getsysctl
+from plugins.getphysowner import findphysowner
 
 from vatopa.machaddrspace import MachoAddressSpace, isMachoVolafoxCompatible, is_universal_binary
 
@@ -338,6 +339,11 @@ class volafox():
         if not len(candidate_key_list):
             return
         print_fvmkey(candidate_key_list)
+
+    def findphysaddr_owner(self, physaddr):
+        sym_addr = self.symbol_list['_kernproc']
+        nprocs = struct.unpack('=I', self.x86_mem_pae.read(self.base_address+self.symbol_list['_nprocs'], 4))[0]
+        findphysowner(self.x86_mem_pae, sym_addr, self.arch, self.os_version, self.build, self.base_address, self.mempath, nprocs, physaddr)
 
     def bash_history(self):
         sym_addr = self.symbol_list['_kernproc']

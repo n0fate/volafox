@@ -125,7 +125,7 @@ class process_manager:
                 PROC_STRUCTURE = DATA_PROC_STRUCTURE[6] # above Yosemite
             elif self.os_version == 15 and (self.build == '15A264' or self.build == '15B42'):
                 PROC_STRUCTURE = DATA_PROC_STRUCTURE[7] # El Capitan
-            elif self.os_version == 15 and (self.build == '15C50' or self.build == '15D21'  or self.build == '15E65'):
+            elif self.os_version == 15 and (self.build == '15C50' or self.build == '15D21'  or self.build == '15E65'  or self.build == '15F34'):
                 PROC_STRUCTURE = DATA_PROC_STRUCTURE[8] # El Capitan
             elif self.os_version == 10:
                 PROC_STRUCTURE = DATA_PROC_STRUCTURE[3] # Snow Leopard 64bit

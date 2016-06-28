@@ -85,9 +85,6 @@ class FileVault2:
 
 def dump_filevault_key(x86_mem_pae, sym_addr, arch, os_version, build, base_address, mempath, nprocs):
     DumpFvkey = FileVault2(x86_mem_pae, arch, os_version, build, base_address, nprocs)
-    #if dump_key.build[0:2] < 11:
-    #    print 'keychaindump is compatible on more than Mac OS X Lion(11.0)'
-    #    return 1
     task_struct = DumpFvkey.search_for_keys_in_process(sym_addr)
 
     candidate_key_list = DumpFvkey.search_for_keys_in_vm(task_struct[3], 0, 0, mempath)
@@ -107,7 +104,7 @@ def print_fvmkey(candidate_key_list):
             except TypeError:
                 pass
         if len(key):
-            print '[*] Filevault Master Key : %s'%key
+            print '[*] FileVault Master Key : %s'%key
         
         extendedkey = ''
         for i in xrange(11):
@@ -118,4 +115,4 @@ def print_fvmkey(candidate_key_list):
                     pass
             extendedkey += '\n'
         if len(extendedkey):
-            print '[*] Extended Filevault Master Key :\n%s'%extendedkey
+            print '[*] Extended FileVault Master Key :\n%s'%extendedkey

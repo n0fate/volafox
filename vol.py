@@ -89,6 +89,7 @@ def main():
     offset = 0          # dumpfile
     #callie = ''
     filename = ''
+    physaddr = 0        # physical address for findphysowner plugin
 
     try:
         # LSOF: added -p flag for pid specification with lsof, -v no longer needs arg
@@ -137,6 +138,11 @@ def main():
                 elif p == 'inline_quick' and x[0] == '-x':  # function name
                     pid = str(x[1])
                     debug += ' -x %s' %pid
+                    break
+
+                elif p == 'findphysowner' and x[0] == '-x':  # function name
+                    physaddr = str(x[1])
+                    debug += ' -x %s' %physaddr
                     break
         
                 elif p == 'machdump' and x[0] == '-x': # process dump
@@ -332,6 +338,13 @@ def main():
     elif oflag == 'inline_quick':
         print 'func : %s'%pid
         m_volafox.inline_quick(pid)
+        sys.exit()
+
+    elif oflag == 'findphysowner':
+        if not physaddr:
+            usage()
+            sys.exit()
+        m_volafox.findphysaddr_owner(physaddr)
         sys.exit()
 
     elif oflag == 'bsm_hook':
