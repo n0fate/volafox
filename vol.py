@@ -53,6 +53,7 @@ def usage():
     print 'tasks           : Task listing (Finding process hiding)'
     print 'machdump        : Dump macho binary (experiment)'
     print 'systab          : Syscall table (Hooking detection)'
+    print '                  => Call Number 427 is bugged not hooked.'
     print 'mtt             : Mach trap table (Hooking detection)'
     print 'netstat         : Network socket listing (Hash table)'
     print 'lsof            : Open files listing by process (research, osxmem@gmail.com)'    # LSOF: new lsof command

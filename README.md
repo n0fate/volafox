@@ -47,6 +47,7 @@ GNU GPL v2
     tasks           : Task listing (Finding process hiding)
     machdump        : Dump macho binary and relocation for analysis
     systab          : Syscall table (Hooking detection)
+                      => Call Number 427 is bugged not hooked.
     mtt             : Mach trap table (Hooking detection)
     netstat         : Network socket listing (Hash table)
     lsof            : Open files listing by process (research, osxmem@gmail.com)
