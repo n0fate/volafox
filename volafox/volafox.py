@@ -65,7 +65,6 @@ from plugins.kdebug import kdebug_hook
 
 from plugins.dumpcomppage import dumpcompressedpage
 from plugins.sysctl import getsysctl
-from plugins.getphysowner import findphysowner
 
 from vatopa.machaddrspace import MachoAddressSpace, isMachoVolafoxCompatible, is_universal_binary
 
